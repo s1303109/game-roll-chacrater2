@@ -1,0 +1,896 @@
+import gc
+import json
+import os
+import time
+from machine import ADC, Pin
+import lgfx
+
+
+SD_READY = False
+DISPLAY_INIT_DONE = False
+
+
+def _try_mount_sd():
+    global SD_READY
+    try:
+        from sd_host import mount_sd
+    except Exception:
+        SD_READY = False
+        return
+    try:
+        SD_READY = bool(mount_sd("/sd", return_ok=True))
+    except Exception:
+        SD_READY = False
+    print("sd_mounted:", SD_READY)
+
+
+def _find_asset_base(base_list):
+    for base in base_list:
+        if base.startswith("/sd/") and not SD_READY:
+            continue
+        try:
+            with open(base + "/map.json", "r") as f:
+                text = f.read()
+        except OSError:
+            continue
+        try:
+            meta = json.loads(text)
+        except ValueError:
+            raise ValueError("MAP_JSON_INVALID")
+        _validate_meta(meta)
+        return base, meta
+    raise RuntimeError("ASSET_MISSING")
+
+
+def _clamp(v, lo, hi):
+    if v < lo:
+        return lo
+    if v > hi:
+        return hi
+    return v
+
+
+def _validate_meta(meta):
+    for key in ("tile_size", "map_w", "map_h"):
+        if key not in meta:
+            raise ValueError("MAP_JSON_INVALID")
+
+
+def _file_size(path):
+    try:
+        return os.stat(path)[6]
+    except OSError:
+        return -1
+
+
+def _path_exists(path):
+    try:
+        os.stat(path)
+        return True
+    except OSError:
+        return False
+
+
+def _sync_sd_assets_from_remote_if_needed():
+    if not ENABLE_AUTO_SD_SYNC:
+        return
+    if not SD_READY:
+        return
+    if not _path_exists(REMOTE_ASSET_BASE + "/map.json"):
+        return
+
+    names = ("map.json", "tilemap.bin", "tileset.bin", "collision.bin", PLAYER_SHEET_NAME)
+    needs_sync = False
+    for name in names:
+        src_size = _file_size(REMOTE_ASSET_BASE + "/" + name)
+        if src_size < 0:
+            return
+        dst_size = _file_size(SD_ASSET_BASE + "/" + name)
+        if dst_size != src_size:
+            needs_sync = True
+            break
+
+    if not needs_sync:
+        return
+
+    try:
+        import copy_assets_to_sd
+        print("sd_sync: updated_from_remote")
+        del copy_assets_to_sd
+    except Exception as err:
+        print("sd_sync_failed:", err)
+
+
+def _print_asset_files(base, meta):
+    names = ["map.json", "tilemap.bin", "tileset.bin", PLAYER_SHEET_NAME]
+    collision_name = meta.get("collision")
+    if collision_name:
+        names.append(collision_name)
+    for name in names:
+        path = base + "/" + name
+        size = _file_size(path)
+        if size >= 0:
+            print("asset_file:", path, "size:", size)
+        else:
+            print("asset_file:", path, "missing")
+
+
+def _load_collision(meta, base, map_w, map_h):
+    expected = map_w * map_h
+    last_err = None
+
+    # Prefer collision in the selected base first, then probe fallback bases.
+    bases = [base]
+    for b in ASSET_BASES:
+        if b != base:
+            bases.append(b)
+
+    for src_base in bases:
+        src_meta = meta
+        if src_base != base:
+            try:
+                with open(src_base + "/map.json", "r") as f:
+                    src_meta = json.loads(f.read())
+            except OSError:
+                continue
+            except ValueError:
+                continue
+            if (
+                src_meta.get("tile_size") != meta.get("tile_size")
+                or src_meta.get("map_w") != map_w
+                or src_meta.get("map_h") != map_h
+            ):
+                continue
+
+        name = src_meta.get("collision")
+        if not name:
+            continue
+        if src_meta.get("collision_format", "u8") != "u8":
+            last_err = "COLLISION_FORMAT_UNSUPPORTED"
+            continue
+        try:
+            with open(src_base + "/" + name, "rb") as f:
+                data = f.read()
+        except OSError:
+            last_err = "COLLISION_MISSING"
+            continue
+        if len(data) != expected:
+            last_err = "COLLISION_SIZE_MISMATCH expected=%d got=%d" % (expected, len(data))
+            continue
+        if src_base != base:
+            print("collision_fallback:", src_base + "/" + name)
+        return data, None
+
+    if last_err:
+        return None, last_err
+    return None, "COLLISION_NOT_DECLARED"
+
+
+def _read_file(path):
+    with open(path, "rb") as f:
+        return f.read()
+
+
+def _swap16(buf):
+    if not buf:
+        return buf
+    data = bytearray(buf)
+    for i in range(0, len(data), 2):
+        data[i], data[i + 1] = data[i + 1], data[i]
+    return bytes(data)
+
+
+def _validate_tile_files(base, tile, map_w, map_h):
+    tilemap_path = base + "/tilemap.bin"
+    tileset_path = base + "/tileset.bin"
+    tilemap_size = _file_size(tilemap_path)
+    tileset_size = _file_size(tileset_path)
+    expected_tilemap = map_w * map_h * 2
+    tile_bytes = tile * tile * 2
+
+    if tilemap_size < 0:
+        return "TILEMAP_MISSING"
+    if tilemap_size != expected_tilemap:
+        return "TILEMAP_SIZE_MISMATCH expected=%d got=%d" % (expected_tilemap, tilemap_size)
+    if tileset_size < 0:
+        return "TILESET_MISSING"
+    if tile_bytes <= 0 or (tileset_size % tile_bytes) != 0:
+        return "TILESET_SIZE_INVALID expected_multiple=%d got=%d" % (tile_bytes, tileset_size)
+    return None
+
+
+def _load_tiles(meta, base, tile, map_w, map_h):
+    meta_endian = meta.get("endian", "little")
+    if meta_endian not in ("little", "big"):
+        raise RuntimeError("TILE_ENDIAN_UNSUPPORTED")
+
+    err = _validate_tile_files(base, tile, map_w, map_h)
+    if err:
+        raise RuntimeError(err)
+
+    tilemap_path = base + "/tilemap.bin"
+    tileset_path = base + "/tileset.bin"
+    stream_ok = meta_endian == "little" and hasattr(lgfx, "tile_load_files")
+
+    # Prefer eager in-memory load for stable scrolling (avoids SD stream misses).
+    gc.collect()
+    try:
+        tileset = _read_file(tileset_path)
+        tilemap = _read_file(tilemap_path)
+        if meta_endian == "big":
+            tileset = _swap16(tileset)
+            tilemap = _swap16(tilemap)
+        if lgfx.tile_load(tileset, tilemap):
+            print("tile_loader: memory")
+            return "little"
+        print("tile_loader_memory_fail")
+    except MemoryError:
+        print("tile_loader_memory_oom mem_free:", gc.mem_free())
+
+    # On little-endian assets, fall back to file streaming if RAM load is not possible.
+    if stream_ok:
+        if lgfx.tile_load_files(tileset_path, tilemap_path):
+            print("tile_loader: stream")
+            return "little"
+
+        code = "TILE_LOAD_FAIL"
+        if hasattr(lgfx, "tile_last_error"):
+            err = lgfx.tile_last_error()
+            if err == 2:
+                code = "TILEMAP_MISSING"
+            elif err == 3:
+                code = "TILEMAP_INVALID"
+            elif err == 4:
+                code = "TILESET_MISSING"
+            elif err == 5:
+                code = "TILESET_SEEK_FAIL"
+            elif err == 6:
+                code = "TILESET_SIZE_INVALID"
+            elif err == 7:
+                code = "TILESET_FORMAT_INVALID"
+            elif err == 8:
+                code = "TILE_CACHE_ALLOC_FAIL"
+        raise RuntimeError(code)
+
+    # Big-endian assets must be memory-loaded for byte-swap.
+    raise RuntimeError("TILE_OOM")
+
+
+def _isqrt(n):
+    if n <= 0:
+        return 0
+    x = n
+    y = (x + 1) // 2
+    while y < x:
+        x = y
+        y = (x + n // x) // 2
+    return x
+
+
+def _infer_player_sheet_dims(buf_len):
+    if buf_len <= 0 or (buf_len % 2) != 0:
+        return None, "PLAYER_SHEET_LEN_INVALID"
+    pixels = buf_len // 2
+    side = _isqrt(pixels)
+    if side * side != pixels:
+        return None, "PLAYER_SHEET_NOT_SQUARE"
+    if side % 3 != 0:
+        return None, "PLAYER_SHEET_NOT_3X3"
+    frame = side // 3
+    if frame <= 0:
+        return None, "PLAYER_SHEET_FRAME_INVALID"
+    return (side, side, frame, frame), None
+
+
+def _load_player_sheet(base):
+    global PLAYER_FRAME_W, PLAYER_FRAME_H
+    if not hasattr(lgfx, "player_sheet_load") or not hasattr(lgfx, "player_frame_set") or not hasattr(lgfx, "player_sheet_clear"):
+        print("player_sheet_api_missing: fallback_red_dot")
+        return False, "PLAYER_SHEET_API_MISSING"
+
+    lgfx.player_sheet_clear()
+    last_err = "PLAYER_SHEET_MISSING"
+    paths = []
+
+    def _add_path(path):
+        if path not in paths:
+            paths.append(path)
+
+    _add_path(base + "/" + PLAYER_SHEET_NAME)
+    for b in ASSET_BASES:
+        _add_path(b + "/" + PLAYER_SHEET_NAME)
+    for p in PLAYER_SHEET_FALLBACK_PATHS:
+        _add_path(p)
+
+    for path in paths:
+        file_len = _file_size(path)
+        if file_len < 0:
+            last_err = "PLAYER_SHEET_FILE_MISSING " + path
+            continue
+
+        dims, dim_err = _infer_player_sheet_dims(file_len)
+        if dim_err:
+            last_err = dim_err + " len=%d path=%s" % (file_len, path)
+            print("player_sheet_invalid:", last_err)
+            continue
+
+        sheet_w, sheet_h, frame_w, frame_h = dims
+        PLAYER_FRAME_W = frame_w
+        PLAYER_FRAME_H = frame_h
+        if hasattr(lgfx, "player_sheet_load_file") and lgfx.player_sheet_load_file(path, sheet_w, sheet_h, frame_w, frame_h):
+            print("player_sheet_loaded:", path, "sheet:", sheet_w, sheet_h, "frame:", frame_w, frame_h)
+            return True, None
+
+        try:
+            gc.collect()
+            buf = _read_file(path)
+        except MemoryError:
+            last_err = "PLAYER_SHEET_OOM " + path
+            print("player_sheet_oom:", path, "mem_free:", gc.mem_free())
+            continue
+
+        if lgfx.player_sheet_load(buf, sheet_w, sheet_h, frame_w, frame_h):
+            print("player_sheet_loaded_fallback:", path, "sheet:", sheet_w, sheet_h, "frame:", frame_w, frame_h)
+            return True, None
+
+        last_err = "PLAYER_SHEET_LOAD_FAIL path=%s" % path
+        print("player_sheet_load_fail:", path, "len:", file_len, "sheet:", sheet_w, sheet_h, "frame:", frame_w, frame_h)
+
+    lgfx.player_sheet_clear()
+    print("player_sheet_fallback_red_dot:", last_err)
+    return False, last_err
+
+
+SD_ASSET_BASE = "/sd/out"
+REMOTE_ASSET_BASE = "/remote/assets/out"
+ASSET_BASES = ("/", SD_ASSET_BASE, REMOTE_ASSET_BASE)
+ENABLE_AUTO_SD_SYNC = False
+ENABLE_SD_MOUNT = False
+PLAYER_SHEET_NAME = "player_sheet.rgb565"
+PLAYER_SHEET_FALLBACK_PATHS = (
+    "/player_sheet.rgb565",
+)
+SPAWN_OVERLAY_PATH = "/main character close eyes.png"
+ROTATION = 1
+VIEW_W = 320
+VIEW_H = 240
+ACTIVE_VIEW_W = VIEW_W
+ACTIVE_VIEW_H = VIEW_H
+PLAYER_R = 4
+PLAYER_FRAME_W = PLAYER_R * 2 + 1
+PLAYER_FRAME_H = PLAYER_R * 2 + 1
+PLAYER_COLOR = 0xF800
+JOY_X_PIN = 1
+JOY_Y_PIN = 2
+TARGET_FRAME_MS = 20
+DEADZONE_DIV = 7
+ENTER_DIV = 4
+EXIT_DIV = 6
+ADC_SAMPLES = 4
+MOVE_STEP = 2
+MOVE_DT_MAX_SCALE = 4
+MOVE_MAX_PIXELS_PER_FRAME = 4
+SCROLL_STEP = 1
+SCROLL_FOLLOW_MIN_PER_FRAME = 1
+SCROLL_FOLLOW_MAX_PER_FRAME = 3
+SCROLL_FOLLOW_FAST_GAP = 6
+SCROLL_FOLLOW_ACTIVE_BONUS_GAP = 3
+SCROLL_FOLLOW_ACTIVE_BONUS = 1
+SCROLL_FOLLOW_DT_MAX_SCALE = 1
+SCROLL_SETTLE_BONUS = 1
+CAM_HARD_LOCK_PAD = 24
+CAM_CENTER_DEADBAND_X = 24
+CAM_CENTER_DEADBAND_Y = 18
+FORCE_FULL_REDRAW_WHEN_SCROLLED = False
+INSTANT_CAMERA_FOLLOW = False
+FULL_VIEW_SETUP_RETRIES = 20
+ALLOW_VIEW_FALLBACK = False
+PLAYER_ANIM_STEP_MS = 120
+ANIM_IDLE_HOLD_MS = 90
+PLAYER_ANIM_ROW_FRONT = 0
+PLAYER_ANIM_ROW_SIDE = 1
+SPAWN_OVERLAY_MIN_SHOW_MS = 220
+BUILD_TAG = "game_mvp_t11_sofix"
+
+print("build:", BUILD_TAG)
+
+if ENABLE_SD_MOUNT:
+    _try_mount_sd()
+    _sync_sd_assets_from_remote_if_needed()
+else:
+    SD_READY = False
+    print("sd_mounted:", SD_READY, "(disabled)")
+asset_base, meta = _find_asset_base(ASSET_BASES)
+print("asset:", asset_base)
+if asset_base == SD_ASSET_BASE:
+    _print_asset_files(asset_base, meta)
+tile = meta["tile_size"]
+map_w = meta["map_w"]
+map_h = meta["map_h"]
+world_w = map_w * tile
+world_h = map_h * tile
+
+spawn_x = meta.get("spawn_x", world_w // 2)
+spawn_y = meta.get("spawn_y", world_h // 2)
+player_x = spawn_x
+player_y = spawn_y
+
+if not DISPLAY_INIT_DONE:
+    lgfx.init()
+    DISPLAY_INIT_DONE = True
+lgfx.set_rotation(ROTATION)
+meta_endian = meta.get("endian", "little")
+if hasattr(lgfx, "set_swap_bytes"):
+    lgfx.set_swap_bytes(meta_endian == "little")
+
+
+def _tile_setup_with_fallback():
+    global ACTIVE_VIEW_W, ACTIVE_VIEW_H
+
+    def _try_setup(vw, vh, use_psram_order, retries):
+        global ACTIVE_VIEW_W, ACTIVE_VIEW_H
+        for _ in range(retries):
+            for use_psram in use_psram_order:
+                gc.collect()
+                if lgfx.tile_setup(tile, map_w, map_h, vw, vh, use_psram):
+                    ACTIVE_VIEW_W, ACTIVE_VIEW_H = vw, vh
+                    print("tile_setup:", vw, vh, "psram:", use_psram)
+                    return True
+        return False
+
+    # Fullscreen is the intended mode. Retry it first, preferring internal RAM
+    # to avoid unstable SPIRAM-path allocation failures on boards without PSRAM.
+    if VIEW_W <= world_w and VIEW_H <= world_h:
+        if _try_setup(VIEW_W, VIEW_H, (False, True), FULL_VIEW_SETUP_RETRIES):
+            return
+        if not ALLOW_VIEW_FALLBACK:
+            raise RuntimeError("TILE_SETUP_FULLSCREEN_FAIL")
+
+    # Keep width at 320 when fallback is unavoidable, to avoid major map-size drift.
+    candidates = (
+        (320, 224),
+        (320, 208),
+        (320, 192),
+    )
+
+    for vw, vh in candidates:
+        if vw > world_w or vh > world_h:
+            continue
+        if _try_setup(vw, vh, (True, False), 1):
+            return
+    raise RuntimeError("TILE_SETUP_FAIL")
+
+if hasattr(lgfx, "player_sheet_clear"):
+    # Release previous C-side sheet buffers before sprite allocation fallback.
+    lgfx.player_sheet_clear()
+gc.collect()
+
+if hasattr(lgfx, "player_sheet_load_file"):
+    _tile_setup_with_fallback()
+    player_sheet_enabled, player_sheet_err = _load_player_sheet(asset_base)
+else:
+    player_sheet_enabled, player_sheet_err = _load_player_sheet(asset_base)
+    _tile_setup_with_fallback()
+
+if not player_sheet_enabled and player_sheet_err:
+    print("player_mode: red_dot", player_sheet_err)
+
+print("view:", ACTIVE_VIEW_W, ACTIVE_VIEW_H)
+
+runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h)
+if hasattr(lgfx, "set_swap_bytes"):
+    lgfx.set_swap_bytes(runtime_endian == "little")
+spawn_overlay_active = hasattr(lgfx, "draw_png_file") and _path_exists(SPAWN_OVERLAY_PATH)
+spawn_overlay_force_full = False
+spawn_overlay_started_ms = time.ticks_ms()
+
+collision, collision_err = _load_collision(meta, asset_base, map_w, map_h)
+if collision_err:
+    print("collision_error:", collision_err)
+if collision is None:
+    raise RuntimeError("COLLISION_REQUIRED")
+blocked_tiles = 0
+for v in collision:
+    if v:
+        blocked_tiles += 1
+print("collision_tiles:", blocked_tiles, "/", map_w * map_h)
+if blocked_tiles == 0:
+    raise RuntimeError("COLLISION_EMPTY")
+
+
+def _collides(nx, ny, r):
+    if collision is None:
+        return False
+    left = (nx - r) // tile
+    right = (nx + r) // tile
+    top = (ny - r) // tile
+    bottom = (ny + r) // tile
+    for ty in range(top, bottom + 1):
+        row_base = ty * map_w
+        for tx in range(left, right + 1):
+            if tx < 0 or ty < 0 or tx >= map_w or ty >= map_h:
+                return True
+            if collision[row_base + tx]:
+                return True
+    return False
+
+
+def _collision_selftest():
+    # Sanity check: at least one blocked tile center must collide.
+    for i in range(map_w * map_h):
+        if collision[i]:
+            tx = i % map_w
+            ty = i // map_w
+            cx = tx * tile + (tile // 2)
+            cy = ty * tile + (tile // 2)
+            if not _collides(cx, cy, 0):
+                raise RuntimeError("COLLISION_SELFTEST_FAIL")
+            return
+    raise RuntimeError("COLLISION_EMPTY")
+
+
+_collision_selftest()
+
+adc_x = ADC(Pin(JOY_X_PIN))
+adc_y = ADC(Pin(JOY_Y_PIN))
+adc_x.atten(ADC.ATTN_11DB)
+adc_y.atten(ADC.ATTN_11DB)
+
+
+def _adc_read(adc):
+    if hasattr(adc, "read_u16"):
+        return adc.read_u16(), 65535
+    return adc.read(), 4095
+
+
+def _axis_dir(raw, center, axis_max, prev_dir):
+    delta = raw - center
+    enter = axis_max // ENTER_DIV
+    leave = axis_max // EXIT_DIV
+    if prev_dir > 0:
+        if delta <= leave:
+            return 0
+        return 1
+    if prev_dir < 0:
+        if delta >= -leave:
+            return 0
+        return -1
+    if delta >= enter:
+        return 1
+    if delta <= -enter:
+        return -1
+    return 0
+
+
+def _adc_read_avg(adc, samples):
+    total = 0
+    axis_max = 4095
+    for _ in range(samples):
+        v, m = _adc_read(adc)
+        total += v
+        axis_max = m
+    return total // samples, axis_max
+
+
+def _scaled_axis_delta(direction, base_step, frame_dt, carry):
+    if direction == 0:
+        return 0, 0
+
+    base_ms = TARGET_FRAME_MS if TARGET_FRAME_MS > 0 else 20
+    dt = frame_dt
+    max_dt = base_ms * MOVE_DT_MAX_SCALE
+    if dt > max_dt:
+        dt = max_dt
+
+    budget = direction * base_step * dt + carry
+    if budget >= 0:
+        delta = budget // base_ms
+    else:
+        delta = -((-budget) // base_ms)
+    carry = budget - delta * base_ms
+
+    if delta > MOVE_MAX_PIXELS_PER_FRAME:
+        delta = MOVE_MAX_PIXELS_PER_FRAME
+    elif delta < -MOVE_MAX_PIXELS_PER_FRAME:
+        delta = -MOVE_MAX_PIXELS_PER_FRAME
+
+    return delta, carry
+
+
+def _move_axis_with_collision(pos, other_pos, delta, is_x):
+    if delta == 0:
+        return pos
+
+    step = 1 if delta > 0 else -1
+    if is_x:
+        lo = PLAYER_R
+        hi = world_w - PLAYER_R - 1
+    else:
+        lo = PLAYER_R
+        hi = world_h - PLAYER_R - 1
+
+    for _ in range(delta if delta > 0 else -delta):
+        nxt = pos + step
+        if nxt < lo:
+            nxt = lo
+        elif nxt > hi:
+            nxt = hi
+        if nxt == pos:
+            break
+
+        if is_x:
+            if _collides(nxt, other_pos, PLAYER_R):
+                break
+        else:
+            if _collides(other_pos, nxt, PLAYER_R):
+                break
+
+        pos = nxt
+
+    return pos
+
+
+def _camera_chase_axis(scroll, target, move_axis, frame_dt):
+    delta = target - scroll
+    if delta == 0:
+        return scroll
+
+    ad = delta if delta > 0 else -delta
+
+    # Keep micro-scroll updates fine-grained, then ramp up only for larger gaps.
+    step = SCROLL_FOLLOW_MIN_PER_FRAME + (ad // SCROLL_FOLLOW_FAST_GAP)
+
+    # While the stick is still pushing toward the same direction, bias one extra step
+    # once the gap is visible, preserving responsiveness without hard snapping.
+    if ad >= SCROLL_FOLLOW_ACTIVE_BONUS_GAP:
+        if (delta > 0 and move_axis > 0) or (delta < 0 and move_axis < 0):
+            step += SCROLL_FOLLOW_ACTIVE_BONUS
+
+    base_ms = TARGET_FRAME_MS if TARGET_FRAME_MS > 0 else 20
+    dt_mul = frame_dt // base_ms
+    if dt_mul < 1:
+        dt_mul = 1
+    if dt_mul > SCROLL_FOLLOW_DT_MAX_SCALE:
+        dt_mul = SCROLL_FOLLOW_DT_MAX_SCALE
+
+    step *= dt_mul
+    max_step = SCROLL_FOLLOW_MAX_PER_FRAME * dt_mul
+
+    # After input stops, settle camera back to its target slightly faster.
+    if move_axis == 0 and ad >= SCROLL_FOLLOW_FAST_GAP:
+        max_step += SCROLL_SETTLE_BONUS
+        step += SCROLL_SETTLE_BONUS
+
+    if step > max_step:
+        step = max_step
+
+    if delta > 0:
+        return min(scroll + step, target)
+    return max(scroll - step, target)
+
+
+def _calibrate_center(samples=24):
+    sx = 0
+    sy = 0
+    axis_max = 4095
+    for _ in range(samples):
+        rx, mx = _adc_read(adc_x)
+        ry, my = _adc_read(adc_y)
+        sx += rx
+        sy += ry
+        axis_max = mx if mx > my else my
+        time.sleep_ms(5)
+    return sx // samples, sy // samples, axis_max
+
+
+cx, cy, axis_max = _calibrate_center()
+print("joystick center:", cx, cy, "max:", axis_max)
+print("controls: move joystick, Ctrl-C to stop")
+
+frame = 0
+t0 = time.ticks_ms()
+
+scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
+scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
+cam_margin_x = ACTIVE_VIEW_W // 4
+cam_margin_y = ACTIVE_VIEW_H // 4
+prev_scroll_x = scroll_x
+prev_scroll_y = scroll_y
+prev_player_x = player_x
+prev_player_y = player_y
+x_dir = 0
+y_dir_raw = 0
+anim_row = 0
+anim_col = 1
+anim_last_ms = time.ticks_ms()
+face_right = False
+move_carry_x = 0
+move_carry_y = 0
+prev_input_x = 0
+prev_input_y = 0
+prev_loop_ms = time.ticks_ms()
+last_input_active_ms = prev_loop_ms
+anim_x_dir = 0
+anim_y_dir = 0
+
+if player_sheet_enabled:
+    lgfx.player_frame_set(anim_row * 3 + anim_col)
+    if hasattr(lgfx, "player_flip_x_set"):
+        lgfx.player_flip_x_set(face_right)
+
+lgfx.tile_render(scroll_x, scroll_y, True)
+lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
+
+
+def _draw_spawn_overlay():
+    lgfx.draw_png_file(
+        SPAWN_OVERLAY_PATH,
+        player_x - scroll_x - (PLAYER_FRAME_W // 2),
+        player_y - scroll_y - (PLAYER_FRAME_H // 2),
+        PLAYER_FRAME_W,
+        PLAYER_FRAME_H,
+    )
+
+
+if spawn_overlay_active:
+    _draw_spawn_overlay()
+
+while True:
+    loop_start = time.ticks_ms()
+    frame_dt = time.ticks_diff(loop_start, prev_loop_ms)
+    if frame_dt <= 0:
+        frame_dt = TARGET_FRAME_MS if TARGET_FRAME_MS > 0 else 20
+    prev_loop_ms = loop_start
+
+    frame += 1
+    rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
+    ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
+
+    x_dir = _axis_dir(rx, cx, axis_max, x_dir)
+    y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
+    input_active = (x_dir != 0) or (y_dir_raw != 0)
+    if spawn_overlay_active and input_active:
+        if time.ticks_diff(loop_start, spawn_overlay_started_ms) >= SPAWN_OVERLAY_MIN_SHOW_MS:
+            spawn_overlay_active = False
+            spawn_overlay_force_full = True
+    if input_active:
+        last_input_active_ms = loop_start
+        if x_dir != 0:
+            anim_x_dir = x_dir
+        if y_dir_raw != 0:
+            anim_y_dir = y_dir_raw
+    anim_active = input_active or (time.ticks_diff(loop_start, last_input_active_ms) < ANIM_IDLE_HOLD_MS)
+
+    if x_dir == 0 or x_dir != prev_input_x:
+        move_carry_x = 0
+    if y_dir_raw == 0 or y_dir_raw != prev_input_y:
+        move_carry_y = 0
+    prev_input_x = x_dir
+    prev_input_y = y_dir_raw
+
+    dx, move_carry_x = _scaled_axis_delta(x_dir, MOVE_STEP, frame_dt, move_carry_x)
+    dy_raw, move_carry_y = _scaled_axis_delta(y_dir_raw, MOVE_STEP, frame_dt, move_carry_y)
+
+    # Typical joystick Y axis grows downward when pushed down.
+    dy = -dy_raw
+
+    player_x = _move_axis_with_collision(player_x, player_y, dx, True)
+    player_y = _move_axis_with_collision(player_y, player_x, dy, False)
+
+    move_dx = player_x - prev_player_x
+    move_dy = player_y - prev_player_y
+
+    desired_scroll_x = player_x - (ACTIVE_VIEW_W // 2)
+    desired_scroll_y = player_y - (ACTIVE_VIEW_H // 2)
+
+    # Keep small center deadband to avoid tiny camera wobble on joystick noise.
+    sx = player_x - scroll_x
+    sy = player_y - scroll_y
+    center_x = ACTIVE_VIEW_W // 2
+    center_y = ACTIVE_VIEW_H // 2
+    if center_x - CAM_CENTER_DEADBAND_X <= sx <= center_x + CAM_CENTER_DEADBAND_X:
+        desired_scroll_x = scroll_x
+    if center_y - CAM_CENTER_DEADBAND_Y <= sy <= center_y + CAM_CENTER_DEADBAND_Y:
+        desired_scroll_y = scroll_y
+    target_scroll_x = _clamp(desired_scroll_x, 0, world_w - ACTIVE_VIEW_W)
+    target_scroll_y = _clamp(desired_scroll_y, 0, world_h - ACTIVE_VIEW_H)
+
+    # Keep camera target on coarse steps to reduce heavy tile scroll updates.
+    target_scroll_x = (target_scroll_x // SCROLL_STEP) * SCROLL_STEP
+    target_scroll_y = (target_scroll_y // SCROLL_STEP) * SCROLL_STEP
+
+    if INSTANT_CAMERA_FOLLOW:
+        scroll_x = target_scroll_x
+        scroll_y = target_scroll_y
+    else:
+        scroll_x = _camera_chase_axis(scroll_x, target_scroll_x, move_dx, frame_dt)
+        scroll_y = _camera_chase_axis(scroll_y, target_scroll_y, move_dy, frame_dt)
+
+    # Hard camera guard: keep player away from viewport edges.
+    sx = player_x - scroll_x
+    if sx < CAM_HARD_LOCK_PAD:
+        scroll_x = player_x - CAM_HARD_LOCK_PAD
+    elif sx > ACTIVE_VIEW_W - 1 - CAM_HARD_LOCK_PAD:
+        scroll_x = player_x - (ACTIVE_VIEW_W - 1 - CAM_HARD_LOCK_PAD)
+
+    sy = player_y - scroll_y
+    if sy < CAM_HARD_LOCK_PAD:
+        scroll_y = player_y - CAM_HARD_LOCK_PAD
+    elif sy > ACTIVE_VIEW_H - 1 - CAM_HARD_LOCK_PAD:
+        scroll_y = player_y - (ACTIVE_VIEW_H - 1 - CAM_HARD_LOCK_PAD)
+
+    scroll_x = _clamp(scroll_x, 0, world_w - ACTIVE_VIEW_W)
+    scroll_y = _clamp(scroll_y, 0, world_h - ACTIVE_VIEW_H)
+
+    moved = (move_dx != 0) or (move_dy != 0)
+    scrolled = (scroll_x != prev_scroll_x) or (scroll_y != prev_scroll_y)
+
+    if player_sheet_enabled:
+        prev_face_right = face_right
+        prev_anim_frame = anim_row * 3 + anim_col
+
+        dir_x = x_dir if x_dir != 0 else anim_x_dir
+        dir_y = y_dir_raw if y_dir_raw != 0 else anim_y_dir
+
+        if dir_x > 0:
+            face_right = True
+        elif dir_x < 0:
+            face_right = False
+
+        # Direction-to-row mapping uses current input only, so vertical motion
+        # always shows the front row even after prior horizontal movement.
+        if x_dir != 0 and y_dir_raw != 0:
+            anim_row = PLAYER_ANIM_ROW_SIDE
+        elif y_dir_raw != 0:
+            anim_row = PLAYER_ANIM_ROW_FRONT
+        elif x_dir != 0:
+            anim_row = PLAYER_ANIM_ROW_SIDE
+
+        if anim_active:
+            now_ms = time.ticks_ms()
+            if time.ticks_diff(now_ms, anim_last_ms) >= PLAYER_ANIM_STEP_MS:
+                anim_last_ms = now_ms
+                anim_col = (anim_col + 1) % 3
+        else:
+            anim_col = 1
+            anim_last_ms = time.ticks_ms()
+
+        if hasattr(lgfx, "player_flip_x_set"):
+            lgfx.player_flip_x_set(face_right)
+        new_anim_frame = anim_row * 3 + anim_col
+        anim_changed = (new_anim_frame != prev_anim_frame) or (face_right != prev_face_right)
+        lgfx.player_frame_set(new_anim_frame)
+    else:
+        anim_changed = False
+
+    # Redraw map only when camera moved; otherwise update just the player.
+    force_full_now = spawn_overlay_force_full
+    if force_full_now:
+        spawn_overlay_force_full = False
+
+    if scrolled or force_full_now:
+        lgfx.tile_render(scroll_x, scroll_y, FORCE_FULL_REDRAW_WHEN_SCROLLED or force_full_now)
+        lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
+    elif moved or anim_changed:
+        lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
+
+    if spawn_overlay_active:
+        _draw_spawn_overlay()
+
+    prev_player_x = player_x
+    prev_player_y = player_y
+    prev_scroll_x = scroll_x
+    prev_scroll_y = scroll_y
+
+    if frame % 120 == 0:
+        gc.collect()
+        dt = time.ticks_diff(time.ticks_ms(), t0)
+        fps = (frame * 1000 / dt) if dt else 0
+        print("frame", frame, "fps", fps, "stats", lgfx.stats(), "mem_free", gc.mem_free())
+
+    if not moved and not scrolled:
+        time.sleep_ms(1)
+    elif TARGET_FRAME_MS > 0:
+        frame_dt = time.ticks_diff(time.ticks_ms(), loop_start)
+        if frame_dt < TARGET_FRAME_MS:
+            time.sleep_ms(TARGET_FRAME_MS - frame_dt)
