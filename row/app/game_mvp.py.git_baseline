@@ -1,0 +1,201 @@
+import gc
+import json
+import time
+from machine import ADC, Pin
+import lgfx
+
+
+def _find_asset_base(base_list):
+    for base in base_list:
+        try:
+            with open(base + "/map.json", "r") as f:
+                meta = json.loads(f.read())
+            return base, meta
+        except OSError:
+            pass
+    raise OSError("asset files not found")
+
+
+def _clamp(v, lo, hi):
+    if v < lo:
+        return lo
+    if v > hi:
+        return hi
+    return v
+
+
+ASSET_BASES = ("/sd/out",)
+ROTATION = 1
+VIEW_W = 320
+VIEW_H = 240
+PLAYER_R = 4
+PLAYER_COLOR = 0xF800
+JOY_X_PIN = 1
+JOY_Y_PIN = 2
+TARGET_FRAME_MS = 20
+DEADZONE_DIV = 7
+ENTER_DIV = 4
+EXIT_DIV = 6
+ADC_SAMPLES = 4
+MOVE_STEP = 2
+SCROLL_STEP = 1
+
+asset_base, meta = _find_asset_base(ASSET_BASES)
+print("asset:", asset_base)
+tile = meta["tile_size"]
+map_w = meta["map_w"]
+map_h = meta["map_h"]
+world_w = map_w * tile
+world_h = map_h * tile
+
+spawn_x = meta.get("spawn_x", world_w // 2)
+spawn_y = meta.get("spawn_y", world_h // 2)
+player_x = spawn_x
+player_y = spawn_y
+
+lgfx.init()
+lgfx.set_rotation(ROTATION)
+if hasattr(lgfx, "set_swap_bytes"):
+    lgfx.set_swap_bytes(True)
+if not lgfx.tile_setup(tile, map_w, map_h, VIEW_W, VIEW_H, True):
+    raise RuntimeError("tile_setup failed")
+if not lgfx.tile_load_files(asset_base + "/tileset.bin", asset_base + "/tilemap.bin"):
+    raise RuntimeError("tile_load failed")
+
+adc_x = ADC(Pin(JOY_X_PIN))
+adc_y = ADC(Pin(JOY_Y_PIN))
+adc_x.atten(ADC.ATTN_11DB)
+adc_y.atten(ADC.ATTN_11DB)
+
+
+def _adc_read(adc):
+    if hasattr(adc, "read_u16"):
+        return adc.read_u16(), 65535
+    return adc.read(), 4095
+
+
+def _axis_dir(raw, center, axis_max, prev_dir):
+    delta = raw - center
+    enter = axis_max // ENTER_DIV
+    leave = axis_max // EXIT_DIV
+    if prev_dir > 0:
+        if delta <= leave:
+            return 0
+        return 1
+    if prev_dir < 0:
+        if delta >= -leave:
+            return 0
+        return -1
+    if delta >= enter:
+        return 1
+    if delta <= -enter:
+        return -1
+    return 0
+
+
+def _adc_read_avg(adc, samples):
+    total = 0
+    axis_max = 4095
+    for _ in range(samples):
+        v, m = _adc_read(adc)
+        total += v
+        axis_max = m
+    return total // samples, axis_max
+
+
+def _calibrate_center(samples=24):
+    sx = 0
+    sy = 0
+    axis_max = 4095
+    for _ in range(samples):
+        rx, mx = _adc_read(adc_x)
+        ry, my = _adc_read(adc_y)
+        sx += rx
+        sy += ry
+        axis_max = mx if mx > my else my
+        time.sleep_ms(5)
+    return sx // samples, sy // samples, axis_max
+
+
+cx, cy, axis_max = _calibrate_center()
+print("joystick center:", cx, cy, "max:", axis_max)
+print("controls: move joystick, Ctrl-C to stop")
+
+frame = 0
+t0 = time.ticks_ms()
+
+scroll_x = _clamp(player_x - VIEW_W // 2, 0, world_w - VIEW_W)
+scroll_y = _clamp(player_y - VIEW_H // 2, 0, world_h - VIEW_H)
+cam_margin_x = VIEW_W // 3
+cam_margin_y = VIEW_H // 3
+prev_scroll_x = scroll_x
+prev_scroll_y = scroll_y
+prev_player_x = player_x
+prev_player_y = player_y
+x_dir = 0
+y_dir_raw = 0
+
+lgfx.tile_render(scroll_x, scroll_y, True)
+lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
+
+while True:
+    loop_start = time.ticks_ms()
+    frame += 1
+    rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
+    ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
+
+    x_dir = _axis_dir(rx, cx, axis_max, x_dir)
+    y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
+
+    dx = x_dir * MOVE_STEP
+    dy_raw = y_dir_raw * MOVE_STEP
+    # Typical joystick Y axis grows downward when pushed down.
+    dy = -dy_raw
+
+    player_x += dx
+    player_y += dy
+    player_x = _clamp(player_x, PLAYER_R, world_w - PLAYER_R - 1)
+    player_y = _clamp(player_y, PLAYER_R, world_h - PLAYER_R - 1)
+
+    sx = player_x - scroll_x
+    sy = player_y - scroll_y
+    if sx < cam_margin_x:
+        scroll_x = player_x - cam_margin_x
+    elif sx > VIEW_W - cam_margin_x:
+        scroll_x = player_x - (VIEW_W - cam_margin_x)
+    if sy < cam_margin_y:
+        scroll_y = player_y - cam_margin_y
+    elif sy > VIEW_H - cam_margin_y:
+        scroll_y = player_y - (VIEW_H - cam_margin_y)
+    scroll_x = _clamp(scroll_x, 0, world_w - VIEW_W)
+    scroll_y = _clamp(scroll_y, 0, world_h - VIEW_H)
+
+    # Quantize camera movement to reduce full-map redraw frequency/flicker.
+    scroll_x = (scroll_x // SCROLL_STEP) * SCROLL_STEP
+    scroll_y = (scroll_y // SCROLL_STEP) * SCROLL_STEP
+
+    moved = (player_x != prev_player_x) or (player_y != prev_player_y)
+    scrolled = (scroll_x != prev_scroll_x) or (scroll_y != prev_scroll_y)
+
+    # Stable path: always redraw map first, then draw player once per frame.
+    # This avoids color-fade/trail artifacts from mixed partial-update timing.
+    lgfx.tile_render(scroll_x, scroll_y, False)
+    lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
+
+    prev_player_x = player_x
+    prev_player_y = player_y
+    prev_scroll_x = scroll_x
+    prev_scroll_y = scroll_y
+
+    if frame % 120 == 0:
+        gc.collect()
+        dt = time.ticks_diff(time.ticks_ms(), t0)
+        fps = (frame * 1000 / dt) if dt else 0
+        print("frame", frame, "fps", fps, "stats", lgfx.stats(), "mem_free", gc.mem_free())
+
+    if not moved and not scrolled:
+        time.sleep_ms(1)
+    elif TARGET_FRAME_MS > 0:
+        frame_dt = time.ticks_diff(time.ticks_ms(), loop_start)
+        if frame_dt < TARGET_FRAME_MS:
+            time.sleep_ms(TARGET_FRAME_MS - frame_dt)
