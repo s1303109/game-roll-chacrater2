@@ -1,0 +1,12 @@
+build/
+build-*/
+*.bin
+*.elf
+*.map
+
+__pycache__/
+*.pyc
+
+.vscode/
+.DS_Store
+Thumbs.db

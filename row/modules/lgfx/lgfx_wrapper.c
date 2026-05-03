@@ -7,6 +7,10 @@ extern "C" {
 #endif
 void lgfx_init_impl(void);
 void lgfx_fill_impl(uint16_t color);
+void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color);
+void lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color);
+void lgfx_draw_circle_impl(int x, int y, int r, uint16_t color);
+void lgfx_clear_impl(void);
 void lgfx_set_rotation_impl(int rotation);
 void lgfx_set_brightness_impl(int brightness);
 void lgfx_set_swap_bytes_impl(bool swap);
@@ -44,6 +48,46 @@ static mp_obj_t lgfx_fill(mp_obj_t color_obj) {
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(lgfx_fill_obj, lgfx_fill);
+
+static mp_obj_t lgfx_draw_rect(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    int x = mp_obj_get_int(args[0]);
+    int y = mp_obj_get_int(args[1]);
+    int w = mp_obj_get_int(args[2]);
+    int h = mp_obj_get_int(args[3]);
+    uint16_t color = (uint16_t)mp_obj_get_int(args[4]);
+    lgfx_draw_rect_impl(x, y, w, h, color);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_draw_rect_obj, 5, lgfx_draw_rect);
+
+static mp_obj_t lgfx_draw_text(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    int x = mp_obj_get_int(args[0]);
+    int y = mp_obj_get_int(args[1]);
+    const char *text = mp_obj_str_get_str(args[2]);
+    uint16_t color = (uint16_t)mp_obj_get_int(args[3]);
+    lgfx_draw_text_impl(x, y, text, color);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_draw_text_obj, 4, lgfx_draw_text);
+
+static mp_obj_t lgfx_draw_circle(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    int x = mp_obj_get_int(args[0]);
+    int y = mp_obj_get_int(args[1]);
+    int r = mp_obj_get_int(args[2]);
+    uint16_t color = (uint16_t)mp_obj_get_int(args[3]);
+    lgfx_draw_circle_impl(x, y, r, color);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_draw_circle_obj, 4, lgfx_draw_circle);
+
+static mp_obj_t lgfx_clear(void) {
+    lgfx_clear_impl();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_clear_obj, lgfx_clear);
 
 static mp_obj_t lgfx_set_rotation(mp_obj_t rotation_obj) {
     lgfx_set_rotation_impl(mp_obj_get_int(rotation_obj));
@@ -275,6 +319,10 @@ static const mp_rom_map_elem_t lgfx_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_lgfx) },
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&lgfx_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_fill), MP_ROM_PTR(&lgfx_fill_obj) },
+    { MP_ROM_QSTR(MP_QSTR_draw_text), MP_ROM_PTR(&lgfx_draw_text_obj) },
+    { MP_ROM_QSTR(MP_QSTR_draw_rect), MP_ROM_PTR(&lgfx_draw_rect_obj) },
+    { MP_ROM_QSTR(MP_QSTR_draw_circle), MP_ROM_PTR(&lgfx_draw_circle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_clear), MP_ROM_PTR(&lgfx_clear_obj) },
     { MP_ROM_QSTR(MP_QSTR_set_rotation), MP_ROM_PTR(&lgfx_set_rotation_obj) },
     { MP_ROM_QSTR(MP_QSTR_set_brightness), MP_ROM_PTR(&lgfx_set_brightness_obj) },
     { MP_ROM_QSTR(MP_QSTR_set_swap_bytes), MP_ROM_PTR(&lgfx_set_swap_bytes_obj) },

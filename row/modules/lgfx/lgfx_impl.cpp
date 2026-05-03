@@ -7,6 +7,26 @@ extern "C" void lgfx_init_impl(void) {}
 extern "C" void lgfx_fill_impl(uint16_t color) {
   (void)color;
 }
+extern "C" void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
+  (void)x;
+  (void)y;
+  (void)text;
+  (void)color;
+}
+extern "C" void lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
+  (void)x;
+  (void)y;
+  (void)w;
+  (void)h;
+  (void)color;
+}
+extern "C" void lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
+  (void)x;
+  (void)y;
+  (void)r;
+  (void)color;
+}
+extern "C" void lgfx_clear_impl(void) {}
 extern "C" void lgfx_set_rotation_impl(int rotation) {
   (void)rotation;
 }
@@ -1268,6 +1288,34 @@ extern "C" void lgfx_init_impl(void) {
 
 extern "C" void lgfx_fill_impl(uint16_t color) {
   lcd.fillScreen(color);
+}
+
+extern "C" void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
+  if (!text) {
+    return;
+  }
+  lcd.setTextFont(1);
+  lcd.setTextSize(1);
+  lcd.setTextColor(color, 0x0000);
+  lcd.drawString(text, x, y);
+}
+
+extern "C" void lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
+  if (w <= 0 || h <= 0) {
+    return;
+  }
+  lcd.drawRect(x, y, w, h, color);
+}
+
+extern "C" void lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
+  if (r <= 0) {
+    return;
+  }
+  lcd.fillCircle(x, y, r, color);
+}
+
+extern "C" void lgfx_clear_impl(void) {
+  lcd.fillScreen(0);
 }
 
 extern "C" void lgfx_set_rotation_impl(int rotation) {

@@ -357,6 +357,8 @@ PLAYER_SHEET_FALLBACK_PATHS = (
 )
 ENABLE_SPAWN_OVERLAY = False
 SPAWN_OVERLAY_PATH = "/main character close eyes.png"
+FORCE_SIMPLE_PLAYER = False
+USE_TILE_RENDER_PLAYER_COMPOSE = True
 ROTATION = 1
 VIEW_W = 320
 VIEW_H = 240
@@ -368,6 +370,11 @@ PLAYER_FRAME_H = 29
 PLAYER_COLOR = 0xF800
 JOY_X_PIN = 1
 JOY_Y_PIN = 2
+ENCOUNTER_SW_PIN = 15
+BTN_FIGHT_PIN = 38
+BTN_ACT_PIN = 39
+BTN_ITEM_PIN = 40
+BTN_MERCY_PIN = 41
 TARGET_FRAME_MS = 16
 DEADZONE_DIV = 7
 ENTER_DIV = 4
@@ -395,7 +402,47 @@ PLAYER_ANIM_STEP_MS = 120
 ANIM_IDLE_HOLD_MS = 90
 PLAYER_ANIM_ROW_FRONT = 0
 PLAYER_ANIM_ROW_SIDE = 1
-BUILD_TAG = "game_mvp_tune19_tightcam_stable_20260502"
+MODE_EXPLORE = 0
+MODE_BATTLE_MENU = 1
+MODE_BATTLE_FIGHT = 2
+ENCOUNTER_COOLDOWN_FRAMES = 120
+BATTLE_FRAME_W = 240
+BATTLE_FRAME_H = 200
+BATTLE_BORDER_THICK = 2
+BATTLE_FRAME_BORDER_THICK = 4
+BATTLE_CMD_MARGIN_X = 8
+BATTLE_CMD_GAP = 4
+BATTLE_CMD_H = 24
+BATTLE_CMD_BORDER_THICK = 2
+BATTLE_COLOR_WHITE = 0xFFFF
+BATTLE_COLOR_RED = 0xF800
+BATTLE_HEART_R = 5
+BATTLE_HEART_SPRITE_PATH = "/heart_clean_18.png"
+BATTLE_HEART_SPRITE_FALLBACK_PATH = "/heart.png"
+BATTLE_HEART_SPRITE_W = 18
+BATTLE_HEART_SPRITE_H = 18
+BATTLE_HEART_HIT_R = 9
+BATTLE_HEART_ERASE_R = BATTLE_HEART_HIT_R + 1
+BATTLE_HEART_FAST_R = 7
+BATTLE_HEART_STEP = 2
+BATTLE_HEART_USE_PNG_ON_MOVE = True
+ENEMY_SPRITE_PATH = "/enemy.png"
+ENEMY_SPRITE_W = 72
+ENEMY_SPRITE_H = 72
+ACT_DIALOG_TEXT_PATH = "/act_dialog_text.png"
+MERCY_DIALOG_TEXT_PATH = "/mercy_dialog_text.png"
+ACT_DIALOG_MS = 1000
+MERCY_DIALOG_MS = 2500
+PLAYER_HP_MAX = 20
+MONSTER_NAME = "Grim Reaper"
+BULLET_R = 3
+BULLET_SPEED_PX = 2
+BULLET_SPAWN_INTERVAL_MS = 300
+DAMAGE_INVULN_MS = 450
+BULLET_FP_SHIFT = 8
+BATTLE_STATUS_TO_CMD_GAP = 2
+FIGHT_AUTO_RETURN_MS = 7000
+BUILD_TAG = "game_mvp_tune29_heart_sprite_io_tune_20260502"
 
 print("build:", BUILD_TAG)
 
@@ -434,14 +481,14 @@ def _tile_setup_with_fallback():
 
     # Fast path: try target fullscreen directly first.
     gc.collect()
-    if lgfx.tile_setup(tile, map_w, map_h, VIEW_W, VIEW_H, True):
-        ACTIVE_VIEW_W, ACTIVE_VIEW_H = VIEW_W, VIEW_H
-        print("tile_setup:", VIEW_W, VIEW_H, "psram:", True)
-        return
-    gc.collect()
     if lgfx.tile_setup(tile, map_w, map_h, VIEW_W, VIEW_H, False):
         ACTIVE_VIEW_W, ACTIVE_VIEW_H = VIEW_W, VIEW_H
         print("tile_setup:", VIEW_W, VIEW_H, "psram:", False)
+        return
+    gc.collect()
+    if lgfx.tile_setup(tile, map_w, map_h, VIEW_W, VIEW_H, True):
+        ACTIVE_VIEW_W, ACTIVE_VIEW_H = VIEW_W, VIEW_H
+        print("tile_setup:", VIEW_W, VIEW_H, "psram:", True)
         return
 
     def _try_setup(vw, vh, use_psram_order, retries):
@@ -458,13 +505,17 @@ def _tile_setup_with_fallback():
     # Fullscreen is the intended mode. Retry it first, preferring internal RAM
     # to avoid unstable SPIRAM-path allocation failures on boards without PSRAM.
     if VIEW_W <= world_w and VIEW_H <= world_h:
-        if _try_setup(VIEW_W, VIEW_H, (True, False), FULL_VIEW_SETUP_RETRIES):
+        if _try_setup(VIEW_W, VIEW_H, (False, True), FULL_VIEW_SETUP_RETRIES):
             return
         if not ALLOW_VIEW_FALLBACK:
             raise RuntimeError("TILE_SETUP_FULLSCREEN_FAIL")
 
     # Fall back to progressively smaller views when memory is tight.
     candidates = (
+        # Prefer full display width first, so perceived map scale stays close.
+        (320, 224),
+        (320, 208),
+        (320, 192),
         (304, 224),
         (288, 216),
         (272, 204),
@@ -474,9 +525,6 @@ def _tile_setup_with_fallback():
         (208, 156),
         (200, 150),
         (192, 144),
-        (320, 224),
-        (320, 208),
-        (320, 192),
         (176, 132),
         (160, 120),
     )
@@ -484,13 +532,13 @@ def _tile_setup_with_fallback():
     for vw, vh in candidates:
         if vw > world_w or vh > world_h:
             continue
-        if _try_setup(vw, vh, (True, False), 1):
+        if _try_setup(vw, vh, (False, True), 1):
             return
     raise RuntimeError("TILE_SETUP_FAIL")
 
 
 def _render_scene(scroll_x, scroll_y, player_x, player_y, force_full):
-    if hasattr(lgfx, "tile_render_player"):
+    if USE_TILE_RENDER_PLAYER_COMPOSE and hasattr(lgfx, "tile_render_player"):
         lgfx.tile_render_player(scroll_x, scroll_y, player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R, force_full)
     else:
         lgfx.tile_render(scroll_x, scroll_y, force_full)
@@ -508,10 +556,71 @@ else:
     player_sheet_enabled, player_sheet_err = _load_player_sheet(asset_base)
     _tile_setup_with_fallback()
 
+if FORCE_SIMPLE_PLAYER:
+    player_sheet_enabled = False
+    if hasattr(lgfx, "player_sheet_clear"):
+        lgfx.player_sheet_clear()
+
 if not player_sheet_enabled and player_sheet_err:
     print("player_mode: red_dot", player_sheet_err)
 
 print("view:", ACTIVE_VIEW_W, ACTIVE_VIEW_H)
+
+
+def _update_battle_layout():
+    inner_inset = BATTLE_FRAME_BORDER_THICK
+    if BATTLE_BORDER_THICK > inner_inset:
+        inner_inset = BATTLE_BORDER_THICK
+    frame_x = (ACTIVE_VIEW_W - BATTLE_FRAME_W) // 2
+    frame_y = (ACTIVE_VIEW_H - BATTLE_FRAME_H) // 2
+    if frame_x < 0:
+        frame_x = 0
+    if frame_y < 0:
+        frame_y = 0
+    frame_x_max = frame_x + BATTLE_FRAME_W
+    frame_y_max = frame_y + BATTLE_FRAME_H
+    heart_init_x = frame_x + (BATTLE_FRAME_W // 2)
+    heart_init_y = frame_y + (BATTLE_FRAME_H // 2)
+    # Keep enough inset so erase radius never touches thick frame border.
+    heart_min_x = frame_x + inner_inset + BATTLE_HEART_ERASE_R
+    heart_max_x = frame_x + BATTLE_FRAME_W - inner_inset - BATTLE_HEART_ERASE_R - 1
+    heart_min_y = frame_y + inner_inset + BATTLE_HEART_ERASE_R
+    heart_max_y = frame_y + BATTLE_FRAME_H - inner_inset - BATTLE_HEART_ERASE_R - 1
+    cmd_y = frame_y + BATTLE_FRAME_H - BATTLE_CMD_H - 10
+    cmd_w = (BATTLE_FRAME_W - (BATTLE_CMD_MARGIN_X * 2) - (BATTLE_CMD_GAP * 3)) // 4
+    cmd_x0 = frame_x + BATTLE_CMD_MARGIN_X
+    return (
+        frame_x,
+        frame_y,
+        frame_x_max,
+        frame_y_max,
+        heart_init_x,
+        heart_init_y,
+        heart_min_x,
+        heart_max_x,
+        heart_min_y,
+        heart_max_y,
+        cmd_x0,
+        cmd_y,
+        cmd_w,
+    )
+
+
+(
+    battle_frame_x,
+    battle_frame_y,
+    battle_frame_x_max,
+    battle_frame_y_max,
+    battle_heart_init_x,
+    battle_heart_init_y,
+    battle_heart_min_x,
+    battle_heart_max_x,
+    battle_heart_min_y,
+    battle_heart_max_y,
+    battle_cmd_x0,
+    battle_cmd_y,
+    battle_cmd_w,
+) = _update_battle_layout()
 
 runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h)
 if hasattr(lgfx, "set_swap_bytes"):
@@ -567,6 +676,11 @@ adc_x = ADC(Pin(JOY_X_PIN))
 adc_y = ADC(Pin(JOY_Y_PIN))
 adc_x.atten(ADC.ATTN_11DB)
 adc_y.atten(ADC.ATTN_11DB)
+encounter_sw = Pin(ENCOUNTER_SW_PIN, Pin.IN, Pin.PULL_UP)
+btn_fight = Pin(BTN_FIGHT_PIN, Pin.IN, Pin.PULL_UP)
+btn_act = Pin(BTN_ACT_PIN, Pin.IN, Pin.PULL_UP)
+btn_item = Pin(BTN_ITEM_PIN, Pin.IN, Pin.PULL_UP)
+btn_mercy = Pin(BTN_MERCY_PIN, Pin.IN, Pin.PULL_UP)
 
 
 def _adc_read(adc):
@@ -602,6 +716,11 @@ def _adc_read_avg(adc, samples):
         total += v
         axis_max = m
     return total // samples, axis_max
+
+
+def _read_falling_edge(pin, prev_state):
+    state = pin.value()
+    return state, (prev_state == 1 and state == 0)
 
 
 def _scaled_axis_delta(direction, base_step, frame_dt, carry):
@@ -744,6 +863,37 @@ prev_loop_ms = time.ticks_ms()
 last_input_active_ms = prev_loop_ms
 anim_x_dir = 0
 anim_y_dir = 0
+explore_moved = False
+explore_scrolled = False
+explore_anim_changed = False
+explore_force_full_redraw = False
+mode = MODE_EXPLORE
+encounter_cooldown_frames = 0
+act_dialog_until_ms = 0
+fight_heart_x = battle_heart_init_x
+fight_heart_y = battle_heart_init_y
+battle_prev_heart_x = fight_heart_x
+battle_prev_heart_y = fight_heart_y
+battle_menu_dirty = True
+battle_fight_dirty = True
+battle_dialog_visible = False
+battle_dialog_mode = 0
+battle_heart_needs_sprite_refresh = False
+fight_return_deadline_ms = 0
+player_hp = PLAYER_HP_MAX
+bullets = []
+next_bullet_spawn_ms = 0
+damage_invuln_until_ms = 0
+battle_bullets_dirty = False
+battle_prev_bullet_positions = []
+battle_status_dirty = True
+mercy_exit_pending = False
+_rng_state = (time.ticks_ms() | 1) & 0x7FFFFFFF
+encounter_sw_prev = encounter_sw.value()
+btn_fight_prev = btn_fight.value()
+btn_act_prev = btn_act.value()
+btn_item_prev = btn_item.value()
+btn_mercy_prev = btn_mercy.value()
 
 if player_sheet_enabled:
     lgfx.player_frame_set(anim_row * 3 + anim_col)
@@ -761,19 +911,13 @@ if ENABLE_SPAWN_OVERLAY and hasattr(lgfx, "draw_png_file") and _path_exists(SPAW
     )
     time.sleep_ms(180)
 
-while True:
-    loop_start = time.ticks_ms()
-    frame_dt = time.ticks_diff(loop_start, prev_loop_ms)
-    if frame_dt <= 0:
-        frame_dt = TARGET_FRAME_MS if TARGET_FRAME_MS > 0 else 20
-    prev_loop_ms = loop_start
+def update_player(loop_start, frame_dt):
+    global player_x, player_y, scroll_x, scroll_y
+    global prev_input_x, prev_input_y, move_carry_x, move_carry_y
+    global last_input_active_ms, anim_x_dir, anim_y_dir
+    global anim_row, anim_col, anim_last_ms, face_right
+    global explore_moved, explore_scrolled, explore_anim_changed
 
-    frame += 1
-    rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
-    ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
-
-    x_dir = _axis_dir(rx, cx, axis_max, x_dir)
-    y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
     input_active = (x_dir != 0) or (y_dir_raw != 0)
     if input_active:
         last_input_active_ms = loop_start
@@ -844,23 +988,19 @@ while True:
     scroll_x = _clamp(scroll_x, 0, world_w - ACTIVE_VIEW_W)
     scroll_y = _clamp(scroll_y, 0, world_h - ACTIVE_VIEW_H)
 
-    moved = (move_dx != 0) or (move_dy != 0)
-    scrolled = (scroll_x != prev_scroll_x) or (scroll_y != prev_scroll_y)
+    explore_moved = (move_dx != 0) or (move_dy != 0)
+    explore_scrolled = (scroll_x != prev_scroll_x) or (scroll_y != prev_scroll_y)
 
     if player_sheet_enabled:
         prev_face_right = face_right
         prev_anim_frame = anim_row * 3 + anim_col
 
         dir_x = x_dir if x_dir != 0 else anim_x_dir
-        dir_y = y_dir_raw if y_dir_raw != 0 else anim_y_dir
-
         if dir_x > 0:
             face_right = True
         elif dir_x < 0:
             face_right = False
 
-        # Direction-to-row mapping uses current input only, so vertical motion
-        # always shows the front row even after prior horizontal movement.
         if x_dir != 0 and y_dir_raw != 0:
             anim_row = PLAYER_ANIM_ROW_SIDE
         elif y_dir_raw != 0:
@@ -880,30 +1020,548 @@ while True:
         if hasattr(lgfx, "player_flip_x_set"):
             lgfx.player_flip_x_set(face_right)
         new_anim_frame = anim_row * 3 + anim_col
-        anim_changed = (new_anim_frame != prev_anim_frame) or (face_right != prev_face_right)
+        explore_anim_changed = (new_anim_frame != prev_anim_frame) or (face_right != prev_face_right)
         lgfx.player_frame_set(new_anim_frame)
     else:
-        anim_changed = False
+        explore_anim_changed = False
 
-    # Redraw map only when camera moved; otherwise update just the player.
-    if scrolled:
-        _render_scene(scroll_x, scroll_y, player_x, player_y, FORCE_FULL_REDRAW_WHEN_SCROLLED)
-    elif moved or anim_changed:
-        lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
-    prev_player_x = player_x
-    prev_player_y = player_y
-    prev_scroll_x = scroll_x
-    prev_scroll_y = scroll_y
+
+def _draw_text_in_box(x, y, w, h, text):
+    if not hasattr(lgfx, "draw_text"):
+        return
+    text_w = len(text) * 8
+    tx = x + ((w - text_w) // 2)
+    ty = y + ((h - 8) // 2)
+    if tx < x + 2:
+        tx = x + 2
+    lgfx.draw_text(tx, ty, text, BATTLE_COLOR_WHITE)
+
+
+def _draw_rect_thick(x, y, w, h, color, thickness):
+    if w <= 0 or h <= 0:
+        return
+    if thickness < 1:
+        thickness = 1
+    t = thickness
+    while t > 0:
+        ox = thickness - t
+        rw = w - (ox * 2)
+        rh = h - (ox * 2)
+        if rw <= 0 or rh <= 0:
+            break
+        lgfx.draw_rect(x + ox, y + ox, rw, rh, color)
+        t -= 1
+
+
+def _draw_battle_frame():
+    _draw_rect_thick(
+        battle_frame_x,
+        battle_frame_y,
+        BATTLE_FRAME_W,
+        BATTLE_FRAME_H,
+        BATTLE_COLOR_WHITE,
+        BATTLE_FRAME_BORDER_THICK,
+    )
+
+
+def _draw_battle_menu_screen(dialog_active):
+    global battle_dialog_mode
+
+    lgfx.clear()
+    _draw_battle_frame()
+
+    enemy_x = battle_frame_x + ((BATTLE_FRAME_W - ENEMY_SPRITE_W) // 2)
+    enemy_y = battle_frame_y + 16
+    enemy_bottom = enemy_y + ENEMY_SPRITE_H
+    enemy_drawn = False
+    if hasattr(lgfx, "draw_png_file") and _path_exists(ENEMY_SPRITE_PATH):
+        enemy_drawn = bool(
+            lgfx.draw_png_file(
+                ENEMY_SPRITE_PATH,
+                enemy_x,
+                enemy_y,
+                ENEMY_SPRITE_W,
+                ENEMY_SPRITE_H,
+            )
+        )
+    if not enemy_drawn:
+        monster_cx = battle_frame_x + (BATTLE_FRAME_W // 2)
+        monster_cy = battle_frame_y + 75
+        lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
+        enemy_bottom = monster_cy + 22
+
+    for i, label in enumerate(("FIGHT", "ACT", "ITEM", "MERCY")):
+        bx = battle_cmd_x0 + i * (battle_cmd_w + BATTLE_CMD_GAP)
+        by = battle_cmd_y
+        _draw_rect_thick(bx, by, battle_cmd_w, BATTLE_CMD_H, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
+        _draw_text_in_box(bx, by, battle_cmd_w, BATTLE_CMD_H, label)
+
+    if dialog_active:
+        dialog_x = battle_frame_x + 10
+        dialog_w = BATTLE_FRAME_W - 20
+        dialog_h = 20
+        dialog_y = enemy_bottom + 6
+        max_dialog_y = battle_cmd_y - dialog_h - 6
+        if dialog_y > max_dialog_y:
+            dialog_y = max_dialog_y
+        _draw_rect_thick(dialog_x, dialog_y, dialog_w, dialog_h, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
+        if battle_dialog_mode == 2:
+            mercy_text_drawn = False
+            if hasattr(lgfx, "draw_png_file") and _path_exists(MERCY_DIALOG_TEXT_PATH):
+                mercy_text_drawn = bool(
+                    lgfx.draw_png_file(
+                        MERCY_DIALOG_TEXT_PATH,
+                        dialog_x + 6,
+                        dialog_y + 3,
+                        dialog_w - 12,
+                        14,
+                    )
+                )
+            if not mercy_text_drawn:
+                if hasattr(lgfx, "draw_text"):
+                    lgfx.draw_text(dialog_x + 8, dialog_y + 10, "MERCY...", BATTLE_COLOR_WHITE)
+                else:
+                    _draw_text_in_box(dialog_x, dialog_y + 6, dialog_w, 8, "MERCY...")
+        else:
+            dialog_text_drawn = False
+            if hasattr(lgfx, "draw_png_file") and _path_exists(ACT_DIALOG_TEXT_PATH):
+                dialog_text_drawn = bool(
+                    lgfx.draw_png_file(
+                        ACT_DIALOG_TEXT_PATH,
+                        dialog_x + 6,
+                        dialog_y + 3,
+                        dialog_w - 12,
+                        14,
+                    )
+                )
+            if not dialog_text_drawn:
+                _draw_text_in_box(dialog_x, dialog_y + 1, dialog_w, 8, "MONSTER LOOKS ANGRY!")
+                if hasattr(lgfx, "draw_text"):
+                    lgfx.draw_text(dialog_x + 8, dialog_y + 10, "ACT: MONSTER IS ANGRY!", BATTLE_COLOR_WHITE)
+
+
+def _draw_battle_fight_background():
+    lgfx.clear()
+    _draw_battle_frame()
+
+
+def _draw_battle_heart_sprite(cx, cy):
+    if not hasattr(lgfx, "draw_png_file"):
+        return False
+    for path in (BATTLE_HEART_SPRITE_PATH, BATTLE_HEART_SPRITE_FALLBACK_PATH):
+        if not _path_exists(path):
+            continue
+        if lgfx.draw_png_file(
+            path,
+            cx - (BATTLE_HEART_SPRITE_W // 2),
+            cy - (BATTLE_HEART_SPRITE_H // 2),
+            BATTLE_HEART_SPRITE_W,
+            BATTLE_HEART_SPRITE_H,
+        ):
+            return True
+    return False
+
+
+def _rand_u32():
+    global _rng_state
+    _rng_state = ((_rng_state * 1103515245) + 12345) & 0x7FFFFFFF
+    return _rng_state
+
+
+def _rand_range(lo, hi):
+    if hi <= lo:
+        return lo
+    span = hi - lo + 1
+    return lo + (_rand_u32() % span)
+
+
+def _battle_status_y():
+    y = battle_frame_y + BATTLE_FRAME_H + 4
+    max_y = ACTIVE_VIEW_H - 9
+    if y > max_y:
+        y = max_y
+    return y
+
+
+def _battle_status_y_menu():
+    return battle_cmd_y - (8 + BATTLE_STATUS_TO_CMD_GAP)
+
+
+def _reset_battle_state():
+    global player_hp, bullets, next_bullet_spawn_ms, damage_invuln_until_ms
+    global battle_bullets_dirty, battle_prev_bullet_positions, battle_status_dirty
+    global fight_heart_x, fight_heart_y, battle_prev_heart_x, battle_prev_heart_y
+
+    player_hp = PLAYER_HP_MAX
+    bullets = []
+    next_bullet_spawn_ms = 0
+    damage_invuln_until_ms = 0
+    battle_bullets_dirty = False
+    battle_prev_bullet_positions = []
+    battle_status_dirty = True
+    fight_heart_x = battle_heart_init_x
+    fight_heart_y = battle_heart_init_y
+    battle_prev_heart_x = fight_heart_x
+    battle_prev_heart_y = fight_heart_y
+
+
+def _draw_battle_status_line(in_menu=False):
+    if not hasattr(lgfx, "draw_text"):
+        return
+    text = "%s  HP %2d/%d" % (MONSTER_NAME, player_hp, PLAYER_HP_MAX)
+    x = battle_frame_x + 12
+    if in_menu:
+        y = _battle_status_y_menu()
+    else:
+        y = _battle_status_y()
+    # Simulate a slightly larger/bolder look using 2x2 overdraw.
+    lgfx.draw_text(x, y, text, BATTLE_COLOR_WHITE)
+    lgfx.draw_text(x + 1, y, text, BATTLE_COLOR_WHITE)
+    lgfx.draw_text(x, y + 1, text, BATTLE_COLOR_WHITE)
+    lgfx.draw_text(x + 1, y + 1, text, BATTLE_COLOR_WHITE)
+
+
+def _get_bullet_positions():
+    out = []
+    for b in bullets:
+        out.append((b[0] >> BULLET_FP_SHIFT, b[1] >> BULLET_FP_SHIFT))
+    return out
+
+
+def _erase_prev_bullets():
+    for x, y in battle_prev_bullet_positions:
+        lgfx.draw_circle(x, y, BULLET_R, 0x0000)
+
+
+def _spawn_bullet_random_edge(now_ms):
+    global next_bullet_spawn_ms, bullets
+
+    if time.ticks_diff(now_ms, next_bullet_spawn_ms) < 0:
+        return False
+
+    inner_inset = BATTLE_FRAME_BORDER_THICK
+    if BATTLE_BORDER_THICK > inner_inset:
+        inner_inset = BATTLE_BORDER_THICK
+    inner_min_x = battle_frame_x + inner_inset + BULLET_R
+    inner_max_x = battle_frame_x + BATTLE_FRAME_W - inner_inset - BULLET_R - 1
+    inner_min_y = battle_frame_y + inner_inset + BULLET_R
+    inner_max_y = battle_frame_y + BATTLE_FRAME_H - inner_inset - BULLET_R - 1
+
+    edge = _rand_u32() & 0x03
+    if edge == 0:
+        sx = _rand_range(inner_min_x, inner_max_x)
+        sy = inner_min_y
+    elif edge == 1:
+        sx = _rand_range(inner_min_x, inner_max_x)
+        sy = inner_max_y
+    elif edge == 2:
+        sx = inner_min_x
+        sy = _rand_range(inner_min_y, inner_max_y)
+    else:
+        sx = inner_max_x
+        sy = _rand_range(inner_min_y, inner_max_y)
+
+    tx = _rand_range(inner_min_x, inner_max_x)
+    ty = _rand_range(inner_min_y, inner_max_y)
+    dx = tx - sx
+    dy = ty - sy
+    scale = abs(dx)
+    if abs(dy) > scale:
+        scale = abs(dy)
+    if scale <= 0:
+        vx_fp = 1 << BULLET_FP_SHIFT
+        vy_fp = 0
+    else:
+        vx_fp = (dx << BULLET_FP_SHIFT) // scale
+        vy_fp = (dy << BULLET_FP_SHIFT) // scale
+        if vx_fp == 0 and vy_fp == 0:
+            vx_fp = 1 << BULLET_FP_SHIFT
+
+    bullets.append([sx << BULLET_FP_SHIFT, sy << BULLET_FP_SHIFT, vx_fp, vy_fp])
+    next_bullet_spawn_ms = time.ticks_add(now_ms, BULLET_SPAWN_INTERVAL_MS)
+    return True
+
+
+def _update_bullets_and_collisions(now_ms):
+    global bullets, player_hp, damage_invuln_until_ms
+    global mode, encounter_cooldown_frames, act_dialog_until_ms, explore_force_full_redraw
+    global battle_menu_dirty, battle_dialog_visible, battle_status_dirty
+    global battle_dialog_mode, mercy_exit_pending
+
+    inner_inset = BATTLE_FRAME_BORDER_THICK
+    if BATTLE_BORDER_THICK > inner_inset:
+        inner_inset = BATTLE_BORDER_THICK
+    inner_min_x = battle_frame_x + inner_inset + BULLET_R
+    inner_max_x = battle_frame_x + BATTLE_FRAME_W - inner_inset - BULLET_R - 1
+    inner_min_y = battle_frame_y + inner_inset + BULLET_R
+    inner_max_y = battle_frame_y + BATTLE_FRAME_H - inner_inset - BULLET_R - 1
+    hit_r = BATTLE_HEART_HIT_R + BULLET_R
+    hit_r2 = hit_r * hit_r
+    can_take_damage = time.ticks_diff(now_ms, damage_invuln_until_ms) >= 0
+    changed = False
+    kept = []
+
+    for b in bullets:
+        b[0] += b[2] * BULLET_SPEED_PX
+        b[1] += b[3] * BULLET_SPEED_PX
+        bx = b[0] >> BULLET_FP_SHIFT
+        by = b[1] >> BULLET_FP_SHIFT
+        if bx < inner_min_x or bx > inner_max_x or by < inner_min_y or by > inner_max_y:
+            changed = True
+            continue
+
+        dx = bx - fight_heart_x
+        dy = by - fight_heart_y
+        if can_take_damage and (dx * dx + dy * dy) <= hit_r2:
+            player_hp -= 1
+            battle_status_dirty = True
+            damage_invuln_until_ms = time.ticks_add(now_ms, DAMAGE_INVULN_MS)
+            can_take_damage = False
+            changed = True
+            if player_hp <= 0:
+                mode = MODE_EXPLORE
+                encounter_cooldown_frames = ENCOUNTER_COOLDOWN_FRAMES
+                act_dialog_until_ms = 0
+                battle_dialog_mode = 0
+                mercy_exit_pending = False
+                explore_force_full_redraw = True
+                battle_menu_dirty = True
+                battle_dialog_visible = False
+                bullets = []
+                return True
+            continue
+
+        kept.append(b)
+        changed = True
+
+    if len(kept) != len(bullets):
+        changed = True
+    bullets = kept
+    return changed
+
+
+def _draw_bullets():
+    for b in bullets:
+        lgfx.draw_circle(
+            b[0] >> BULLET_FP_SHIFT,
+            b[1] >> BULLET_FP_SHIFT,
+            BULLET_R,
+            BATTLE_COLOR_WHITE,
+        )
+
+
+def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mercy_pressed):
+    global mode, encounter_cooldown_frames, act_dialog_until_ms
+    global battle_dialog_mode, mercy_exit_pending
+    global explore_force_full_redraw, fight_heart_x, fight_heart_y
+    global battle_menu_dirty, battle_fight_dirty, battle_heart_needs_sprite_refresh, fight_return_deadline_ms
+
+    dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
+    if mercy_exit_pending and not dialog_active:
+        mode = MODE_EXPLORE
+        encounter_cooldown_frames = ENCOUNTER_COOLDOWN_FRAMES
+        act_dialog_until_ms = 0
+        battle_dialog_mode = 0
+        mercy_exit_pending = False
+        explore_force_full_redraw = True
+        battle_menu_dirty = True
+        return
+    if dialog_active:
+        return
+
+    if fight_pressed:
+        mode = MODE_BATTLE_FIGHT
+        fight_heart_x = battle_heart_init_x
+        fight_heart_y = battle_heart_init_y
+        battle_fight_dirty = True
+        battle_heart_needs_sprite_refresh = False
+        fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
+        print("FIGHT")
+        return
+    if act_pressed:
+        print("ACT: 怪物看起來很生氣！")
+        act_dialog_until_ms = time.ticks_add(loop_start, ACT_DIALOG_MS)
+        battle_dialog_mode = 1
+        mercy_exit_pending = False
+        battle_menu_dirty = True
+        return
+    if item_pressed:
+        print("ITEM")
+        return
+    if mercy_pressed:
+        print("MERCY: 多麼的無聊!")
+        act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
+        battle_dialog_mode = 2
+        mercy_exit_pending = True
+        battle_menu_dirty = True
+
+
+def update_battle_fight(loop_start):
+    global mode, fight_heart_x, fight_heart_y
+    global battle_menu_dirty, battle_dialog_visible, fight_return_deadline_ms
+    global battle_fight_dirty, battle_bullets_dirty, battle_status_dirty
+    global battle_dialog_mode, mercy_exit_pending
+    global bullets, next_bullet_spawn_ms, damage_invuln_until_ms, battle_prev_bullet_positions
+
+    if time.ticks_diff(fight_return_deadline_ms, loop_start) <= 0:
+        mode = MODE_BATTLE_MENU
+        battle_menu_dirty = True
+        battle_dialog_visible = False
+        bullets = []
+        next_bullet_spawn_ms = 0
+        damage_invuln_until_ms = 0
+        battle_prev_bullet_positions = []
+        battle_bullets_dirty = False
+        battle_status_dirty = True
+        battle_dialog_mode = 0
+        mercy_exit_pending = False
+        return
+
+    if x_dir > 0:
+        fight_heart_x += BATTLE_HEART_STEP
+    elif x_dir < 0:
+        fight_heart_x -= BATTLE_HEART_STEP
+
+    if y_dir_raw > 0:
+        fight_heart_y -= BATTLE_HEART_STEP
+    elif y_dir_raw < 0:
+        fight_heart_y += BATTLE_HEART_STEP
+
+    fight_heart_x = _clamp(fight_heart_x, battle_heart_min_x, battle_heart_max_x)
+    fight_heart_y = _clamp(fight_heart_y, battle_heart_min_y, battle_heart_max_y)
+
+    spawned = _spawn_bullet_random_edge(loop_start)
+    changed = _update_bullets_and_collisions(loop_start)
+    if mode != MODE_BATTLE_FIGHT:
+        return
+    battle_bullets_dirty = spawned or changed or bool(bullets)
+
+
+def draw_all(loop_start):
+    global prev_player_x, prev_player_y, prev_scroll_x, prev_scroll_y
+    global explore_force_full_redraw
+    global battle_prev_heart_x, battle_prev_heart_y
+    global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
+    global battle_bullets_dirty, battle_prev_bullet_positions
+    global battle_status_dirty
+
+    if mode == MODE_EXPLORE:
+        if explore_force_full_redraw:
+            _render_scene(scroll_x, scroll_y, player_x, player_y, True)
+            explore_force_full_redraw = False
+        elif explore_scrolled:
+            _render_scene(scroll_x, scroll_y, player_x, player_y, FORCE_FULL_REDRAW_WHEN_SCROLLED)
+        elif explore_moved or explore_anim_changed:
+            lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
+        prev_player_x = player_x
+        prev_player_y = player_y
+        prev_scroll_x = scroll_x
+        prev_scroll_y = scroll_y
+        return
+
+    if mode == MODE_BATTLE_MENU:
+        dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
+        if battle_menu_dirty or dialog_active != battle_dialog_visible:
+            _draw_battle_menu_screen(dialog_active)
+            battle_menu_dirty = False
+            battle_dialog_visible = dialog_active
+        if not dialog_active:
+            _draw_battle_status_line(True)
+        return
+
+    moved = (fight_heart_x != battle_prev_heart_x) or (fight_heart_y != battle_prev_heart_y)
+    can_draw_png = hasattr(lgfx, "draw_png_file")
+
+    if not battle_fight_dirty and not moved and not battle_bullets_dirty and not battle_status_dirty:
+        return
+
+    if battle_fight_dirty:
+        _draw_battle_fight_background()
+        _draw_bullets()
+    else:
+        if battle_bullets_dirty:
+            _erase_prev_bullets()
+            _draw_bullets()
+        if moved:
+            lgfx.draw_circle(battle_prev_heart_x, battle_prev_heart_y, BATTLE_HEART_ERASE_R, 0x0000)
+
+    heart_drawn = _draw_battle_heart_sprite(fight_heart_x, fight_heart_y) if can_draw_png else False
+    if not heart_drawn:
+        lgfx.draw_circle(fight_heart_x, fight_heart_y, BATTLE_HEART_FAST_R, BATTLE_COLOR_RED)
+
+    # Repaint border after local erase paths so edge pixels remain stable.
+    _draw_battle_frame()
+    if battle_status_dirty or battle_fight_dirty:
+        _draw_battle_status_line()
+        battle_status_dirty = False
+    battle_heart_needs_sprite_refresh = False
+
+    battle_prev_heart_x = fight_heart_x
+    battle_prev_heart_y = fight_heart_y
+    battle_prev_bullet_positions = _get_bullet_positions()
+    battle_bullets_dirty = False
+    battle_fight_dirty = False
+
+
+while True:
+    loop_start = time.ticks_ms()
+    frame_dt = time.ticks_diff(loop_start, prev_loop_ms)
+    if frame_dt <= 0:
+        frame_dt = TARGET_FRAME_MS if TARGET_FRAME_MS > 0 else 20
+    prev_loop_ms = loop_start
+
+    frame += 1
+    if encounter_cooldown_frames > 0:
+        encounter_cooldown_frames -= 1
+
+    rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
+    ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
+    x_dir = _axis_dir(rx, cx, axis_max, x_dir)
+    y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
+
+    encounter_sw_prev, encounter_pressed = _read_falling_edge(encounter_sw, encounter_sw_prev)
+    btn_fight_prev, fight_pressed = _read_falling_edge(btn_fight, btn_fight_prev)
+    btn_act_prev, act_pressed = _read_falling_edge(btn_act, btn_act_prev)
+    btn_item_prev, item_pressed = _read_falling_edge(btn_item, btn_item_prev)
+    btn_mercy_prev, mercy_pressed = _read_falling_edge(btn_mercy, btn_mercy_prev)
+
+    if mode == MODE_EXPLORE:
+        if encounter_pressed and encounter_cooldown_frames == 0:
+            mode = MODE_BATTLE_MENU
+            act_dialog_until_ms = 0
+            battle_dialog_mode = 0
+            mercy_exit_pending = False
+            battle_menu_dirty = True
+            battle_dialog_visible = False
+            _reset_battle_state()
+            print("battle_menu: Fight(GPIO38) Act(GPIO39) Item(GPIO40) Mercy(GPIO41)")
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+        else:
+            update_player(loop_start, frame_dt)
+    elif mode == MODE_BATTLE_MENU:
+        explore_moved = False
+        explore_scrolled = False
+        explore_anim_changed = False
+        update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mercy_pressed)
+    else:
+        explore_moved = False
+        explore_scrolled = False
+        explore_anim_changed = False
+        update_battle_fight(loop_start)
+
+    draw_all(loop_start)
 
     if frame % 120 == 0:
         gc.collect()
         dt = time.ticks_diff(time.ticks_ms(), t0)
         fps = (frame * 1000 / dt) if dt else 0
-        print("frame", frame, "fps", fps, "stats", lgfx.stats(), "mem_free", gc.mem_free())
+        print("frame", frame, "fps", fps, "mode", mode, "cooldown", encounter_cooldown_frames, "stats", lgfx.stats(), "mem_free", gc.mem_free())
 
-    if not moved and not scrolled:
+    if mode == MODE_EXPLORE and not explore_moved and not explore_scrolled:
         time.sleep_ms(1)
-    elif TARGET_FRAME_MS > 0:
-        frame_dt = time.ticks_diff(time.ticks_ms(), loop_start)
-        if frame_dt < TARGET_FRAME_MS:
-            time.sleep_ms(TARGET_FRAME_MS - frame_dt)
+    if TARGET_FRAME_MS > 0:
+        frame_used = time.ticks_diff(time.ticks_ms(), loop_start)
+        if frame_used < TARGET_FRAME_MS:
+            time.sleep_ms(TARGET_FRAME_MS - frame_used)
