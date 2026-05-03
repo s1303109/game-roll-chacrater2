@@ -431,8 +431,15 @@ ENEMY_SPRITE_W = 72
 ENEMY_SPRITE_H = 72
 ACT_DIALOG_TEXT_PATH = "/act_dialog_text.png"
 MERCY_DIALOG_TEXT_PATH = "/mercy_dialog_text.png"
+LAMP_DIALOG_TEXT_PATH = "/lamp_dialog_text.png"
+LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
+# Expand to cover the full triple-lamp poles and nearby interaction area.
+LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
+LAMP_DIALOG_TEXT_W = 214
+LAMP_DIALOG_TEXT_H = 27
 ACT_DIALOG_MS = 1000
 MERCY_DIALOG_MS = 2500
+LAMP_DIALOG_MS = 2000
 PLAYER_HP_MAX = 20
 MONSTER_NAME = "Grim Reaper"
 BULLET_R = 3
@@ -676,7 +683,7 @@ adc_x = ADC(Pin(JOY_X_PIN))
 adc_y = ADC(Pin(JOY_Y_PIN))
 adc_x.atten(ADC.ATTN_11DB)
 adc_y.atten(ADC.ATTN_11DB)
-encounter_sw = Pin(ENCOUNTER_SW_PIN, Pin.IN, Pin.PULL_UP)
+interact_sw = Pin(ENCOUNTER_SW_PIN, Pin.IN, Pin.PULL_UP)
 btn_fight = Pin(BTN_FIGHT_PIN, Pin.IN, Pin.PULL_UP)
 btn_act = Pin(BTN_ACT_PIN, Pin.IN, Pin.PULL_UP)
 btn_item = Pin(BTN_ITEM_PIN, Pin.IN, Pin.PULL_UP)
@@ -721,6 +728,13 @@ def _adc_read_avg(adc, samples):
 def _read_falling_edge(pin, prev_state):
     state = pin.value()
     return state, (prev_state == 1 and state == 0)
+
+
+def _in_rect(px, py, rect):
+    x, y, w, h = rect
+    if w <= 0 or h <= 0:
+        return False
+    return x <= px < (x + w) and y <= py < (y + h)
 
 
 def _scaled_axis_delta(direction, base_step, frame_dt, carry):
@@ -889,11 +903,14 @@ battle_prev_bullet_positions = []
 battle_status_dirty = True
 mercy_exit_pending = False
 _rng_state = (time.ticks_ms() | 1) & 0x7FFFFFFF
-encounter_sw_prev = encounter_sw.value()
+interact_sw_prev = interact_sw.value()
 btn_fight_prev = btn_fight.value()
 btn_act_prev = btn_act.value()
 btn_item_prev = btn_item.value()
 btn_mercy_prev = btn_mercy.value()
+leaf_zone_prev_inside = False
+lamp_dialog_until_ms = 0
+explore_overlay_dirty = False
 
 if player_sheet_enabled:
     lgfx.player_frame_set(anim_row * 3 + anim_col)
@@ -917,6 +934,7 @@ def update_player(loop_start, frame_dt):
     global last_input_active_ms, anim_x_dir, anim_y_dir
     global anim_row, anim_col, anim_last_ms, face_right
     global explore_moved, explore_scrolled, explore_anim_changed
+    global lamp_dialog_until_ms
 
     input_active = (x_dir != 0) or (y_dir_raw != 0)
     if input_active:
@@ -988,6 +1006,11 @@ def update_player(loop_start, frame_dt):
     scroll_x = _clamp(scroll_x, 0, world_w - ACTIVE_VIEW_W)
     scroll_y = _clamp(scroll_y, 0, world_h - ACTIVE_VIEW_H)
 
+    # Freeze camera while dialog is visible to avoid full map redraw every step.
+    if time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0:
+        scroll_x = prev_scroll_x
+        scroll_y = prev_scroll_y
+
     explore_moved = (move_dx != 0) or (move_dy != 0)
     explore_scrolled = (scroll_x != prev_scroll_x) or (scroll_y != prev_scroll_y)
 
@@ -1051,6 +1074,88 @@ def _draw_rect_thick(x, y, w, h, color, thickness):
             break
         lgfx.draw_rect(x + ox, y + ox, rw, rh, color)
         t -= 1
+
+
+def _fill_rect_solid(x, y, w, h, color):
+    if w <= 0 or h <= 0:
+        return
+    yy = y
+    y_end = y + h
+    while yy < y_end:
+        lgfx.draw_rect(x, yy, w, 1, color)
+        yy += 1
+
+
+def _lamp_dialog_rect():
+    dialog_w = 280
+    if dialog_w > ACTIVE_VIEW_W - 8:
+        dialog_w = ACTIVE_VIEW_W - 8
+    dialog_h = 40
+    dialog_x = (ACTIVE_VIEW_W - dialog_w) // 2
+    dialog_y = ACTIVE_VIEW_H - dialog_h - 8
+    if dialog_y < 4:
+        dialog_y = 4
+    return dialog_x, dialog_y, dialog_w, dialog_h
+
+
+def _rects_intersect(ax, ay, aw, ah, bx, by, bw, bh):
+    if aw <= 0 or ah <= 0 or bw <= 0 or bh <= 0:
+        return False
+    return not (
+        (ax + aw) <= bx
+        or (bx + bw) <= ax
+        or (ay + ah) <= by
+        or (by + bh) <= ay
+    )
+
+
+def _draw_explore_lamp_dialog(loop_start):
+    dialog_active = time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0
+    if not dialog_active:
+        return False
+
+    dialog_x, dialog_y, dialog_w, dialog_h = _lamp_dialog_rect()
+
+    # Fill full dialog with black to avoid seeing moving scene through the box.
+    _fill_rect_solid(dialog_x, dialog_y, dialog_w, dialog_h, 0x0000)
+    _draw_rect_thick(dialog_x, dialog_y, dialog_w, dialog_h, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
+
+    text_drawn = False
+    if hasattr(lgfx, "draw_png_file") and _path_exists(LAMP_DIALOG_TEXT_PATH):
+        try:
+            avail_w = dialog_w - 12
+            avail_h = dialog_h - 8
+            draw_w = LAMP_DIALOG_TEXT_W
+            draw_h = LAMP_DIALOG_TEXT_H
+            if draw_w > avail_w or draw_h > avail_h:
+                # Keep aspect ratio when fitting to dialog.
+                scale_w = (avail_w << 8) // LAMP_DIALOG_TEXT_W
+                scale_h = (avail_h << 8) // LAMP_DIALOG_TEXT_H
+                scale = scale_w if scale_w < scale_h else scale_h
+                if scale < 1:
+                    scale = 1
+                draw_w = (LAMP_DIALOG_TEXT_W * scale) >> 8
+                draw_h = (LAMP_DIALOG_TEXT_H * scale) >> 8
+                if draw_w < 1:
+                    draw_w = 1
+                if draw_h < 1:
+                    draw_h = 1
+            text_x = dialog_x + ((dialog_w - draw_w) // 2)
+            text_y = dialog_y + ((dialog_h - draw_h) // 2)
+            text_drawn = bool(
+                lgfx.draw_png_file(
+                    LAMP_DIALOG_TEXT_PATH,
+                    text_x,
+                    text_y,
+                    draw_w,
+                    draw_h,
+                )
+            )
+        except Exception:
+            text_drawn = False
+    if not text_drawn and hasattr(lgfx, "draw_text"):
+        _draw_text_in_box(dialog_x + 4, dialog_y + 8, dialog_w - 8, dialog_h - 16, "三盞路燈合在一起真詭異")
+    return True
 
 
 def _draw_battle_frame():
@@ -1203,6 +1308,27 @@ def _reset_battle_state():
     fight_heart_y = battle_heart_init_y
     battle_prev_heart_x = fight_heart_x
     battle_prev_heart_y = fight_heart_y
+
+
+def _start_battle_from_explore():
+    global mode, act_dialog_until_ms, battle_dialog_mode, mercy_exit_pending
+    global battle_menu_dirty, battle_dialog_visible
+    global explore_moved, explore_scrolled, explore_anim_changed
+    global lamp_dialog_until_ms, explore_overlay_dirty
+
+    mode = MODE_BATTLE_MENU
+    act_dialog_until_ms = 0
+    battle_dialog_mode = 0
+    mercy_exit_pending = False
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    lamp_dialog_until_ms = 0
+    explore_overlay_dirty = False
+    _reset_battle_state()
+    print("battle_menu: Fight(GPIO38) Act(GPIO39) Item(GPIO40) Mercy(GPIO41)")
+    explore_moved = False
+    explore_scrolled = False
+    explore_anim_changed = False
 
 
 def _draw_battle_status_line(in_menu=False):
@@ -1439,20 +1565,55 @@ def update_battle_fight(loop_start):
 
 def draw_all(loop_start):
     global prev_player_x, prev_player_y, prev_scroll_x, prev_scroll_y
-    global explore_force_full_redraw
+    global explore_force_full_redraw, explore_overlay_dirty
     global battle_prev_heart_x, battle_prev_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
     global battle_bullets_dirty, battle_prev_bullet_positions
     global battle_status_dirty
 
     if mode == MODE_EXPLORE:
+        scene_redrawn = False
+        player_redrawn = False
         if explore_force_full_redraw:
             _render_scene(scroll_x, scroll_y, player_x, player_y, True)
             explore_force_full_redraw = False
+            scene_redrawn = True
         elif explore_scrolled:
             _render_scene(scroll_x, scroll_y, player_x, player_y, FORCE_FULL_REDRAW_WHEN_SCROLLED)
+            scene_redrawn = True
         elif explore_moved or explore_anim_changed:
             lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
+            player_redrawn = True
+
+        dialog_active = time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0
+        dialog_needs_redraw = False
+        if dialog_active:
+            if not explore_overlay_dirty:
+                dialog_needs_redraw = True
+            elif scene_redrawn:
+                dialog_needs_redraw = True
+            elif player_redrawn:
+                dialog_x, dialog_y, dialog_w, dialog_h = _lamp_dialog_rect()
+                if player_sheet_enabled:
+                    half_w = PLAYER_FRAME_W // 2
+                    half_h = PLAYER_FRAME_H // 2
+                else:
+                    half_w = PLAYER_R
+                    half_h = PLAYER_R
+                px = player_x - scroll_x - half_w
+                py = player_y - scroll_y - half_h
+                pw = half_w * 2 + 1
+                ph = half_h * 2 + 1
+                if _rects_intersect(px, py, pw, ph, dialog_x, dialog_y, dialog_w, dialog_h):
+                    dialog_needs_redraw = True
+
+        if dialog_needs_redraw:
+            if _draw_explore_lamp_dialog(loop_start):
+                explore_overlay_dirty = True
+        elif not dialog_active and explore_overlay_dirty:
+            # Dialog just ended; redraw scene next frame to clear overlay remnants.
+            explore_force_full_redraw = True
+            explore_overlay_dirty = False
         prev_player_x = player_x
         prev_player_y = player_y
         prev_scroll_x = scroll_x
@@ -1519,27 +1680,24 @@ while True:
     x_dir = _axis_dir(rx, cx, axis_max, x_dir)
     y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
 
-    encounter_sw_prev, encounter_pressed = _read_falling_edge(encounter_sw, encounter_sw_prev)
+    interact_sw_prev, interact_pressed = _read_falling_edge(interact_sw, interact_sw_prev)
     btn_fight_prev, fight_pressed = _read_falling_edge(btn_fight, btn_fight_prev)
     btn_act_prev, act_pressed = _read_falling_edge(btn_act, btn_act_prev)
     btn_item_prev, item_pressed = _read_falling_edge(btn_item, btn_item_prev)
     btn_mercy_prev, mercy_pressed = _read_falling_edge(btn_mercy, btn_mercy_prev)
 
     if mode == MODE_EXPLORE:
-        if encounter_pressed and encounter_cooldown_frames == 0:
-            mode = MODE_BATTLE_MENU
-            act_dialog_until_ms = 0
-            battle_dialog_mode = 0
-            mercy_exit_pending = False
-            battle_menu_dirty = True
-            battle_dialog_visible = False
-            _reset_battle_state()
-            print("battle_menu: Fight(GPIO38) Act(GPIO39) Item(GPIO40) Mercy(GPIO41)")
-            explore_moved = False
-            explore_scrolled = False
-            explore_anim_changed = False
-        else:
-            update_player(loop_start, frame_dt)
+        update_player(loop_start, frame_dt)
+
+        leaf_inside = _in_rect(player_x, player_y, LEAF_BATTLE_RECT_PX)
+        if (not leaf_zone_prev_inside) and leaf_inside and encounter_cooldown_frames == 0:
+            _start_battle_from_explore()
+        leaf_zone_prev_inside = leaf_inside
+
+        if mode == MODE_EXPLORE and interact_pressed and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
+            lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)
+            # Mark as not drawn yet so the dialog appears immediately this frame.
+            explore_overlay_dirty = False
     elif mode == MODE_BATTLE_MENU:
         explore_moved = False
         explore_scrolled = False
