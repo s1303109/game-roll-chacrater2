@@ -1,0 +1,10 @@
+{
+  "tile_size": 16,
+  "map_w": 50,
+  "map_h": 60,
+  "tileset_count": 2930,
+  "endian": "little",
+  "row_order": "top_to_bottom",
+  "spawn_x": 400,
+  "spawn_y": 760
+}

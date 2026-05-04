@@ -435,6 +435,15 @@ LAMP_DIALOG_TEXT_PATH = "/lamp_dialog_text.png"
 LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
 # Expand to cover the full triple-lamp poles and nearby interaction area.
 LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
+MAP1_ID = 1
+MAP2_ID = 2
+MAP2_LOCAL_ASSET_BASE = "/out_map2"
+MAP2_ASSET_BASE = "/sd/out_map2"
+MAP2_REMOTE_ASSET_BASE = "/remote/assets/out_map2"
+MAP2_ASSET_BASES = (MAP2_LOCAL_ASSET_BASE, MAP2_ASSET_BASE, MAP2_REMOTE_ASSET_BASE)
+MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
+MAP2_PORTAL_TO_MAP1_RECT_PX = (760, 120, 80, 120)
+TELEPORT_COOLDOWN_FRAMES = 30
 LAMP_DIALOG_TEXT_W = 214
 LAMP_DIALOG_TEXT_H = 27
 ACT_DIALOG_MS = 1000
@@ -679,6 +688,139 @@ def _collision_selftest():
 
 _collision_selftest()
 
+
+def _load_map_context(base, fallback_all_walkable=False):
+    global asset_base, meta, tile, map_w, map_h, world_w, world_h, runtime_endian, collision
+
+    with open(base + "/map.json", "r") as f:
+        new_meta = json.loads(f.read())
+    _validate_meta(new_meta)
+
+    asset_base = base
+    meta = new_meta
+    tile = meta["tile_size"]
+    map_w = meta["map_w"]
+    map_h = meta["map_h"]
+    world_w = map_w * tile
+    world_h = map_h * tile
+
+    _tile_setup_with_fallback()
+    runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h)
+    if hasattr(lgfx, "set_swap_bytes"):
+        lgfx.set_swap_bytes(runtime_endian == "little")
+
+    collision_data, collision_err = _load_collision(meta, asset_base, map_w, map_h)
+    if fallback_all_walkable or collision_data is None:
+        collision = bytearray(map_w * map_h)
+        if collision_err:
+            print("collision_fallback_all_walkable:", collision_err)
+        blocked_tiles = 0
+    else:
+        collision = collision_data
+        blocked_tiles = 0
+        for v in collision:
+            if v:
+                blocked_tiles += 1
+        if blocked_tiles == 0:
+            raise RuntimeError("COLLISION_EMPTY")
+        _collision_selftest()
+    print("collision_tiles:", blocked_tiles, "/", map_w * map_h)
+
+
+def switch_map(target_map_id, spawn_x=None, spawn_y=None):
+    global collision, meta, asset_base, current_map_id
+    global player_x, player_y, scroll_x, scroll_y
+    global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
+    global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
+    global explore_force_full_redraw, teleport_cooldown_frames
+    global tile, map_w, map_h, world_w, world_h, runtime_endian
+
+    fallback_all_walkable = False
+    if target_map_id == MAP2_ID:
+        try:
+            next_base, _ = _find_asset_base(MAP2_ASSET_BASES)
+            fallback_all_walkable = True
+        except Exception as err:
+            print("switch_map_skip_map2:", err)
+            teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+            return False
+    else:
+        next_base, _ = _find_asset_base(ASSET_BASES)
+
+    prev_collision = collision
+    prev_meta = meta
+    prev_asset_base = asset_base
+    prev_tile = tile
+    prev_map_w = map_w
+    prev_map_h = map_h
+    prev_world_w = world_w
+    prev_world_h = world_h
+    prev_runtime_endian = runtime_endian
+    prev_player_x_saved = player_x
+    prev_player_y_saved = player_y
+    prev_scroll_x_saved = scroll_x
+    prev_scroll_y_saved = scroll_y
+    prev_prev_scroll_x_saved = prev_scroll_x
+    prev_prev_scroll_y_saved = prev_scroll_y
+    prev_prev_player_x_saved = prev_player_x
+    prev_prev_player_y_saved = prev_player_y
+    prev_current_map_id = current_map_id
+
+    collision = None
+    meta = None
+    asset_base = None
+    gc.collect()
+
+    try:
+        _load_map_context(next_base, fallback_all_walkable=fallback_all_walkable)
+    except Exception as err:
+        collision = prev_collision
+        meta = prev_meta
+        asset_base = prev_asset_base
+        tile = prev_tile
+        map_w = prev_map_w
+        map_h = prev_map_h
+        world_w = prev_world_w
+        world_h = prev_world_h
+        runtime_endian = prev_runtime_endian
+        player_x = prev_player_x_saved
+        player_y = prev_player_y_saved
+        scroll_x = prev_scroll_x_saved
+        scroll_y = prev_scroll_y_saved
+        prev_scroll_x = prev_prev_scroll_x_saved
+        prev_scroll_y = prev_prev_scroll_y_saved
+        prev_player_x = prev_prev_player_x_saved
+        prev_player_y = prev_prev_player_y_saved
+        current_map_id = prev_current_map_id
+        print("switch_map_restore:", err)
+        teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+        gc.collect()
+        return False
+
+    if spawn_x is None:
+        spawn_x = meta.get("spawn_x", world_w // 2)
+    if spawn_y is None:
+        spawn_y = meta.get("spawn_y", world_h // 2)
+
+    player_x = _clamp(spawn_x, PLAYER_R, world_w - PLAYER_R - 1)
+    player_y = _clamp(spawn_y, PLAYER_R, world_h - PLAYER_R - 1)
+    scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
+    scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
+    prev_scroll_x = scroll_x
+    prev_scroll_y = scroll_y
+    prev_player_x = player_x
+    prev_player_y = player_y
+
+    leaf_zone_prev_inside = False
+    explore_overlay_dirty = False
+    lamp_dialog_until_ms = 0
+    explore_force_full_redraw = True
+    teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+    current_map_id = target_map_id
+    gc.collect()
+    return True
+
+
 adc_x = ADC(Pin(JOY_X_PIN))
 adc_y = ADC(Pin(JOY_Y_PIN))
 adc_x.atten(ADC.ATTN_11DB)
@@ -911,6 +1053,8 @@ btn_mercy_prev = btn_mercy.value()
 leaf_zone_prev_inside = False
 lamp_dialog_until_ms = 0
 explore_overlay_dirty = False
+current_map_id = MAP1_ID
+teleport_cooldown_frames = 0
 
 if player_sheet_enabled:
     lgfx.player_frame_set(anim_row * 3 + anim_col)
@@ -1674,6 +1818,8 @@ while True:
     frame += 1
     if encounter_cooldown_frames > 0:
         encounter_cooldown_frames -= 1
+    if teleport_cooldown_frames > 0:
+        teleport_cooldown_frames -= 1
 
     rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
     ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
@@ -1689,12 +1835,21 @@ while True:
     if mode == MODE_EXPLORE:
         update_player(loop_start, frame_dt)
 
-        leaf_inside = _in_rect(player_x, player_y, LEAF_BATTLE_RECT_PX)
-        if (not leaf_zone_prev_inside) and leaf_inside and encounter_cooldown_frames == 0:
-            _start_battle_from_explore()
-        leaf_zone_prev_inside = leaf_inside
+        if teleport_cooldown_frames == 0:
+            if current_map_id == MAP1_ID and _in_rect(player_x, player_y, MAP1_PORTAL_TO_MAP2_RECT_PX):
+                switch_map(MAP2_ID)
+            elif current_map_id == MAP2_ID and _in_rect(player_x, player_y, MAP2_PORTAL_TO_MAP1_RECT_PX):
+                switch_map(MAP1_ID)
 
-        if mode == MODE_EXPLORE and interact_pressed and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
+        if mode == MODE_EXPLORE and current_map_id == MAP1_ID:
+            leaf_inside = _in_rect(player_x, player_y, LEAF_BATTLE_RECT_PX)
+            if (not leaf_zone_prev_inside) and leaf_inside and encounter_cooldown_frames == 0:
+                _start_battle_from_explore()
+            leaf_zone_prev_inside = leaf_inside
+        else:
+            leaf_zone_prev_inside = False
+
+        if mode == MODE_EXPLORE and current_map_id == MAP1_ID and interact_pressed and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
             lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)
             # Mark as not drawn yet so the dialog appears immediately this frame.
             explore_overlay_dirty = False
