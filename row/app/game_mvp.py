@@ -85,6 +85,13 @@ def _path_exists(path):
         return False
 
 
+def _resolve_first_existing_path(paths):
+    for path in paths:
+        if path and _path_exists(path):
+            return path
+    return None
+
+
 def _sync_sd_assets_from_remote_if_needed():
     if not ENABLE_AUTO_SD_SYNC:
         return
@@ -403,7 +410,15 @@ PLAYER_SHEET_FALLBACK_PATHS = (
     "/player_sheet.rgb565",
 )
 ENABLE_SPAWN_OVERLAY = False
-SPAWN_OVERLAY_PATH = "/main character close eyes.png"
+SPAWN_OVERLAY_PATH = "/main character close eyes.orig.png"
+ENABLE_SPAWN_INTRO = True
+SPAWN_SPOTLIGHT_RADIUS = 56
+SPAWN_OVERLAY_PATHS = (
+    "/workspace/main character close eyes.clean.png",
+    "/main character close eyes.clean.png",
+    "/workspace/main character close eyes.orig.png",
+    "/main character close eyes.orig.png",
+)
 FORCE_SIMPLE_PLAYER = False
 USE_TILE_RENDER_PLAYER_COMPOSE = True
 ROTATION = 1
@@ -1033,6 +1048,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     leaf_zone_prev_inside = False
     explore_overlay_dirty = False
     lamp_dialog_until_ms = 0
+    # Keep startup-only intro effect; do not re-enable it on map switches.
     explore_force_full_redraw = True
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     phase["spawn_finalize_ms"] = time.ticks_diff(time.ticks_ms(), t0)
@@ -1378,6 +1394,10 @@ lamp_dialog_until_ms = 0
 explore_overlay_dirty = False
 current_map_id = MAP1_ID
 teleport_cooldown_frames = 0
+spawn_intro_cleared_once = False
+spawn_intro_active = bool(ENABLE_SPAWN_INTRO and (current_map_id == MAP1_ID))
+spawn_intro_overlay_path = _resolve_first_existing_path(SPAWN_OVERLAY_PATHS) if spawn_intro_active else None
+spawn_intro_needs_redraw = spawn_intro_active
 
 if player_sheet_enabled:
     lgfx.player_frame_set(anim_row * 3 + anim_col)
@@ -1385,6 +1405,10 @@ if player_sheet_enabled:
         lgfx.player_flip_x_set(face_right)
 
 _render_scene(scroll_x, scroll_y, player_x, player_y, True)
+if spawn_intro_active:
+    # Defer to draw_all() (function is defined later in file).
+    # Calling it here before definition causes startup NameError -> reboot loop.
+    spawn_intro_needs_redraw = True
 if ENABLE_SPAWN_OVERLAY and hasattr(lgfx, "draw_png_file") and _path_exists(SPAWN_OVERLAY_PATH):
     lgfx.draw_png_file(
         SPAWN_OVERLAY_PATH,
@@ -1401,9 +1425,14 @@ def update_player(loop_start, frame_dt):
     global last_input_active_ms, anim_x_dir, anim_y_dir
     global anim_row, anim_col, anim_last_ms, face_right
     global explore_moved, explore_scrolled, explore_anim_changed
-    global lamp_dialog_until_ms
+    global lamp_dialog_until_ms, explore_force_full_redraw
+    global spawn_intro_active, spawn_intro_cleared_once
 
     input_active = (x_dir != 0) or (y_dir_raw != 0)
+    if spawn_intro_active and input_active:
+        spawn_intro_active = False
+        spawn_intro_cleared_once = True
+        explore_force_full_redraw = True
     if input_active:
         last_input_active_ms = loop_start
         if x_dir != 0:
@@ -1551,6 +1580,52 @@ def _fill_rect_solid(x, y, w, h, color):
     while yy < y_end:
         lgfx.draw_rect(x, yy, w, 1, color)
         yy += 1
+
+
+def _draw_spawn_intro_overlay():
+    cx = player_x - scroll_x
+    cy = player_y - scroll_y
+    view_w = ACTIVE_VIEW_W
+    view_h = ACTIVE_VIEW_H
+    r = SPAWN_SPOTLIGHT_RADIUS
+    if r < 1:
+        r = 1
+    rr = r * r
+
+    top = cy - r
+    bottom = cy + r
+    if top > 0:
+        _fill_rect_solid(0, 0, view_w, top, 0x0000)
+    if bottom < (view_h - 1):
+        y2 = bottom + 1
+        _fill_rect_solid(0, y2, view_w, view_h - y2, 0x0000)
+
+    yy = top if top > 0 else 0
+    y_end = bottom if bottom < (view_h - 1) else (view_h - 1)
+    while yy <= y_end:
+        dy = yy - cy
+        if dy < 0:
+            dy = -dy
+
+        dx = _isqrt(rr - (dy * dy))
+        left = cx - dx
+        right = cx + dx
+
+        if left > 0:
+            lgfx.draw_rect(0, yy, left, 1, 0x0000)
+        if right < (view_w - 1):
+            x2 = right + 1
+            lgfx.draw_rect(x2, yy, view_w - x2, 1, 0x0000)
+        yy += 1
+
+    if spawn_intro_overlay_path and hasattr(lgfx, "draw_png_file"):
+        lgfx.draw_png_file(
+            spawn_intro_overlay_path,
+            cx - (PLAYER_FRAME_W // 2),
+            cy - (PLAYER_FRAME_H // 2),
+            PLAYER_FRAME_W,
+            PLAYER_FRAME_H,
+        )
 
 
 def _lamp_dialog_rect():
@@ -2033,6 +2108,7 @@ def update_battle_fight(loop_start):
 def draw_all(loop_start):
     global prev_player_x, prev_player_y, prev_scroll_x, prev_scroll_y
     global explore_force_full_redraw, explore_overlay_dirty
+    global spawn_intro_needs_redraw
     global battle_prev_heart_x, battle_prev_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
     global battle_bullets_dirty, battle_prev_bullet_positions
@@ -2081,6 +2157,12 @@ def draw_all(loop_start):
             # Dialog just ended; redraw scene next frame to clear overlay remnants.
             explore_force_full_redraw = True
             explore_overlay_dirty = False
+        if spawn_intro_active:
+            if scene_redrawn or dialog_needs_redraw:
+                spawn_intro_needs_redraw = True
+            if spawn_intro_needs_redraw:
+                _draw_spawn_intro_overlay()
+                spawn_intro_needs_redraw = False
         prev_player_x = player_x
         prev_player_y = player_y
         prev_scroll_x = scroll_x
@@ -2161,6 +2243,14 @@ while True:
 
     x_dir = _axis_dir(rx, cx, axis_max, x_dir)
     y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
+
+    # Robust intro-exit gate: clear on stick deflection even before axis dir hysteresis engages.
+    if spawn_intro_active:
+        intro_neutral = axis_max // DEADZONE_DIV
+        if (rx - cx) > intro_neutral or (rx - cx) < -intro_neutral or (ry - cy) > intro_neutral or (ry - cy) < -intro_neutral:
+            spawn_intro_active = False
+            spawn_intro_cleared_once = True
+            explore_force_full_redraw = True
 
     interact_sw_prev, interact_pressed = _read_falling_edge(interact_sw, interact_sw_prev)
     btn_fight_prev, fight_pressed = _read_falling_edge(btn_fight, btn_fight_prev)
