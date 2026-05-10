@@ -442,7 +442,7 @@ MAP2_ASSET_BASE = "/sd/out_map2"
 MAP2_REMOTE_ASSET_BASE = "/remote/assets/out_map2"
 MAP2_ASSET_BASES = (MAP2_LOCAL_ASSET_BASE, MAP2_ASSET_BASE, MAP2_REMOTE_ASSET_BASE)
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
-MAP2_PORTAL_TO_MAP1_RECT_PX = (760, 120, 80, 120)
+MAP2_PORTAL_TO_MAP1_RECT_PX = (160, 320, 64, 96)
 TELEPORT_COOLDOWN_FRAMES = 30
 LAMP_DIALOG_TEXT_W = 214
 LAMP_DIALOG_TEXT_H = 27
@@ -672,6 +672,32 @@ def _collides(nx, ny, r):
     return False
 
 
+def _nearest_walkable(px, py, max_radius=160):
+    # If the requested spawn is already valid, keep it untouched.
+    if not _collides(px, py, PLAYER_R):
+        return px, py
+
+    # Search outward in a diamond ring so the closest valid point is preferred.
+    for r in range(1, max_radius + 1):
+        # top/bottom edges
+        for dx in range(-r, r + 1):
+            for dy in (-r, r):
+                nx = _clamp(px + dx, PLAYER_R, world_w - PLAYER_R - 1)
+                ny = _clamp(py + dy, PLAYER_R, world_h - PLAYER_R - 1)
+                if not _collides(nx, ny, PLAYER_R):
+                    return nx, ny
+        # left/right edges (excluding corners already checked above)
+        for dy in range(-r + 1, r):
+            for dx in (-r, r):
+                nx = _clamp(px + dx, PLAYER_R, world_w - PLAYER_R - 1)
+                ny = _clamp(py + dy, PLAYER_R, world_h - PLAYER_R - 1)
+                if not _collides(nx, ny, PLAYER_R):
+                    return nx, ny
+
+    # Fallback: keep current value even if blocked; caller can still clamp/use it.
+    return px, py
+
+
 def _collision_selftest():
     # Sanity check: at least one blocked tile center must collide.
     for i in range(map_w * map_h):
@@ -687,6 +713,12 @@ def _collision_selftest():
 
 
 _collision_selftest()
+
+# Keep startup robust when map metadata spawn lands inside a blocked tile.
+safe_start_x, safe_start_y = _nearest_walkable(player_x, player_y)
+if safe_start_x != player_x or safe_start_y != player_y:
+    print("startup_spawn_adjusted:", player_x, player_y, "->", safe_start_x, safe_start_y)
+player_x, player_y = safe_start_x, safe_start_y
 
 
 def _load_map_context(base, fallback_all_walkable=False):
@@ -739,7 +771,6 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     if target_map_id == MAP2_ID:
         try:
             next_base, _ = _find_asset_base(MAP2_ASSET_BASES)
-            fallback_all_walkable = True
         except Exception as err:
             print("switch_map_skip_map2:", err)
             teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
@@ -804,6 +835,10 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
 
     player_x = _clamp(spawn_x, PLAYER_R, world_w - PLAYER_R - 1)
     player_y = _clamp(spawn_y, PLAYER_R, world_h - PLAYER_R - 1)
+    safe_x, safe_y = _nearest_walkable(player_x, player_y)
+    if safe_x != player_x or safe_y != player_y:
+        print("spawn_adjusted:", player_x, player_y, "->", safe_x, safe_y)
+    player_x, player_y = safe_x, safe_y
     scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
     scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
     prev_scroll_x = scroll_x
