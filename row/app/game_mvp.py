@@ -499,6 +499,8 @@ LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
 LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
 MAP1_ID = 1
 MAP2_ID = 2
+MAP1_SPAWN_OFFSET_X = 0
+MAP1_SPAWN_OFFSET_Y = -63
 MAP2_LOCAL_ASSET_BASE = "/out_map2"
 MAP2_ASSET_BASE = "/sd/out_map2"
 MAP2_REMOTE_ASSET_BASE = "/remote/assets/out_map2"
@@ -544,6 +546,12 @@ MAP_REGISTRY = {
 
 preload_cache = None
 
+
+def _apply_spawn_offset_for_map(map_id, sx, sy):
+    if map_id == MAP1_ID:
+        return sx + MAP1_SPAWN_OFFSET_X, sy + MAP1_SPAWN_OFFSET_Y
+    return sx, sy
+
 if ENABLE_SD_MOUNT:
     _try_mount_sd()
     _sync_sd_assets_from_remote_if_needed()
@@ -562,6 +570,7 @@ world_h = map_h * tile
 
 spawn_x = meta.get("spawn_x", world_w // 2)
 spawn_y = meta.get("spawn_y", world_h // 2)
+spawn_x, spawn_y = _apply_spawn_offset_for_map(MAP1_ID, spawn_x, spawn_y)
 player_x = spawn_x
 player_y = spawn_y
 
@@ -1027,10 +1036,15 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
 
     fail_stage = "spawn_finalize"
     t0 = time.ticks_ms()
+    used_meta_spawn = False
     if spawn_x is None:
         spawn_x = meta.get("spawn_x", world_w // 2)
+        used_meta_spawn = True
     if spawn_y is None:
         spawn_y = meta.get("spawn_y", world_h // 2)
+        used_meta_spawn = True
+    if used_meta_spawn:
+        spawn_x, spawn_y = _apply_spawn_offset_for_map(target_map_id, spawn_x, spawn_y)
 
     player_x = _clamp(spawn_x, PLAYER_R, world_w - PLAYER_R - 1)
     player_y = _clamp(spawn_y, PLAYER_R, world_h - PLAYER_R - 1)
