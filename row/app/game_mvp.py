@@ -47,6 +47,15 @@ def _find_asset_base(base_list):
     raise RuntimeError("ASSET_MISSING")
 
 
+def _resolve_asset_base(base_list):
+    for base in base_list:
+        if base.startswith("/sd/") and not SD_READY:
+            continue
+        if _path_exists(base + "/map.json"):
+            return base
+    raise RuntimeError("ASSET_MISSING")
+
+
 def _clamp(v, lo, hi):
     if v < lo:
         return lo
@@ -204,7 +213,7 @@ def _validate_tile_files(base, tile, map_w, map_h):
     return None
 
 
-def _load_tiles(meta, base, tile, map_w, map_h):
+def _load_tiles(meta, base, tile, map_w, map_h, prefer_stream=False):
     meta_endian = meta.get("endian", "little")
     if meta_endian not in ("little", "big"):
         raise RuntimeError("TILE_ENDIAN_UNSUPPORTED")
@@ -215,29 +224,7 @@ def _load_tiles(meta, base, tile, map_w, map_h):
 
     tilemap_path = base + "/tilemap.bin"
     tileset_path = base + "/tileset.bin"
-    stream_ok = meta_endian == "little" and hasattr(lgfx, "tile_load_files")
-
-    # Prefer eager in-memory load for stable scrolling (avoids SD stream misses).
-    gc.collect()
-    try:
-        tileset = _read_file(tileset_path)
-        tilemap = _read_file(tilemap_path)
-        if meta_endian == "big":
-            tileset = _swap16(tileset)
-            tilemap = _swap16(tilemap)
-        if lgfx.tile_load(tileset, tilemap):
-            print("tile_loader: memory")
-            return "little"
-        print("tile_loader_memory_fail")
-    except MemoryError:
-        print("tile_loader_memory_oom mem_free:", gc.mem_free())
-
-    # On little-endian assets, fall back to file streaming if RAM load is not possible.
-    if stream_ok:
-        if lgfx.tile_load_files(tileset_path, tilemap_path):
-            print("tile_loader: stream")
-            return "little"
-
+    def _tile_load_error_code():
         code = "TILE_LOAD_FAIL"
         if hasattr(lgfx, "tile_last_error"):
             err = lgfx.tile_last_error()
@@ -255,10 +242,70 @@ def _load_tiles(meta, base, tile, map_w, map_h):
                 code = "TILESET_FORMAT_INVALID"
             elif err == 8:
                 code = "TILE_CACHE_ALLOC_FAIL"
-        raise RuntimeError(code)
+        return code
 
-    # Big-endian assets must be memory-loaded for byte-swap.
-    raise RuntimeError("TILE_OOM")
+    def _can_stream():
+        if meta_endian != "little":
+            return False
+        if not hasattr(lgfx, "tile_load_files"):
+            return False
+        if hasattr(lgfx, "tile_loader_mode"):
+            try:
+                mode = lgfx.tile_loader_mode()
+            except Exception:
+                return False
+            if mode != 2:
+                print("tile_loader_stream_skip_mode:", mode)
+                return False
+        return True
+
+    def _try_stream():
+        if not _can_stream():
+            return False, "STREAM_UNAVAILABLE"
+        if lgfx.tile_load_files(tileset_path, tilemap_path):
+            print("tile_loader: stream")
+            return True, None
+        return False, _tile_load_error_code()
+
+    def _try_memory():
+        gc.collect()
+        try:
+            tileset = _read_file(tileset_path)
+            tilemap = _read_file(tilemap_path)
+            if meta_endian == "big":
+                tileset = _swap16(tileset)
+                tilemap = _swap16(tilemap)
+            if lgfx.tile_load(tileset, tilemap):
+                print("tile_loader: memory")
+                return True, None
+            print("tile_loader_memory_fail")
+            return False, _tile_load_error_code()
+        except MemoryError:
+            print("tile_loader_memory_oom mem_free:", gc.mem_free())
+            return False, "TILE_OOM"
+
+    if prefer_stream:
+        ok, stream_err = _try_stream()
+        if ok:
+            return "little"
+        if stream_err not in ("STREAM_UNAVAILABLE", None):
+            print("tile_loader_stream_fail:", stream_err)
+        print("tile_loader_stream_fallback_memory")
+        ok, mem_err = _try_memory()
+        if ok:
+            return "little"
+        raise RuntimeError(mem_err if mem_err else "TILE_LOAD_FAIL")
+
+    ok, mem_err = _try_memory()
+    if ok:
+        return "little"
+
+    ok, stream_err = _try_stream()
+    if ok:
+        return "little"
+    if stream_err not in ("STREAM_UNAVAILABLE", None):
+        raise RuntimeError(stream_err)
+    raise RuntimeError(mem_err if mem_err else "TILE_OOM")
 
 
 def _isqrt(n):
@@ -443,6 +490,7 @@ MAP2_REMOTE_ASSET_BASE = "/remote/assets/out_map2"
 MAP2_ASSET_BASES = (MAP2_LOCAL_ASSET_BASE, MAP2_ASSET_BASE, MAP2_REMOTE_ASSET_BASE)
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
 MAP2_PORTAL_TO_MAP1_RECT_PX = (160, 320, 64, 96)
+PRELOAD_PORTAL_PAD_PX = 32
 TELEPORT_COOLDOWN_FRAMES = 30
 LAMP_DIALOG_TEXT_W = 214
 LAMP_DIALOG_TEXT_H = 27
@@ -461,6 +509,25 @@ FIGHT_AUTO_RETURN_MS = 7000
 BUILD_TAG = "game_mvp_tune29_heart_sprite_io_tune_20260502"
 
 print("build:", BUILD_TAG)
+
+MAP_REGISTRY = {
+    MAP1_ID: {
+        "asset_bases": ASSET_BASES,
+        "prefer_stream": False,
+        "portals": (
+            {"rect": MAP1_PORTAL_TO_MAP2_RECT_PX, "target_map_id": MAP2_ID},
+        ),
+    },
+    MAP2_ID: {
+        "asset_bases": MAP2_ASSET_BASES,
+        "prefer_stream": True,
+        "portals": (
+            {"rect": MAP2_PORTAL_TO_MAP1_RECT_PX, "target_map_id": MAP1_ID},
+        ),
+    },
+}
+
+preload_cache = None
 
 if ENABLE_SD_MOUNT:
     _try_mount_sd()
@@ -487,6 +554,11 @@ if not DISPLAY_INIT_DONE:
     lgfx.init()
     DISPLAY_INIT_DONE = True
 lgfx.set_rotation(ROTATION)
+if hasattr(lgfx, "tile_loader_mode"):
+    try:
+        print("tile_loader_mode:", lgfx.tile_loader_mode())
+    except Exception as err:
+        print("tile_loader_mode_error:", err)
 meta_endian = meta.get("endian", "little")
 if hasattr(lgfx, "set_swap_bytes"):
     lgfx.set_swap_bytes(meta_endian == "little")
@@ -638,7 +710,7 @@ def _update_battle_layout():
     battle_cmd_w,
 ) = _update_battle_layout()
 
-runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h)
+runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=False)
 if hasattr(lgfx, "set_swap_bytes"):
     lgfx.set_swap_bytes(runtime_endian == "little")
 collision, collision_err = _load_collision(meta, asset_base, map_w, map_h)
@@ -721,12 +793,28 @@ if safe_start_x != player_x or safe_start_y != player_y:
 player_x, player_y = safe_start_x, safe_start_y
 
 
-def _load_map_context(base, fallback_all_walkable=False):
+def _load_map_context(base, fallback_all_walkable=False, prefer_stream=False, preloaded_meta=None, preloaded_collision=None):
     global asset_base, meta, tile, map_w, map_h, world_w, world_h, runtime_endian, collision
 
-    with open(base + "/map.json", "r") as f:
-        new_meta = json.loads(f.read())
-    _validate_meta(new_meta)
+    phase = {
+        "map_json_ms": 0,
+        "tile_setup_ms": 0,
+        "tile_load_ms": 0,
+        "collision_load_ms": 0,
+    }
+
+    t0 = time.ticks_ms()
+    try:
+        if preloaded_meta is None:
+            with open(base + "/map.json", "r") as f:
+                new_meta = json.loads(f.read())
+            _validate_meta(new_meta)
+        else:
+            new_meta = preloaded_meta
+            _validate_meta(new_meta)
+    except Exception as err:
+        raise RuntimeError("map_json:%s" % err)
+    phase["map_json_ms"] = time.ticks_diff(time.ticks_ms(), t0)
 
     asset_base = base
     meta = new_meta
@@ -736,12 +824,34 @@ def _load_map_context(base, fallback_all_walkable=False):
     world_w = map_w * tile
     world_h = map_h * tile
 
-    _tile_setup_with_fallback()
-    runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h)
+    t0 = time.ticks_ms()
+    try:
+        _tile_setup_with_fallback()
+    except Exception as err:
+        raise RuntimeError("tile_setup:%s" % err)
+    phase["tile_setup_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+
+    t0 = time.ticks_ms()
+    try:
+        runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=prefer_stream)
+    except Exception as err:
+        raise RuntimeError("tile_load:%s" % err)
+    phase["tile_load_ms"] = time.ticks_diff(time.ticks_ms(), t0)
     if hasattr(lgfx, "set_swap_bytes"):
         lgfx.set_swap_bytes(runtime_endian == "little")
 
-    collision_data, collision_err = _load_collision(meta, asset_base, map_w, map_h)
+    t0 = time.ticks_ms()
+    try:
+        collision_data = preloaded_collision
+        collision_err = None
+        if collision_data is not None and len(collision_data) != map_w * map_h:
+            raise RuntimeError("PRELOAD_COLLISION_SIZE_MISMATCH")
+        if collision_data is None:
+            collision_data, collision_err = _load_collision(meta, asset_base, map_w, map_h)
+    except Exception as err:
+        raise RuntimeError("collision_load:%s" % err)
+    phase["collision_load_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+
     if fallback_all_walkable or collision_data is None:
         collision = bytearray(map_w * map_h)
         if collision_err:
@@ -757,6 +867,7 @@ def _load_map_context(base, fallback_all_walkable=False):
             raise RuntimeError("COLLISION_EMPTY")
         _collision_selftest()
     print("collision_tiles:", blocked_tiles, "/", map_w * map_h)
+    return phase
 
 
 def switch_map(target_map_id, spawn_x=None, spawn_y=None):
@@ -766,17 +877,35 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
     global explore_force_full_redraw, teleport_cooldown_frames
     global tile, map_w, map_h, world_w, world_h, runtime_endian
+    global preload_cache
 
-    fallback_all_walkable = False
-    if target_map_id == MAP2_ID:
-        try:
-            next_base, _ = _find_asset_base(MAP2_ASSET_BASES)
-        except Exception as err:
-            print("switch_map_skip_map2:", err)
-            teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
-            return False
-    else:
-        next_base, _ = _find_asset_base(ASSET_BASES)
+    phase = {
+        "resolve_base_ms": 0,
+        "map_json_ms": 0,
+        "tile_setup_ms": 0,
+        "tile_load_ms": 0,
+        "collision_load_ms": 0,
+        "spawn_finalize_ms": 0,
+    }
+    fail_stage = None
+    total_start = time.ticks_ms()
+
+    def _print_switch_timings():
+        print("resolve_base_ms:", phase["resolve_base_ms"])
+        print("map_json_ms:", phase["map_json_ms"])
+        print("tile_setup_ms:", phase["tile_setup_ms"])
+        print("tile_load_ms:", phase["tile_load_ms"])
+        print("collision_load_ms:", phase["collision_load_ms"])
+        print("spawn_finalize_ms:", phase["spawn_finalize_ms"])
+        print("switch_map_ms_total:", time.ticks_diff(time.ticks_ms(), total_start))
+
+    config = MAP_REGISTRY.get(target_map_id)
+    if not config:
+        print("switch_map_fail_stage:resolve_base")
+        _print_switch_timings()
+        _release_preload_cache("switch_fail")
+        teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+        return False
 
     prev_collision = collision
     prev_meta = meta
@@ -797,14 +926,64 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     prev_prev_player_y_saved = prev_player_y
     prev_current_map_id = current_map_id
 
+    fallback_all_walkable = False
+    next_base = None
+    next_meta = None
+    preloaded_collision = None
+    prefer_stream = bool(config.get("prefer_stream", False))
+
+    use_preload = (
+        preload_cache is not None
+        and preload_cache.get("source_map_id") == current_map_id
+        and preload_cache.get("target_map_id") == target_map_id
+    )
+    if use_preload:
+        next_base = preload_cache.get("base")
+        next_meta = preload_cache.get("meta")
+        preloaded_collision = preload_cache.get("collision")
+        prefer_stream = bool(preload_cache.get("prefer_stream", prefer_stream))
+        cached_spawn = preload_cache.get("spawn")
+        if spawn_x is None and cached_spawn and len(cached_spawn) >= 2:
+            spawn_x = cached_spawn[0]
+        if spawn_y is None and cached_spawn and len(cached_spawn) >= 2:
+            spawn_y = cached_spawn[1]
+    else:
+        fail_stage = "resolve_base"
+        t0 = time.ticks_ms()
+        try:
+            next_base = _resolve_asset_base(config["asset_bases"])
+        except Exception as err:
+            print("switch_map_skip_target:", target_map_id, err)
+            print("switch_map_fail_stage:resolve_base")
+            phase["resolve_base_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+            _print_switch_timings()
+            _release_preload_cache("switch_fail")
+            teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+            return False
+        phase["resolve_base_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+
     collision = None
     meta = None
     asset_base = None
     gc.collect()
 
     try:
-        _load_map_context(next_base, fallback_all_walkable=fallback_all_walkable)
+        fail_stage = "map_context"
+        load_phase = _load_map_context(
+            next_base,
+            fallback_all_walkable=fallback_all_walkable,
+            prefer_stream=prefer_stream,
+            preloaded_meta=next_meta,
+            preloaded_collision=preloaded_collision,
+        )
+        phase["map_json_ms"] = load_phase["map_json_ms"]
+        phase["tile_setup_ms"] = load_phase["tile_setup_ms"]
+        phase["tile_load_ms"] = load_phase["tile_load_ms"]
+        phase["collision_load_ms"] = load_phase["collision_load_ms"]
     except Exception as err:
+        err_text = str(err)
+        if ":" in err_text:
+            fail_stage = err_text.split(":", 1)[0]
         collision = prev_collision
         meta = prev_meta
         asset_base = prev_asset_base
@@ -824,10 +1003,15 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
         prev_player_y = prev_prev_player_y_saved
         current_map_id = prev_current_map_id
         print("switch_map_restore:", err)
+        print("switch_map_fail_stage:%s" % (fail_stage if fail_stage else "unknown"))
+        _print_switch_timings()
+        _release_preload_cache("switch_fail")
         teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
         gc.collect()
         return False
 
+    fail_stage = "spawn_finalize"
+    t0 = time.ticks_ms()
     if spawn_x is None:
         spawn_x = meta.get("spawn_x", world_w // 2)
     if spawn_y is None:
@@ -851,7 +1035,10 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     lamp_dialog_until_ms = 0
     explore_force_full_redraw = True
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+    phase["spawn_finalize_ms"] = time.ticks_diff(time.ticks_ms(), t0)
     current_map_id = target_map_id
+    _print_switch_timings()
+    _release_preload_cache("switch_success")
     gc.collect()
     return True
 
@@ -875,6 +1062,12 @@ def _adc_read(adc):
 
 def _axis_dir(raw, center, axis_max, prev_dir):
     delta = raw - center
+    neutral = axis_max // DEADZONE_DIV
+    # Midpoint guard: if startup calibration was biased, still allow reliable stop.
+    mid_delta = raw - (axis_max // 2)
+    if -neutral <= delta <= neutral or -neutral <= mid_delta <= neutral:
+        return 0
+
     enter = axis_max // ENTER_DIV
     leave = axis_max // EXIT_DIV
     if prev_dir > 0:
@@ -912,6 +1105,101 @@ def _in_rect(px, py, rect):
     if w <= 0 or h <= 0:
         return False
     return x <= px < (x + w) and y <= py < (y + h)
+
+
+def _expand_rect(rect, pad):
+    x, y, w, h = rect
+    return (x - pad, y - pad, w + (pad * 2), h + (pad * 2))
+
+
+def _release_preload_cache(reason=None):
+    global preload_cache
+    if preload_cache is None:
+        return
+    if reason:
+        print("preload_release:", reason)
+    preload_cache = None
+    gc.collect()
+
+
+def _build_preload_cache(source_map_id, portal):
+    global preload_cache
+
+    started = time.ticks_ms()
+    preload_cache = None
+
+    target_map_id = portal.get("target_map_id")
+    config = MAP_REGISTRY.get(target_map_id)
+    if not config:
+        print("preload_skip_missing_target:", target_map_id)
+        print("preload_ms_total:", time.ticks_diff(time.ticks_ms(), started))
+        return False
+
+    try:
+        next_base, next_meta = _find_asset_base(config["asset_bases"])
+        map_w2 = next_meta["map_w"]
+        map_h2 = next_meta["map_h"]
+        collision_data, collision_err = _load_collision(next_meta, next_base, map_w2, map_h2)
+        if collision_data is None:
+            raise RuntimeError(collision_err if collision_err else "COLLISION_REQUIRED")
+
+        preload_cache = {
+            "source_map_id": source_map_id,
+            "target_map_id": target_map_id,
+            "base": next_base,
+            "meta": next_meta,
+            "collision": collision_data,
+            "prefer_stream": bool(config.get("prefer_stream", False)),
+            "spawn": portal.get("target_spawn"),
+        }
+        print("preload_ready:", source_map_id, "->", target_map_id, "base:", next_base)
+        return True
+    except Exception as err:
+        print("preload_fail:", err)
+        preload_cache = None
+        return False
+    finally:
+        print("preload_ms_total:", time.ticks_diff(time.ticks_ms(), started))
+
+
+def _get_current_portal(px, py):
+    config = MAP_REGISTRY.get(current_map_id)
+    if not config:
+        return None
+    portals = config.get("portals", ())
+    for portal in portals:
+        if _in_rect(px, py, portal["rect"]):
+            return portal
+    return None
+
+
+def _update_preload_for_player(px, py):
+    config = MAP_REGISTRY.get(current_map_id)
+    if not config:
+        _release_preload_cache("invalid_current_map")
+        return
+
+    portals = config.get("portals", ())
+    preload_portal = None
+    for portal in portals:
+        if _in_rect(px, py, _expand_rect(portal["rect"], PRELOAD_PORTAL_PAD_PX)):
+            preload_portal = portal
+            break
+
+    if preload_portal is None:
+        _release_preload_cache("leave_preload_zone")
+        return
+
+    target_map_id = preload_portal.get("target_map_id")
+    if (
+        preload_cache is not None
+        and preload_cache.get("source_map_id") == current_map_id
+        and preload_cache.get("target_map_id") == target_map_id
+    ):
+        return
+
+    _release_preload_cache("retarget_preload")
+    _build_preload_cache(current_map_id, preload_portal)
 
 
 def _scaled_axis_delta(direction, base_step, frame_dt, carry):
@@ -1858,6 +2146,19 @@ while True:
 
     rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
     ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
+    # Slowly retune center while stick is neutral to avoid long-term drift/sticky axis.
+    neutral = axis_max // DEADZONE_DIV
+    if x_dir == 0:
+        dx_center = rx - cx
+        dx_mid = rx - (axis_max // 2)
+        if (-neutral <= dx_center <= neutral) or (-neutral <= dx_mid <= neutral):
+            cx = ((cx * 15) + rx) // 16
+    if y_dir_raw == 0:
+        dy_center = ry - cy
+        dy_mid = ry - (axis_max // 2)
+        if (-neutral <= dy_center <= neutral) or (-neutral <= dy_mid <= neutral):
+            cy = ((cy * 15) + ry) // 16
+
     x_dir = _axis_dir(rx, cx, axis_max, x_dir)
     y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
 
@@ -1870,11 +2171,16 @@ while True:
     if mode == MODE_EXPLORE:
         update_player(loop_start, frame_dt)
 
+        _update_preload_for_player(player_x, player_y)
+
         if teleport_cooldown_frames == 0:
-            if current_map_id == MAP1_ID and _in_rect(player_x, player_y, MAP1_PORTAL_TO_MAP2_RECT_PX):
-                switch_map(MAP2_ID)
-            elif current_map_id == MAP2_ID and _in_rect(player_x, player_y, MAP2_PORTAL_TO_MAP1_RECT_PX):
-                switch_map(MAP1_ID)
+            active_portal = _get_current_portal(player_x, player_y)
+            if active_portal:
+                target_spawn = active_portal.get("target_spawn")
+                if target_spawn and len(target_spawn) >= 2:
+                    switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
+                else:
+                    switch_map(active_portal["target_map_id"])
 
         if mode == MODE_EXPLORE and current_map_id == MAP1_ID:
             leaf_inside = _in_rect(player_x, player_y, LEAF_BATTLE_RECT_PX)
