@@ -494,6 +494,31 @@ ENEMY_SPRITE_H = 72
 ACT_DIALOG_TEXT_PATH = "/act_dialog_text.png"
 MERCY_DIALOG_TEXT_PATH = "/mercy_dialog_text.png"
 LAMP_DIALOG_TEXT_PATH = "/lamp_dialog_text.png"
+ACT_OPT1_PNG = "/act_opt1_text.png"
+ACT_OPT2_PNG = "/act_opt2_text.png"
+ACT_OPT3_PNG = "/act_opt3_text.png"
+ACT_REPLY1_PNG = "/act_reply1_text.png"
+ACT_REPLY2_PNG = "/act_reply2_text.png"
+ACT_REPLY3_PNG = "/act_reply3_text.png"
+MERCY_LOCKED_PNG = "/mercy_locked_text.png"
+ACT_OPTION_PNG_INFOS = (
+    (ACT_OPT1_PNG, 240, 40),
+    (ACT_OPT2_PNG, 224, 40),
+    (ACT_OPT3_PNG, 192, 40),
+)
+ACT_REPLY_PNG_INFOS = (
+    (ACT_REPLY1_PNG, 176, 40),
+    (ACT_REPLY2_PNG, 224, 40),
+    (ACT_REPLY3_PNG, 176, 40),
+)
+MERCY_LOCKED_PNG_INFO = (MERCY_LOCKED_PNG, 192, 40)
+MERCY_SUCCESS_PNG_INFO = (MERCY_DIALOG_TEXT_PATH, 220, 20)
+ACT_REPLY_MS = 1000
+BATTLE_DIALOG_NONE = 0
+BATTLE_DIALOG_ACT_OPTIONS = 1
+BATTLE_DIALOG_ACT_REPLY = 2
+BATTLE_DIALOG_MERCY_LOCKED = 3
+BATTLE_DIALOG_MERCY_EXIT = 4
 LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
 # Expand to cover the full triple-lamp poles and nearby interaction area.
 LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
@@ -1386,7 +1411,16 @@ battle_prev_heart_y = fight_heart_y
 battle_menu_dirty = True
 battle_fight_dirty = True
 battle_dialog_visible = False
-battle_dialog_mode = 0
+battle_dialog_mode = BATTLE_DIALOG_NONE
+battle_dialog_started_ms = 0
+battle_dialog_png_info = None
+act_menu_active = False
+act_choice_index = 0
+act_sequence_step = 0
+act_nav_prev_dir = 0
+menu_frame_x_used = battle_frame_x
+menu_frame_w_used = BATTLE_FRAME_W
+menu_cmd_y_used = battle_cmd_y
 battle_heart_needs_sprite_refresh = False
 fight_return_deadline_ms = 0
 player_hp = PLAYER_HP_MAX
@@ -1714,25 +1748,192 @@ def _draw_explore_lamp_dialog(loop_start):
     return True
 
 
-def _draw_battle_frame():
+def _draw_battle_frame(frame_x=None, frame_y=None, frame_w=None, frame_h=None):
+    if frame_x is None:
+        frame_x = battle_frame_x
+    if frame_y is None:
+        frame_y = battle_frame_y
+    if frame_w is None:
+        frame_w = BATTLE_FRAME_W
+    if frame_h is None:
+        frame_h = BATTLE_FRAME_H
     _draw_rect_thick(
-        battle_frame_x,
-        battle_frame_y,
-        BATTLE_FRAME_W,
-        BATTLE_FRAME_H,
+        frame_x,
+        frame_y,
+        frame_w,
+        frame_h,
         BATTLE_COLOR_WHITE,
         BATTLE_FRAME_BORDER_THICK,
     )
 
 
+def _battle_menu_geometry(frame_w):
+    frame_h = BATTLE_FRAME_H
+    frame_x = (ACTIVE_VIEW_W - frame_w) // 2
+    frame_y = (ACTIVE_VIEW_H - frame_h) // 2
+    if frame_x < 0:
+        frame_x = 0
+    if frame_y < 0:
+        frame_y = 0
+    cmd_w = (frame_w - (BATTLE_CMD_MARGIN_X * 2) - (BATTLE_CMD_GAP * 3)) // 4
+    if cmd_w < 16:
+        cmd_w = 16
+    cmd_x0 = frame_x + BATTLE_CMD_MARGIN_X
+    cmd_y = frame_y + frame_h - BATTLE_CMD_H - 10
+    return frame_x, frame_y, cmd_x0, cmd_y, cmd_w
+
+
+def _draw_png_in_box(png_info, x, y, w, h, preserve_aspect=True, allow_upscale=False):
+    if not hasattr(lgfx, "draw_png_file"):
+        return False
+    if not png_info:
+        return False
+    path, src_w, src_h = png_info
+    if not _path_exists(path):
+        return False
+    if w < 1 or h < 1:
+        return False
+    draw_w = w
+    draw_h = h
+    if preserve_aspect and src_w > 0 and src_h > 0:
+        scale_w = (w << 8) // src_w
+        scale_h = (h << 8) // src_h
+        scale = scale_w if scale_w < scale_h else scale_h
+        if not allow_upscale and scale > 256:
+            scale = 256
+        if scale < 1:
+            scale = 1
+        draw_w = (src_w * scale) >> 8
+        draw_h = (src_h * scale) >> 8
+        if draw_w < 1:
+            draw_w = 1
+        if draw_h < 1:
+            draw_h = 1
+    draw_x = x + ((w - draw_w) // 2)
+    draw_y = y + ((h - draw_h) // 2)
+    try:
+        return bool(lgfx.draw_png_file(path, draw_x, draw_y, draw_w, draw_h))
+    except Exception:
+        return False
+
+
+def _act_slots_for_layout(mode, inner_x, inner_y, inner_w, inner_h):
+    gap = 4
+    if inner_w < 12 or inner_h < 12:
+        return None
+    if mode == 1:
+        left_w = ((inner_w - gap) * 2) // 3
+        right_w = inner_w - left_w - gap
+        slot_h = (inner_h - gap) // 2
+        if left_w < 8 or right_w < 8 or slot_h < 8:
+            return None
+        slot0 = (inner_x, inner_y, left_w, slot_h)
+        slot1 = (inner_x, inner_y + slot_h + gap, left_w, slot_h)
+        right_h = slot_h
+        right_y = inner_y + ((inner_h - right_h) // 2)
+        slot2 = (inner_x + left_w + gap, right_y, right_w, right_h)
+        return (slot0, slot1, slot2)
+    slot_h = (inner_h - (gap * 2)) // 3
+    if slot_h < 8:
+        return None
+    slot0 = (inner_x, inner_y, inner_w, slot_h)
+    slot1 = (inner_x, inner_y + slot_h + gap, inner_w, slot_h)
+    slot2 = (inner_x, inner_y + (slot_h * 2) + (gap * 2), inner_w, slot_h)
+    return (slot0, slot1, slot2)
+
+
+def _act_slots_fit(slots):
+    min_scale_q8 = 72  # 0.28125
+    for i, slot in enumerate(slots):
+        _, src_w, src_h = ACT_OPTION_PNG_INFOS[i]
+        slot_w = slot[2] - 4
+        slot_h = slot[3] - 4
+        if slot_w < 1 or slot_h < 1:
+            return False
+        scale_w = (slot_w << 8) // src_w
+        scale_h = (slot_h << 8) // src_h
+        scale = scale_w if scale_w < scale_h else scale_h
+        if scale < min_scale_q8:
+            return False
+    return True
+
+
+def _resolve_act_dialog_layout():
+    frame_w = BATTLE_FRAME_W
+    max_frame_w = ACTIVE_VIEW_W - 4
+    if max_frame_w < frame_w:
+        max_frame_w = frame_w
+    while True:
+        frame_x, frame_y, cmd_x0, cmd_y, cmd_w = _battle_menu_geometry(frame_w)
+        dialog_x = frame_x + 10
+        dialog_w = frame_w - 20
+        enemy_bottom_est = frame_y + 97
+        dialog_y = enemy_bottom_est + 6
+        dialog_h = cmd_y - dialog_y - 6
+        if dialog_h < 20:
+            dialog_h = 20
+            dialog_y = cmd_y - dialog_h - 6
+        min_dialog_y = frame_y + 8
+        if dialog_y < min_dialog_y:
+            dialog_y = min_dialog_y
+            dialog_h = cmd_y - dialog_y - 6
+        if dialog_h < 20:
+            dialog_h = 20
+        inner_x = dialog_x + 4
+        inner_y = dialog_y + 4
+        inner_w = dialog_w - 8
+        inner_h = dialog_h - 8
+        slots_lr = _act_slots_for_layout(1, inner_x, inner_y, inner_w, inner_h)
+        if slots_lr and _act_slots_fit(slots_lr):
+            return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_lr
+        slots_col = _act_slots_for_layout(2, inner_x, inner_y, inner_w, inner_h)
+        if slots_col and _act_slots_fit(slots_col):
+            return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_col
+        if frame_w >= max_frame_w:
+            fallback_slots = slots_col
+            if fallback_slots is None:
+                fallback_slots = _act_slots_for_layout(2, inner_x, inner_y, inner_w, inner_h)
+            return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, fallback_slots
+        frame_w += 24
+        if frame_w > max_frame_w:
+            frame_w = max_frame_w
+
+
 def _draw_battle_menu_screen(dialog_active):
-    global battle_dialog_mode
+    global menu_frame_x_used, menu_frame_w_used, menu_cmd_y_used
+
+    if act_menu_active:
+        (
+            frame_w,
+            frame_x,
+            frame_y,
+            cmd_x0,
+            cmd_y,
+            cmd_w,
+            dialog_x,
+            dialog_y,
+            dialog_w,
+            dialog_h,
+            act_slots,
+        ) = _resolve_act_dialog_layout()
+    else:
+        frame_w = BATTLE_FRAME_W
+        frame_x, frame_y, cmd_x0, cmd_y, cmd_w = _battle_menu_geometry(frame_w)
+        dialog_x = frame_x + 10
+        dialog_w = frame_w - 20
+        dialog_h = 28
+        dialog_y = frame_y + 94
+        act_slots = None
+
+    menu_frame_x_used = frame_x
+    menu_frame_w_used = frame_w
+    menu_cmd_y_used = cmd_y
 
     lgfx.clear()
-    _draw_battle_frame()
+    _draw_battle_frame(frame_x, frame_y, frame_w, BATTLE_FRAME_H)
 
-    enemy_x = battle_frame_x + ((BATTLE_FRAME_W - ENEMY_SPRITE_W) // 2)
-    enemy_y = battle_frame_y + 16
+    enemy_x = frame_x + ((frame_w - ENEMY_SPRITE_W) // 2)
+    enemy_y = frame_y + 16
     enemy_bottom = enemy_y + ENEMY_SPRITE_H
     enemy_drawn = False
     if hasattr(lgfx, "draw_png_file") and _path_exists(ENEMY_SPRITE_PATH):
@@ -1746,59 +1947,54 @@ def _draw_battle_menu_screen(dialog_active):
             )
         )
     if not enemy_drawn:
-        monster_cx = battle_frame_x + (BATTLE_FRAME_W // 2)
-        monster_cy = battle_frame_y + 75
+        monster_cx = frame_x + (frame_w // 2)
+        monster_cy = frame_y + 75
         lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
         enemy_bottom = monster_cy + 22
 
     for i, label in enumerate(("FIGHT", "ACT", "ITEM", "MERCY")):
-        bx = battle_cmd_x0 + i * (battle_cmd_w + BATTLE_CMD_GAP)
-        by = battle_cmd_y
-        _draw_rect_thick(bx, by, battle_cmd_w, BATTLE_CMD_H, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
-        _draw_text_in_box(bx, by, battle_cmd_w, BATTLE_CMD_H, label)
+        bx = cmd_x0 + i * (cmd_w + BATTLE_CMD_GAP)
+        by = cmd_y
+        _draw_rect_thick(bx, by, cmd_w, BATTLE_CMD_H, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
+        _draw_text_in_box(bx, by, cmd_w, BATTLE_CMD_H, label)
 
-    if dialog_active:
-        dialog_x = battle_frame_x + 10
-        dialog_w = BATTLE_FRAME_W - 20
-        dialog_h = 20
+    if not dialog_active:
+        return
+
+    if not act_menu_active:
         dialog_y = enemy_bottom + 6
-        max_dialog_y = battle_cmd_y - dialog_h - 6
+        max_dialog_y = cmd_y - dialog_h - 6
         if dialog_y > max_dialog_y:
             dialog_y = max_dialog_y
-        _draw_rect_thick(dialog_x, dialog_y, dialog_w, dialog_h, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
-        if battle_dialog_mode == 2:
-            mercy_text_drawn = False
-            if hasattr(lgfx, "draw_png_file") and _path_exists(MERCY_DIALOG_TEXT_PATH):
-                mercy_text_drawn = bool(
-                    lgfx.draw_png_file(
-                        MERCY_DIALOG_TEXT_PATH,
-                        dialog_x + 6,
-                        dialog_y + 3,
-                        dialog_w - 12,
-                        14,
-                    )
-                )
-            if not mercy_text_drawn:
-                if hasattr(lgfx, "draw_text"):
-                    lgfx.draw_text(dialog_x + 8, dialog_y + 10, "MERCY...", BATTLE_COLOR_WHITE)
-                else:
-                    _draw_text_in_box(dialog_x, dialog_y + 6, dialog_w, 8, "MERCY...")
-        else:
-            dialog_text_drawn = False
-            if hasattr(lgfx, "draw_png_file") and _path_exists(ACT_DIALOG_TEXT_PATH):
-                dialog_text_drawn = bool(
-                    lgfx.draw_png_file(
-                        ACT_DIALOG_TEXT_PATH,
-                        dialog_x + 6,
-                        dialog_y + 3,
-                        dialog_w - 12,
-                        14,
-                    )
-                )
-            if not dialog_text_drawn:
-                _draw_text_in_box(dialog_x, dialog_y + 1, dialog_w, 8, "MONSTER LOOKS ANGRY!")
-                if hasattr(lgfx, "draw_text"):
-                    lgfx.draw_text(dialog_x + 8, dialog_y + 10, "ACT: MONSTER IS ANGRY!", BATTLE_COLOR_WHITE)
+
+    _draw_rect_thick(dialog_x, dialog_y, dialog_w, dialog_h, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
+
+    if act_menu_active and act_slots:
+        for i, slot in enumerate(act_slots):
+            border_color = BATTLE_COLOR_RED if i == act_choice_index else BATTLE_COLOR_WHITE
+            _draw_rect_thick(slot[0], slot[1], slot[2], slot[3], border_color, 2)
+            _draw_png_in_box(
+                ACT_OPTION_PNG_INFOS[i],
+                slot[0] + 2,
+                slot[1] + 2,
+                slot[2] - 4,
+                slot[3] - 4,
+                preserve_aspect=True,
+                allow_upscale=False,
+            )
+        return
+
+    # Reply mode: fixed single-line centered render with no text fallback.
+    if battle_dialog_png_info:
+        _draw_png_in_box(
+            battle_dialog_png_info,
+            dialog_x + 4,
+            dialog_y + 2,
+            dialog_w - 8,
+            dialog_h - 4,
+            preserve_aspect=True,
+            allow_upscale=False,
+        )
 
 
 def _draw_battle_fight_background():
@@ -1866,15 +2062,30 @@ def _reset_battle_state():
     battle_prev_heart_y = fight_heart_y
 
 
+def _clear_act_dialog_state(reset_sequence):
+    global act_menu_active, act_choice_index, act_nav_prev_dir, act_sequence_step
+    global battle_dialog_mode, battle_dialog_started_ms, battle_dialog_png_info
+    global act_dialog_until_ms
+
+    act_menu_active = False
+    act_choice_index = 0
+    act_nav_prev_dir = 0
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    battle_dialog_started_ms = 0
+    battle_dialog_png_info = None
+    act_dialog_until_ms = 0
+    if reset_sequence:
+        act_sequence_step = 0
+
+
 def _start_battle_from_explore():
-    global mode, act_dialog_until_ms, battle_dialog_mode, mercy_exit_pending
+    global mode, mercy_exit_pending
     global battle_menu_dirty, battle_dialog_visible
     global explore_moved, explore_scrolled, explore_anim_changed
     global lamp_dialog_until_ms, explore_overlay_dirty
 
     mode = MODE_BATTLE_MENU
-    act_dialog_until_ms = 0
-    battle_dialog_mode = 0
+    _clear_act_dialog_state(True)
     mercy_exit_pending = False
     battle_menu_dirty = True
     battle_dialog_visible = False
@@ -1893,7 +2104,8 @@ def _draw_battle_status_line(in_menu=False):
     text = "%s  HP %2d/%d" % (MONSTER_NAME, player_hp, PLAYER_HP_MAX)
     x = battle_frame_x + 12
     if in_menu:
-        y = _battle_status_y_menu()
+        x = menu_frame_x_used + 12
+        y = menu_cmd_y_used - (8 + BATTLE_STATUS_TO_CMD_GAP)
     else:
         y = _battle_status_y()
     # Simulate a slightly larger/bolder look using 2x2 overdraw.
@@ -2003,8 +2215,7 @@ def _update_bullets_and_collisions(now_ms):
             if player_hp <= 0:
                 mode = MODE_EXPLORE
                 encounter_cooldown_frames = ENCOUNTER_COOLDOWN_FRAMES
-                act_dialog_until_ms = 0
-                battle_dialog_mode = 0
+                _clear_act_dialog_state(True)
                 mercy_exit_pending = False
                 explore_force_full_redraw = True
                 battle_menu_dirty = True
@@ -2034,21 +2245,107 @@ def _draw_bullets():
 
 def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mercy_pressed):
     global mode, encounter_cooldown_frames, act_dialog_until_ms
-    global battle_dialog_mode, mercy_exit_pending
+    global battle_dialog_mode, mercy_exit_pending, battle_dialog_started_ms, battle_dialog_png_info
     global explore_force_full_redraw, fight_heart_x, fight_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_heart_needs_sprite_refresh, fight_return_deadline_ms
+    global act_menu_active, act_choice_index, act_sequence_step, act_nav_prev_dir
 
     dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
     if mercy_exit_pending and not dialog_active:
         mode = MODE_EXPLORE
         encounter_cooldown_frames = ENCOUNTER_COOLDOWN_FRAMES
-        act_dialog_until_ms = 0
-        battle_dialog_mode = 0
+        _clear_act_dialog_state(True)
         mercy_exit_pending = False
         explore_force_full_redraw = True
         battle_menu_dirty = True
         return
     if dialog_active:
+        return
+    if battle_dialog_mode != BATTLE_DIALOG_NONE and not act_menu_active:
+        battle_dialog_mode = BATTLE_DIALOG_NONE
+        battle_dialog_png_info = None
+
+    if act_menu_active:
+        if fight_pressed:
+            act_menu_active = False
+            act_nav_prev_dir = 0
+            battle_dialog_mode = BATTLE_DIALOG_NONE
+            battle_dialog_png_info = None
+            mode = MODE_BATTLE_FIGHT
+            fight_heart_x = battle_heart_init_x
+            fight_heart_y = battle_heart_init_y
+            battle_fight_dirty = True
+            battle_heart_needs_sprite_refresh = False
+            fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
+            battle_menu_dirty = True
+            print("FIGHT")
+            return
+        if item_pressed:
+            act_menu_active = False
+            act_nav_prev_dir = 0
+            battle_dialog_mode = BATTLE_DIALOG_NONE
+            battle_dialog_png_info = None
+            battle_menu_dirty = True
+            print("ITEM")
+            return
+        if mercy_pressed:
+            act_menu_active = False
+            act_nav_prev_dir = 0
+            if act_sequence_step == 3:
+                print("MERCY: success")
+                battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
+                battle_dialog_png_info = MERCY_SUCCESS_PNG_INFO
+                act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
+                battle_dialog_started_ms = loop_start
+                mercy_exit_pending = True
+            else:
+                print("MERCY: locked")
+                battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
+                battle_dialog_png_info = MERCY_LOCKED_PNG_INFO
+                act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+                battle_dialog_started_ms = loop_start
+                mercy_exit_pending = False
+            battle_menu_dirty = True
+            return
+
+        nav_dir = 0
+        if x_dir > 0:
+            nav_dir = 1
+        elif x_dir < 0:
+            nav_dir = -1
+        if nav_dir != 0 and nav_dir != act_nav_prev_dir:
+            if nav_dir > 0:
+                act_choice_index = (act_choice_index + 1) % 3
+            else:
+                act_choice_index = (act_choice_index + 2) % 3
+            battle_menu_dirty = True
+        act_nav_prev_dir = nav_dir
+        if act_pressed:
+            selected = act_choice_index
+            if selected == 0:
+                if act_sequence_step == 0:
+                    act_sequence_step = 1
+                else:
+                    act_sequence_step = 0
+                battle_dialog_png_info = ACT_REPLY_PNG_INFOS[0]
+            elif selected == 1:
+                if act_sequence_step == 1:
+                    act_sequence_step = 2
+                else:
+                    act_sequence_step = 0
+                battle_dialog_png_info = ACT_REPLY_PNG_INFOS[1]
+            else:
+                if act_sequence_step == 2:
+                    act_sequence_step = 3
+                else:
+                    act_sequence_step = 0
+                battle_dialog_png_info = ACT_REPLY_PNG_INFOS[2]
+            act_menu_active = False
+            act_nav_prev_dir = 0
+            battle_dialog_mode = BATTLE_DIALOG_ACT_REPLY
+            battle_dialog_started_ms = loop_start
+            act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+            battle_menu_dirty = True
         return
 
     if fight_pressed:
@@ -2061,9 +2358,11 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         print("FIGHT")
         return
     if act_pressed:
-        print("ACT: 怪物看起來很生氣！")
-        act_dialog_until_ms = time.ticks_add(loop_start, ACT_DIALOG_MS)
-        battle_dialog_mode = 1
+        act_menu_active = True
+        act_choice_index = 0
+        act_nav_prev_dir = 0
+        battle_dialog_mode = BATTLE_DIALOG_ACT_OPTIONS
+        battle_dialog_png_info = None
         mercy_exit_pending = False
         battle_menu_dirty = True
         return
@@ -2071,10 +2370,20 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         print("ITEM")
         return
     if mercy_pressed:
-        print("MERCY: 多麼的無聊!")
-        act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
-        battle_dialog_mode = 2
-        mercy_exit_pending = True
+        if act_sequence_step == 3:
+            print("MERCY: success")
+            battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
+            battle_dialog_png_info = MERCY_SUCCESS_PNG_INFO
+            act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
+            battle_dialog_started_ms = loop_start
+            mercy_exit_pending = True
+        else:
+            print("MERCY: locked")
+            battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
+            battle_dialog_png_info = MERCY_LOCKED_PNG_INFO
+            act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+            battle_dialog_started_ms = loop_start
+            mercy_exit_pending = False
         battle_menu_dirty = True
 
 
@@ -2082,7 +2391,8 @@ def update_battle_fight(loop_start):
     global mode, fight_heart_x, fight_heart_y
     global battle_menu_dirty, battle_dialog_visible, fight_return_deadline_ms
     global battle_fight_dirty, battle_bullets_dirty, battle_status_dirty
-    global battle_dialog_mode, mercy_exit_pending
+    global battle_dialog_mode, mercy_exit_pending, battle_dialog_png_info, act_dialog_until_ms
+    global act_menu_active, act_nav_prev_dir
     global bullets, next_bullet_spawn_ms, damage_invuln_until_ms, battle_prev_bullet_positions
 
     if time.ticks_diff(fight_return_deadline_ms, loop_start) <= 0:
@@ -2095,7 +2405,11 @@ def update_battle_fight(loop_start):
         battle_prev_bullet_positions = []
         battle_bullets_dirty = False
         battle_status_dirty = True
-        battle_dialog_mode = 0
+        battle_dialog_mode = BATTLE_DIALOG_NONE
+        battle_dialog_png_info = None
+        act_dialog_until_ms = 0
+        act_menu_active = False
+        act_nav_prev_dir = 0
         mercy_exit_pending = False
         return
 
@@ -2184,7 +2498,7 @@ def draw_all(loop_start):
         return
 
     if mode == MODE_BATTLE_MENU:
-        dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
+        dialog_active = act_menu_active or (time.ticks_diff(act_dialog_until_ms, loop_start) > 0)
         if battle_menu_dirty or dialog_active != battle_dialog_visible:
             _draw_battle_menu_screen(dialog_active)
             battle_menu_dirty = False
