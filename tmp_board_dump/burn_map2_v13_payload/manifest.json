@@ -1,0 +1,26 @@
+{
+  "map.json": {
+    "size": 227,
+    "sha256": "36b39bb78b9ae026f209e18dd0d4e86a19ad5ac841b5e9de48c020ac28b4f6b8"
+  },
+  "tilemap.bin": {
+    "size": 4560,
+    "sha256": "8d11b676b1d9a658b3a19cef4413394d6e145417ea185e2ac97d6ae66a4e0c87"
+  },
+  "tileset.bin": {
+    "size": 1133056,
+    "sha256": "1b72385d5dd6a79e75809fba66c9b45846f7f2c9a20b6feeb2686b80fae0d2b3"
+  },
+  "collision.bin": {
+    "size": 2280,
+    "sha256": "7c95f5299d7ece0508209839bcdc2e92f5d87dabd53a38b362da0e374c55cae1"
+  },
+  "player_sheet.rgb565": {
+    "size": 15138,
+    "sha256": "7e2baa8d8ff1fdfbbdd1b4ea42a47f3a34c30b2e1beadbd5b943eb1aa3d78d5e"
+  },
+  "spawn_closed_eyes_32x32.rgb565": {
+    "size": 2048,
+    "sha256": "502613fb27eab3e74575cebfeddfd5157fb4153828dd4b390c7fff03c4858ae3"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "generated_at_utc": "2026-05-14T13:35:10.179362+00:00",
+  "rules": {
+    "line_rule": "red line cannot be crossed; outside enclosed area is blocked",
+    "blocked_rule": "red area from second image is blocked after 3x3 opening denoise",
+    "tile_rule": "16x16 tile blocked if any pixel is blocked",
+    "compatibility_height_px": 608
+  },
+  "inputs": [
+    {
+      "role": "line_image",
+      "path": "/workspace/new map2 collision960x600.jpeg",
+      "sha256": "02a28c54e94a4aa173815836904026ec97b574693d4fc56910c7fdedf3b1a4fd",
+      "width": 960,
+      "height": 600
+    },
+    {
+      "role": "blocked_image",
+      "path": "/workspace/collision new960x600_1.jpg",
+      "sha256": "80829b4fb89671285db75fd3f229a80dfd89d30452882c8122b5443fb23e886a",
+      "width": 960,
+      "height": 600
+    },
+    {
+      "role": "preview_base_image",
+      "path": "/workspace/map2 960x600.jpeg",
+      "sha256": "41e3b11152c42e8d77db6b64e90f1dbbe2464ee0ec4bafe15378d321207aadec",
+      "width": 960,
+      "height": 600
+    }
+  ],
+  "verification": {
+    "rule_verify_line_fail": 0,
+    "rule_verify_outside_fail": 0,
+    "rule_verify_blocked_red_fail": 0
+  },
+  "stats": {
+    "line_pixels_dilated": 13826,
+    "blocked_red_pixels_raw": 428422,
+    "blocked_red_pixels_after_open3x3": 424821,
+    "blocked_pixels_final": 429394,
+    "blocked_pixels_total": 576000,
+    "blocked_tiles_final": 1915,
+    "blocked_tiles_total": 2280,
+    "seed_xy": [
+      480,
+      300
+    ],
+    "grid_wh": [
+      60,
+      38
+    ],
+    "tile_size": 16
+  },
+  "outputs": [
+    {
+      "role": "tile_overlay",
+      "path": "/workspace/tmp_board_dump/rebuild_20260514_133508/collision_overlay_tile16_from_two_sources.png",
+      "sha256": "5a134f73fbfaf8bf45a58f029589c73f9a249ca6b73173643867beec13d81fef"
+    }
+  ]
+}

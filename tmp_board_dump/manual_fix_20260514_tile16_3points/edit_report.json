@@ -1,0 +1,39 @@
+{
+  "source_image": "/workspace/tmp_board_dump/collision_overlay_tile16_from_two_images_960x600_fix_door.backup_before_edit.png",
+  "output_collision_bin": "/workspace/tmp_board_dump/manual_fix_20260514_tile16_3points/collision.bin",
+  "output_map_json": "/workspace/tmp_board_dump/manual_fix_20260514_tile16_3points/map.json",
+  "output_preview": "/workspace/tmp_board_dump/manual_fix_20260514_tile16_3points/collision_overlay_tile16_from_two_images_960x600_fix_3points.png",
+  "changed_tile_count": 5,
+  "changed_tiles": [
+    [
+      54,
+      12,
+      1,
+      0
+    ],
+    [
+      28,
+      22,
+      1,
+      0
+    ],
+    [
+      26,
+      24,
+      0,
+      1
+    ],
+    [
+      26,
+      25,
+      0,
+      1
+    ],
+    [
+      26,
+      26,
+      0,
+      1
+    ]
+  ]
+}
