@@ -16,6 +16,8 @@ BOOT_SRC="${BOOT_SRC:-${APP_DIR}/boot.py}"
 SD_HOST_SRC="${SD_HOST_SRC:-${APP_DIR}/sd_host.py}"
 SPAWN_OVERLAY_NAME="${SPAWN_OVERLAY_NAME:-spawn_closed_eyes_32x32.rgb565}"
 SPAWN_OVERLAY_SRC="${SPAWN_OVERLAY_SRC:-${ASSET_DIR}/spawn_closed_eyes_32x32.rgb565}"
+INVENTORY_PORTRAIT_NAME="${INVENTORY_PORTRAIT_NAME:-inventory_portrait.png}"
+INVENTORY_PORTRAIT_SRC="${INVENTORY_PORTRAIT_SRC:-/workspace/inventory_portrait.png}"
 
 # Prefer system mpremote. Fallback to repo-local mpremote module.
 if command -v mpremote >/dev/null 2>&1; then
@@ -98,6 +100,7 @@ copy_one "${SD_HOST_SRC}" "/sd_host.py" "sd_host.py"
 copy_one "${MAIN_SRC}" "/main.py" "main.py"
 copy_one "${GAME_SRC}" "/game_mvp.py" "game_mvp.py"
 copy_one "${SPAWN_OVERLAY_SRC}" "/${SPAWN_OVERLAY_NAME}" "${SPAWN_OVERLAY_NAME}"
+copy_one "${INVENTORY_PORTRAIT_SRC}" "/${INVENTORY_PORTRAIT_NAME}" "${INVENTORY_PORTRAIT_NAME}"
 
 sync_assets_to_sd() {
   local py
