@@ -443,6 +443,7 @@ ENTER_DIV = 4
 EXIT_DIV = 6
 ADC_SAMPLES = 4
 MOVE_STEP = 2
+WOOD_ROOM_MOVE_STEP = 1.4
 MOVE_DT_MAX_SCALE = 4
 MOVE_MAX_PIXELS_PER_FRAME = 4
 SCROLL_STEP = 1
@@ -461,6 +462,7 @@ INSTANT_CAMERA_FOLLOW = True
 FULL_VIEW_SETUP_RETRIES = 20
 ALLOW_VIEW_FALLBACK = True
 PLAYER_ANIM_STEP_MS = 120
+WOOD_PLAYER_ANIM_STEP_MS = 180
 ANIM_IDLE_HOLD_MS = 90
 PLAYER_ANIM_ROW_FRONT = 0
 PLAYER_ANIM_ROW_SIDE = 1
@@ -555,6 +557,7 @@ WOOD_MAIN_ID = 4
 WOOD_UP_ID = 5
 WOOD_RIGHT_ID = 6
 WOOD_LEFT_ID = 7
+WOOD_SLOW_MAP_IDS = (WOOD_MAIN_ID, WOOD_UP_ID, WOOD_RIGHT_ID, WOOD_LEFT_ID)
 MAP1_SPAWN_OFFSET_X = 0
 MAP1_SPAWN_OFFSET_Y = -63
 MAP2_LOCAL_ASSET_BASE = "/out_map2"
@@ -610,11 +613,11 @@ ITEM_REPLY_MS = 1000
 PLAYER_HP_MAX = 20
 PLAYER_NAME = "OTIS"
 PLAYER_LV = 1
-PLAYER_WEAPON = "Stick"
+PLAYER_WEAPON = "None"
 PLAYER_ARMOR = "Bandage"
-PLAYER_AT_BASE = 0
+PLAYER_AT_BASE = 5
 PLAYER_AT_BONUS = 0
-PLAYER_DF_BASE = 0
+PLAYER_DF_BASE = 5
 PLAYER_DF_BONUS = 0
 INVENTORY_CAPACITY = 8
 MONSTER_NAME = "Grim Reaper"
@@ -766,20 +769,163 @@ ITEM_HEAL_TEST = {
     "consumable": True,
 }
 
-inventory_items = [
+WOOD_RIGHT_WEAPON_PICKUP_RADIUS = 18
+GROUND_WEAPON_PICKUP_RADIUS = 10
+GROUND_DROP_MARKER_R = 2
+
+WEAPON_KNIFE = {
+    "id": "weapon_knife",
+    "name": "Knife",
+    "item_type": "weapon",
+    "equip_slot": "weapon",
+    "at_bonus": 1,
+    "df_bonus": 0,
+    "heal_amount": 0,
+    "consumable": False,
+}
+WEAPON_SWORD = {
+    "id": "weapon_sword",
+    "name": "Sword",
+    "item_type": "weapon",
+    "equip_slot": "weapon",
+    "at_bonus": 2,
+    "df_bonus": 0,
+    "heal_amount": 0,
+    "consumable": False,
+}
+WOOD_RIGHT_WEAPON_RACKS = (
     {
-        "id": ITEM_HEAL_TEST["id"],
-        "name": ITEM_HEAL_TEST["name"],
-        "heal_amount": ITEM_HEAL_TEST["heal_amount"],
-        "consumable": ITEM_HEAL_TEST["consumable"],
+        "pickup_id": "wood_right_rack_knife",
+        "map_id": WOOD_RIGHT_ID,
+        "rect": (108, 34, 34, 60),
+        "interact_x": 126,
+        "interact_y": 92,
+        "item": WEAPON_KNIFE,
     },
     {
-        "id": ITEM_HEAL_TEST["id"],
-        "name": ITEM_HEAL_TEST["name"],
-        "heal_amount": ITEM_HEAL_TEST["heal_amount"],
-        "consumable": ITEM_HEAL_TEST["consumable"],
+        "pickup_id": "wood_right_rack_sword",
+        "map_id": WOOD_RIGHT_ID,
+        "rect": (194, 34, 40, 60),
+        "interact_x": 214,
+        "interact_y": 92,
+        "item": WEAPON_SWORD,
     },
-]
+)
+rack_pickup_taken = {
+    "wood_right_rack_knife": False,
+    "wood_right_rack_sword": False,
+}
+ground_weapon_drops = []
+ground_weapon_drop_seq = 0
+equipped_weapon_item_id = None
+equipped_armor_item_id = None
+
+inventory_items = []
+
+
+def _is_weapon_item(item):
+    if not item:
+        return False
+    return item.get("item_type") == "weapon" or item.get("equip_slot") == "weapon"
+
+
+def _sync_equipment_state_from_inventory():
+    global equipped_weapon_item_id, equipped_armor_item_id
+    global PLAYER_WEAPON, PLAYER_ARMOR, PLAYER_AT_BONUS, PLAYER_DF_BONUS
+
+    weapon_item = None
+    armor_item = None
+    for item in inventory_items:
+        if weapon_item is None and item.get("id") == equipped_weapon_item_id:
+            weapon_item = item
+        if armor_item is None and item.get("id") == equipped_armor_item_id:
+            armor_item = item
+        if weapon_item and armor_item:
+            break
+
+    if weapon_item:
+        PLAYER_WEAPON = weapon_item.get("name", "None")
+        PLAYER_AT_BONUS = int(weapon_item.get("at_bonus", 0))
+    else:
+        equipped_weapon_item_id = None
+        PLAYER_WEAPON = "None"
+        PLAYER_AT_BONUS = 0
+
+    if armor_item:
+        PLAYER_ARMOR = armor_item.get("name", "None")
+        PLAYER_DF_BONUS = int(armor_item.get("df_bonus", 0))
+    else:
+        equipped_armor_item_id = None
+        PLAYER_DF_BONUS = 0
+
+
+def _spawn_ground_drop_from_item(item, drop_map_id, px, py):
+    global ground_weapon_drop_seq
+    if not item:
+        return False
+    if not _is_weapon_item(item):
+        return False
+    # Randomly scatter drop around player feet instead of fixed side offset.
+    safe_x = px
+    safe_y = py
+    found = False
+    for _ in range(10):
+        dx = _rand_range(-18, 18)
+        dy = _rand_range(-10, 12)
+        if -3 <= dx <= 3 and -3 <= dy <= 3:
+            continue
+        drop_x = _clamp(px + dx, PLAYER_R, world_w - PLAYER_R - 1)
+        drop_y = _clamp(py + dy, PLAYER_R, world_h - PLAYER_R - 1)
+        cand_x, cand_y = _nearest_walkable(drop_x, drop_y, max_radius=14)
+        if not _collides(cand_x, cand_y, PLAYER_R):
+            safe_x, safe_y = cand_x, cand_y
+            found = True
+            break
+    if not found:
+        fallback_x = _clamp(px + (14 if face_right else -14), PLAYER_R, world_w - PLAYER_R - 1)
+        fallback_y = _clamp(py + 4, PLAYER_R, world_h - PLAYER_R - 1)
+        safe_x, safe_y = _nearest_walkable(fallback_x, fallback_y, max_radius=20)
+    drop = _inventory_clone_item(item)
+    if not drop:
+        return False
+    ground_weapon_drop_seq += 1
+    drop["drop_uid"] = "ground_drop_%d" % ground_weapon_drop_seq
+    ground_weapon_drops.append(
+        {
+            "id": drop["drop_uid"],
+            "map_id": drop_map_id,
+            "x": safe_x,
+            "y": safe_y,
+            "item": drop,
+        }
+    )
+    return True
+
+
+def _drop_inventory_item_at(index):
+    item = inventory_remove_at(index)
+    if not item:
+        return False
+    if _is_weapon_item(item):
+        _spawn_ground_drop_from_item(item, current_map_id, player_x, player_y)
+    _sync_equipment_state_from_inventory()
+    return True
+
+
+def _equip_inventory_item(item):
+    global equipped_weapon_item_id, equipped_armor_item_id
+    if not item:
+        return False
+    slot = item.get("equip_slot")
+    if slot == "weapon":
+        equipped_weapon_item_id = item.get("id")
+        _sync_equipment_state_from_inventory()
+        return True
+    if slot == "armor":
+        equipped_armor_item_id = item.get("id")
+        _sync_equipment_state_from_inventory()
+        return True
+    return False
 
 
 def _inventory_clone_item(item):
@@ -788,6 +934,11 @@ def _inventory_clone_item(item):
     return {
         "id": item.get("id", "item"),
         "name": item.get("name", "Item"),
+        "item_type": item.get("item_type", "consumable"),
+        "equip_slot": item.get("equip_slot", "none"),
+        "at_bonus": int(item.get("at_bonus", 0)),
+        "df_bonus": int(item.get("df_bonus", 0)),
+        "origin_pickup_id": item.get("origin_pickup_id"),
         "heal_amount": int(item.get("heal_amount", 0)),
         "consumable": bool(item.get("consumable", True)),
     }
@@ -810,7 +961,9 @@ def inventory_try_add(item):
 def inventory_remove_at(index):
     if index < 0 or index >= len(inventory_items):
         return None
-    return inventory_items.pop(index)
+    item = inventory_items.pop(index)
+    _sync_equipment_state_from_inventory()
+    return item
 
 
 def inventory_clamp_index(index):
@@ -1539,6 +1692,16 @@ def _update_preload_for_player(px, py):
     _build_preload_cache(current_map_id, preload_portal)
 
 
+def _get_move_step_for_map(map_id):
+    if map_id in WOOD_SLOW_MAP_IDS:
+        return WOOD_ROOM_MOVE_STEP
+    return MOVE_STEP
+
+
+def _is_wood_map(map_id):
+    return map_id in WOOD_SLOW_MAP_IDS
+
+
 def _scaled_axis_delta(direction, base_step, frame_dt, carry):
     if direction == 0:
         return 0, 0
@@ -1554,6 +1717,7 @@ def _scaled_axis_delta(direction, base_step, frame_dt, carry):
         delta = budget // base_ms
     else:
         delta = -((-budget) // base_ms)
+    delta = int(delta)
     carry = budget - delta * base_ms
 
     if delta > MOVE_MAX_PIXELS_PER_FRAME:
@@ -1750,13 +1914,23 @@ inv_choice_index = 0
 inv_nav_prev_dir = 0
 inv_drop_active = False
 inv_drop_choice_index = 0
+inv_drop_choice_count = 2
 inv_drop_nav_prev_dir = 0
 inv_screen_dirty = True
 INV_TAB_ITEM = 0
 INV_TAB_STAT = 1
+INV_FOCUS_LEFT = 0
+INV_FOCUS_RIGHT = 1
 inv_tab_index = INV_TAB_ITEM
 inv_tab_active = INV_TAB_ITEM
 inv_tab_nav_prev_dir = 0
+inv_focus_side = INV_FOCUS_LEFT
+inv_focus_nav_prev_dir = 0
+weapon_pickup_dialog_active = False
+weapon_pickup_choice_index = 0
+weapon_pickup_nav_prev_dir = 0
+weapon_pickup_target = None
+weapon_pickup_dialog_dirty = False
 spawn_intro_cleared_once = False
 spawn_intro_active = bool(ENABLE_SPAWN_INTRO and (current_map_id == MAP1_ID))
 spawn_intro_overlay_path = _resolve_first_existing_path(SPAWN_OVERLAY_PATHS) if spawn_intro_active else None
@@ -1812,8 +1986,9 @@ def update_player(loop_start, frame_dt):
     prev_input_x = x_dir
     prev_input_y = y_dir_raw
 
-    dx, move_carry_x = _scaled_axis_delta(x_dir, MOVE_STEP, frame_dt, move_carry_x)
-    dy_raw, move_carry_y = _scaled_axis_delta(y_dir_raw, MOVE_STEP, frame_dt, move_carry_y)
+    move_step = _get_move_step_for_map(current_map_id)
+    dx, move_carry_x = _scaled_axis_delta(x_dir, move_step, frame_dt, move_carry_x)
+    dy_raw, move_carry_y = _scaled_axis_delta(y_dir_raw, move_step, frame_dt, move_carry_y)
 
     # Typical joystick Y axis grows downward when pushed down.
     dy = -dy_raw
@@ -1892,8 +2067,11 @@ def update_player(loop_start, frame_dt):
             anim_row = PLAYER_ANIM_ROW_SIDE
 
         if anim_active:
+            anim_step_ms = PLAYER_ANIM_STEP_MS
+            if _is_wood_map(current_map_id):
+                anim_step_ms = WOOD_PLAYER_ANIM_STEP_MS
             now_ms = time.ticks_ms()
-            if time.ticks_diff(now_ms, anim_last_ms) >= PLAYER_ANIM_STEP_MS:
+            if time.ticks_diff(now_ms, anim_last_ms) >= anim_step_ms:
                 anim_last_ms = now_ms
                 anim_col = (anim_col + 1) % 3
         else:
@@ -1954,35 +2132,51 @@ def _menu_nav_dir_vertical():
     return 0
 
 
+def _menu_nav_dir_horizontal():
+    if x_dir > 0:
+        return 1
+    if x_dir < 0:
+        return -1
+    return 0
+
+
 def _open_explore_inventory():
     global mode, inv_choice_index, inv_nav_prev_dir
-    global inv_drop_active, inv_drop_choice_index, inv_drop_nav_prev_dir, inv_screen_dirty
+    global inv_drop_active, inv_drop_choice_index, inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty
     global inv_tab_index, inv_tab_active, inv_tab_nav_prev_dir
+    global inv_focus_side, inv_focus_nav_prev_dir
 
     mode = MODE_EXPLORE_INVENTORY
     inv_choice_index = inventory_clamp_index(inv_choice_index)
     inv_nav_prev_dir = 0
     inv_drop_active = False
     inv_drop_choice_index = 0
+    inv_drop_choice_count = 2
     inv_drop_nav_prev_dir = 0
     inv_tab_index = INV_TAB_ITEM
     inv_tab_active = INV_TAB_ITEM
     inv_tab_nav_prev_dir = 0
+    inv_focus_side = INV_FOCUS_LEFT
+    inv_focus_nav_prev_dir = 0
     inv_screen_dirty = True
 
 
 def _close_explore_inventory():
     global mode, explore_force_full_redraw
-    global inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index, inv_drop_nav_prev_dir, inv_screen_dirty
+    global inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index, inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty
     global inv_tab_nav_prev_dir
+    global inv_focus_side, inv_focus_nav_prev_dir
 
     mode = MODE_EXPLORE
     explore_force_full_redraw = True
     inv_nav_prev_dir = 0
     inv_drop_active = False
     inv_drop_choice_index = 0
+    inv_drop_choice_count = 2
     inv_drop_nav_prev_dir = 0
     inv_tab_nav_prev_dir = 0
+    inv_focus_side = INV_FOCUS_LEFT
+    inv_focus_nav_prev_dir = 0
     inv_screen_dirty = True
 
 
@@ -2064,7 +2258,7 @@ def _draw_explore_inventory_screen():
                 if i >= len(inventory_items):
                     break
                 row_item = inventory_items[i]
-                if i == inv_choice_index and not inv_drop_active:
+                if i == inv_choice_index and ((inv_focus_side == INV_FOCUS_RIGHT) or inv_drop_active):
                     line_h = panel_border
                     if line_h > row_h:
                         line_h = row_h
@@ -2090,23 +2284,33 @@ def _draw_explore_inventory_screen():
         return
 
     menu_w = 84
-    menu_h = 52
+    menu_h = 66 if inv_drop_choice_count > 2 else 52
     menu_x = right_x + (right_w - menu_w) // 2
     menu_y = right_y + (right_h - menu_h) // 2
     _fill_rect_solid(menu_x, menu_y, menu_w, menu_h, 0x0000)
     _draw_rect_thick(menu_x, menu_y, menu_w, menu_h, BATTLE_COLOR_WHITE, panel_border)
-    keep_color = BATTLE_COLOR_RED if inv_drop_choice_index == 0 else BATTLE_COLOR_WHITE
-    drop_color = BATTLE_COLOR_RED if inv_drop_choice_index == 1 else BATTLE_COLOR_WHITE
-    _draw_text_in_box(menu_x + 4, menu_y + 8, menu_w - 8, 16, "KEEP", keep_color)
-    _draw_text_in_box(menu_x + 4, menu_y + 28, menu_w - 8, 16, "DROP", drop_color)
+    selected_item = None
+    if inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
+        selected_item = inventory_items[inv_choice_index]
+    if _is_weapon_item(selected_item):
+        labels = ("EQUIP", "DROP", "KEEP")
+    else:
+        labels = ("KEEP", "DROP")
+    row_h = 20
+    base_y = menu_y + 6
+    for i, label in enumerate(labels):
+        text_color = BATTLE_COLOR_RED if inv_drop_choice_index == i else BATTLE_COLOR_WHITE
+        _draw_text_in_box(menu_x + 4, base_y + (i * row_h), menu_w - 8, 16, label, text_color)
 
 
 def update_explore_inventory(loop_start, item_pressed, interact_pressed):
     del loop_start
     global inv_choice_index, inv_nav_prev_dir
     global inv_drop_active, inv_drop_choice_index, inv_drop_nav_prev_dir
+    global inv_drop_choice_count
     global inv_screen_dirty
     global inv_tab_index, inv_tab_active, inv_tab_nav_prev_dir
+    global inv_focus_side, inv_focus_nav_prev_dir
 
     if item_pressed:
         _close_explore_inventory()
@@ -2115,50 +2319,101 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
     if inv_drop_active:
         nav_dir = _menu_nav_dir_vertical()
         if nav_dir != 0 and nav_dir != inv_drop_nav_prev_dir:
-            # KEEP/DROP uses two choices; always toggle on a valid up/down edge
-            # so pressing up from KEEP can move to DROP (and vice versa).
-            inv_drop_choice_index = (inv_drop_choice_index + 1) % 2
+            if inv_drop_choice_count < 2:
+                inv_drop_choice_count = 2
+            inv_drop_choice_index = (inv_drop_choice_index + 1) % inv_drop_choice_count
             inv_screen_dirty = True
         inv_drop_nav_prev_dir = nav_dir
         if not interact_pressed:
             return
-        if inv_drop_choice_index == 1:
-            inventory_remove_at(inv_choice_index)
+        if inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
+            selected_item = inventory_items[inv_choice_index]
+            if _is_weapon_item(selected_item):
+                if inv_drop_choice_index == 0:
+                    _equip_inventory_item(selected_item)
+                elif inv_drop_choice_index == 1:
+                    _drop_inventory_item_at(inv_choice_index)
+            else:
+                if inv_drop_choice_index == 1:
+                    _drop_inventory_item_at(inv_choice_index)
             inv_choice_index = inventory_clamp_index(inv_choice_index)
         inv_drop_active = False
         inv_drop_choice_index = 0
+        inv_drop_choice_count = 2
         inv_drop_nav_prev_dir = 0
         inv_screen_dirty = True
         return
 
-    nav_dir = _menu_nav_dir_vertical()
-    if nav_dir != 0 and nav_dir != inv_tab_nav_prev_dir:
-        inv_tab_index = (inv_tab_index + 1) % 2
-        inv_screen_dirty = True
-    inv_tab_nav_prev_dir = nav_dir
+    focus_dir = _menu_nav_dir_horizontal()
+    if inv_tab_active == INV_TAB_STAT:
+        if inv_focus_side != INV_FOCUS_LEFT:
+            inv_focus_side = INV_FOCUS_LEFT
+            inv_screen_dirty = True
+        inv_focus_nav_prev_dir = 0
+    else:
+        if focus_dir != 0 and focus_dir != inv_focus_nav_prev_dir:
+            if focus_dir > 0:
+                if inv_focus_side != INV_FOCUS_RIGHT:
+                    inv_focus_side = INV_FOCUS_RIGHT
+                    inv_screen_dirty = True
+            else:
+                if inv_focus_side != INV_FOCUS_LEFT:
+                    inv_focus_side = INV_FOCUS_LEFT
+                    inv_screen_dirty = True
+        inv_focus_nav_prev_dir = focus_dir
 
     if inventory_is_empty():
         inv_choice_index = 0
 
-    if interact_pressed:
-        if inv_tab_active != inv_tab_index:
-            inv_tab_active = inv_tab_index
-            inv_drop_active = False
-            inv_drop_choice_index = 0
-            inv_drop_nav_prev_dir = 0
+    nav_dir = _menu_nav_dir_vertical()
+    if inv_focus_side == INV_FOCUS_LEFT:
+        if nav_dir != 0 and nav_dir != inv_tab_nav_prev_dir:
+            inv_tab_index = (inv_tab_index + 1) % 2
+            if inv_tab_active != inv_tab_index:
+                inv_tab_active = inv_tab_index
+                inv_drop_active = False
+                inv_drop_choice_index = 0
+                inv_drop_choice_count = 2
+                inv_drop_nav_prev_dir = 0
+                if inv_tab_active == INV_TAB_STAT:
+                    inv_focus_side = INV_FOCUS_LEFT
+                inv_screen_dirty = True
+        inv_tab_nav_prev_dir = nav_dir
+        inv_nav_prev_dir = 0
+    else:
+        inv_tab_nav_prev_dir = 0
+        if inv_tab_active == INV_TAB_ITEM:
+            if nav_dir != 0 and nav_dir != inv_nav_prev_dir and not inventory_is_empty():
+                count = len(inventory_items)
+                if nav_dir > 0:
+                    inv_choice_index = (inv_choice_index + 1) % count
+                else:
+                    inv_choice_index = (inv_choice_index - 1 + count) % count
+                inv_screen_dirty = True
+            inv_nav_prev_dir = nav_dir
+        else:
             inv_nav_prev_dir = 0
-            inv_screen_dirty = True
+
+    if interact_pressed:
+        if inv_focus_side == INV_FOCUS_LEFT:
             return
         if inv_tab_active == INV_TAB_STAT:
             return
         if not inventory_is_empty():
+            selected_item = inventory_items[inv_choice_index] if inv_choice_index < len(inventory_items) else None
             inv_drop_active = True
-            inv_drop_choice_index = 0
+            if _is_weapon_item(selected_item):
+                inv_drop_choice_count = 3
+                inv_drop_choice_index = 2  # KEEP
+            else:
+                inv_drop_choice_count = 2
+                inv_drop_choice_index = 0
             inv_drop_nav_prev_dir = 0
             inv_screen_dirty = True
         return
 
-    inv_nav_prev_dir = 0
+    if inv_focus_side == INV_FOCUS_LEFT:
+        inv_nav_prev_dir = 0
 
 
 def _draw_spawn_intro_overlay():
@@ -2228,6 +2483,187 @@ def _rects_intersect(ax, ay, aw, ah, bx, by, bw, bh):
         or (ay + ah) <= by
         or (by + bh) <= ay
     )
+
+
+def _player_touches_rect(rect, pad=0):
+    rx, ry, rw, rh = rect
+    if rw <= 0 or rh <= 0:
+        return False
+    pr = PLAYER_R + pad
+    px = player_x - pr
+    py = player_y - pr
+    pw = pr * 2 + 1
+    ph = pr * 2 + 1
+    return _rects_intersect(px, py, pw, ph, rx, ry, rw, rh)
+
+
+def _find_nearby_ground_weapon_drop():
+    radius2 = GROUND_WEAPON_PICKUP_RADIUS * GROUND_WEAPON_PICKUP_RADIUS
+    for i, drop in enumerate(ground_weapon_drops):
+        if drop.get("map_id") != current_map_id:
+            continue
+        dx = int(drop.get("x", 0)) - player_x
+        dy = int(drop.get("y", 0)) - player_y
+        if (dx * dx) + (dy * dy) <= radius2:
+            return i
+    return -1
+
+
+def _find_wood_right_rack_pickup():
+    if current_map_id != WOOD_RIGHT_ID:
+        return None
+    best_rack = None
+    best_d2 = 0
+    radius2 = WOOD_RIGHT_WEAPON_PICKUP_RADIUS * WOOD_RIGHT_WEAPON_PICKUP_RADIUS
+    for rack in WOOD_RIGHT_WEAPON_RACKS:
+        pickup_id = rack.get("pickup_id")
+        if rack_pickup_taken.get(pickup_id):
+            continue
+        rx = int(rack.get("interact_x", 0))
+        ry = int(rack.get("interact_y", 0))
+        if rx > 0 or ry > 0:
+            dx = rx - player_x
+            dy = ry - player_y
+            d2 = (dx * dx) + (dy * dy)
+            if d2 <= radius2:
+                if (best_rack is None) or (d2 < best_d2):
+                    best_rack = rack
+                    best_d2 = d2
+        rack_rect = rack.get("rect", (0, 0, 0, 0))
+        if _player_touches_rect(rack_rect, 2) or _in_rect(player_x, player_y, rack_rect):
+            return rack
+    return best_rack
+
+
+def _try_open_weapon_pickup_dialog():
+    global weapon_pickup_dialog_active, weapon_pickup_choice_index
+    global weapon_pickup_nav_prev_dir, weapon_pickup_target
+    global weapon_pickup_dialog_dirty
+
+    ground_index = _find_nearby_ground_weapon_drop()
+    if ground_index >= 0 and ground_index < len(ground_weapon_drops):
+        drop = ground_weapon_drops[ground_index]
+        item = drop.get("item")
+        if item:
+            weapon_pickup_target = {
+                "source": "ground",
+                "drop_id": drop.get("id"),
+                "item": item,
+            }
+            weapon_pickup_dialog_active = True
+            weapon_pickup_choice_index = 0
+            weapon_pickup_nav_prev_dir = 0
+            weapon_pickup_dialog_dirty = True
+            return True
+
+    rack = _find_wood_right_rack_pickup()
+    if rack:
+        base_item = rack.get("item")
+        item = _inventory_clone_item(base_item) if base_item else None
+        if item:
+            item["origin_pickup_id"] = rack.get("pickup_id")
+            weapon_pickup_target = {
+                "source": "rack",
+                "pickup_id": rack.get("pickup_id"),
+                "item": item,
+            }
+            weapon_pickup_dialog_active = True
+            weapon_pickup_choice_index = 0
+            weapon_pickup_nav_prev_dir = 0
+            weapon_pickup_dialog_dirty = True
+            return True
+    return False
+
+
+def _resolve_weapon_pickup_confirm():
+    global weapon_pickup_dialog_active, weapon_pickup_choice_index
+    global weapon_pickup_nav_prev_dir, weapon_pickup_target
+    global explore_force_full_redraw, weapon_pickup_dialog_dirty
+
+    target = weapon_pickup_target
+    if weapon_pickup_choice_index != 0 or not target:
+        weapon_pickup_dialog_active = False
+        weapon_pickup_choice_index = 0
+        weapon_pickup_nav_prev_dir = 0
+        weapon_pickup_target = None
+        weapon_pickup_dialog_dirty = False
+        explore_force_full_redraw = True
+        return
+
+    if inventory_try_add(target.get("item")):
+        source = target.get("source")
+        if source == "rack":
+            pickup_id = target.get("pickup_id")
+            if pickup_id:
+                rack_pickup_taken[pickup_id] = True
+        elif source == "ground":
+            drop_id = target.get("drop_id")
+            if drop_id:
+                for i in range(len(ground_weapon_drops) - 1, -1, -1):
+                    if ground_weapon_drops[i].get("id") == drop_id:
+                        ground_weapon_drops.pop(i)
+                        break
+
+    weapon_pickup_dialog_active = False
+    weapon_pickup_choice_index = 0
+    weapon_pickup_nav_prev_dir = 0
+    weapon_pickup_target = None
+    weapon_pickup_dialog_dirty = False
+    explore_force_full_redraw = True
+
+
+def update_weapon_pickup_dialog(interact_pressed):
+    global weapon_pickup_choice_index, weapon_pickup_nav_prev_dir, weapon_pickup_dialog_dirty
+    if not weapon_pickup_dialog_active:
+        return
+    nav_dir = _menu_nav_dir_horizontal()
+    if nav_dir != 0 and nav_dir != weapon_pickup_nav_prev_dir:
+        weapon_pickup_choice_index = 1 - weapon_pickup_choice_index
+        weapon_pickup_dialog_dirty = True
+    weapon_pickup_nav_prev_dir = nav_dir
+    if interact_pressed:
+        _resolve_weapon_pickup_confirm()
+
+
+def _draw_ground_weapon_drops():
+    for drop in ground_weapon_drops:
+        if drop.get("map_id") != current_map_id:
+            continue
+        sx = int(drop.get("x", 0)) - scroll_x
+        sy = int(drop.get("y", 0)) - scroll_y
+        if sx < 0 or sy < 0 or sx >= ACTIVE_VIEW_W or sy >= ACTIVE_VIEW_H:
+            continue
+        lgfx.draw_circle(sx, sy, GROUND_DROP_MARKER_R, BATTLE_COLOR_WHITE)
+
+
+def _draw_weapon_pickup_dialog():
+    if not weapon_pickup_dialog_active:
+        return
+    target = weapon_pickup_target if weapon_pickup_target else {}
+    item = target.get("item", {})
+    item_name = item.get("name", "Weapon")
+    dialog_w = 280
+    if dialog_w > ACTIVE_VIEW_W - 8:
+        dialog_w = ACTIVE_VIEW_W - 8
+    dialog_h = 54
+    dialog_x = (ACTIVE_VIEW_W - dialog_w) // 2
+    dialog_y = ACTIVE_VIEW_H - dialog_h - 8
+    if dialog_y < 4:
+        dialog_y = 4
+
+    _fill_rect_solid(dialog_x, dialog_y, dialog_w, dialog_h, 0x0000)
+    _draw_rect_thick(dialog_x, dialog_y, dialog_w, dialog_h, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
+    _draw_text_in_box(dialog_x + 8, dialog_y + 8, dialog_w - 16, 16, "Pick up %s?" % item_name, BATTLE_COLOR_WHITE)
+
+    yes_text = ">YES" if weapon_pickup_choice_index == 0 else " YES"
+    no_text = ">NO" if weapon_pickup_choice_index == 1 else " NO"
+    yes_w = 40
+    no_w = 32
+    no_x = dialog_x + dialog_w - no_w - 12
+    yes_x = no_x - yes_w - 8
+    options_y = dialog_y + dialog_h - 20
+    _draw_text_in_box(yes_x, options_y, yes_w, 12, yes_text, BATTLE_COLOR_WHITE)
+    _draw_text_in_box(no_x, options_y, no_w, 12, no_text, BATTLE_COLOR_WHITE)
 
 
 def _draw_explore_lamp_dialog(loop_start):
@@ -2629,6 +3065,14 @@ def _reset_item_menu_state():
 
 def _use_battle_item_at(index):
     global player_hp, battle_status_dirty
+
+    if index < 0 or index >= len(inventory_items):
+        return "No items"
+    item = inventory_items[index]
+    if not item:
+        return "No items"
+    if _is_weapon_item(item):
+        return "%s cannot be used" % item.get("name", "Weapon")
 
     item = inventory_remove_at(index)
     if not item:
@@ -3604,6 +4048,7 @@ def draw_all(loop_start):
     global act_selection_dirty, act_prev_selected_index
     global item_selection_dirty
     global inv_screen_dirty
+    global weapon_pickup_dialog_active, weapon_pickup_dialog_dirty
 
     if mode == MODE_EXPLORE:
         scene_redrawn = False
@@ -3654,6 +4099,11 @@ def draw_all(loop_start):
             if spawn_intro_needs_redraw:
                 _draw_spawn_intro_overlay()
                 spawn_intro_needs_redraw = False
+        _draw_ground_weapon_drops()
+        if weapon_pickup_dialog_active:
+            if weapon_pickup_dialog_dirty or scene_redrawn or player_redrawn:
+                _draw_weapon_pickup_dialog()
+                weapon_pickup_dialog_dirty = False
         prev_player_x = player_x
         prev_player_y = player_y
         prev_scroll_x = scroll_x
@@ -3764,37 +4214,46 @@ while True:
     btn_mercy_prev, mercy_pressed = _read_falling_edge(btn_mercy, btn_mercy_prev)
 
     if mode == MODE_EXPLORE:
-        update_player(loop_start, frame_dt)
+        if weapon_pickup_dialog_active:
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+            update_weapon_pickup_dialog(interact_pressed)
+        else:
+            update_player(loop_start, frame_dt)
 
-        if mode == MODE_EXPLORE and item_pressed:
-            _open_explore_inventory()
+            if mode == MODE_EXPLORE and item_pressed:
+                _open_explore_inventory()
 
-        if mode == MODE_EXPLORE:
-            _update_preload_for_player(player_x, player_y)
+            if mode == MODE_EXPLORE:
+                _update_preload_for_player(player_x, player_y)
 
-            if teleport_cooldown_frames == 0:
-                move_dx = player_x - prev_player_x
-                move_dy = player_y - prev_player_y
-                active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
-                if active_portal:
-                    target_spawn = active_portal.get("target_spawn")
-                    if target_spawn and len(target_spawn) >= 2:
-                        switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
-                    else:
-                        switch_map(active_portal["target_map_id"])
+                if teleport_cooldown_frames == 0:
+                    move_dx = player_x - prev_player_x
+                    move_dy = player_y - prev_player_y
+                    active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
+                    if active_portal:
+                        target_spawn = active_portal.get("target_spawn")
+                        if target_spawn and len(target_spawn) >= 2:
+                            switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
+                        else:
+                            switch_map(active_portal["target_map_id"])
 
-            if mode == MODE_EXPLORE and current_map_id == MAP1_ID:
-                leaf_inside = _in_rect(player_x, player_y, LEAF_BATTLE_RECT_PX)
-                if (not leaf_zone_prev_inside) and leaf_inside and encounter_cooldown_frames == 0:
-                    _start_battle_from_explore()
-                leaf_zone_prev_inside = leaf_inside
-            else:
-                leaf_zone_prev_inside = False
+                if mode == MODE_EXPLORE and current_map_id == MAP1_ID:
+                    leaf_inside = _in_rect(player_x, player_y, LEAF_BATTLE_RECT_PX)
+                    if (not leaf_zone_prev_inside) and leaf_inside and encounter_cooldown_frames == 0:
+                        _start_battle_from_explore()
+                    leaf_zone_prev_inside = leaf_inside
+                else:
+                    leaf_zone_prev_inside = False
 
-            if mode == MODE_EXPLORE and current_map_id == MAP1_ID and interact_pressed and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
-                lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)
-                # Mark as not drawn yet so the dialog appears immediately this frame.
-                explore_overlay_dirty = False
+                if mode == MODE_EXPLORE and interact_pressed:
+                    if _try_open_weapon_pickup_dialog():
+                        pass
+                    elif current_map_id == MAP1_ID and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
+                        lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)
+                        # Mark as not drawn yet so the dialog appears immediately this frame.
+                        explore_overlay_dirty = False
     elif mode == MODE_EXPLORE_INVENTORY:
         explore_moved = False
         explore_scrolled = False
