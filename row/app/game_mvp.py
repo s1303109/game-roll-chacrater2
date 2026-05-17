@@ -562,7 +562,10 @@ MAP3_ASSET_BASE = "/sd/out_map3"
 MAP3_REMOTE_ASSET_BASE = "/remote/assets/out_map3"
 MAP3_ASSET_BASES = (MAP3_LOCAL_ASSET_BASE, MAP3_ASSET_BASE, MAP3_REMOTE_ASSET_BASE)
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
-MAP2_PORTAL_TO_MAP1_RECT_PX = (96, 200, 38, 60)
+# Restrict transfer to the dark arch entrance (not the outer corridor).
+MAP2_PORTAL_TO_MAP1_RECT_PX = (54, 156, 22, 64)
+MAP1_TO_MAP2_SPAWN = (152, 228)
+MAP2_TO_MAP1_SPAWN = (320, 272)
 # Keep transition at stair edges only.
 MAP2_PORTAL_TO_MAP3_RECT_PX = (448, 584, 64, 6)
 MAP3_PORTAL_TO_MAP2_RECT_PX = (448, 0, 64, 8)
@@ -607,16 +610,22 @@ print("build:", BUILD_TAG)
 MAP_REGISTRY = {
     MAP1_ID: {
         "asset_bases": ASSET_BASES,
-        "prefer_stream": False,
+        "prefer_stream": True,
         "portals": (
-            {"rect": MAP1_PORTAL_TO_MAP2_RECT_PX, "target_map_id": MAP2_ID},
+            {"rect": MAP1_PORTAL_TO_MAP2_RECT_PX, "target_map_id": MAP2_ID, "target_spawn": MAP1_TO_MAP2_SPAWN},
         ),
     },
     MAP2_ID: {
         "asset_bases": MAP2_ASSET_BASES,
         "prefer_stream": True,
         "portals": (
-            {"rect": MAP2_PORTAL_TO_MAP1_RECT_PX, "target_map_id": MAP1_ID},
+            {
+                "rect": MAP2_PORTAL_TO_MAP1_RECT_PX,
+                "target_map_id": MAP1_ID,
+                "target_spawn": MAP2_TO_MAP1_SPAWN,
+                "preload_pad_px": 96,
+                "entry_move_x_sign": -1,
+            },
             {
                 "rect": MAP2_PORTAL_TO_MAP3_RECT_PX,
                 "target_map_id": MAP3_ID,
@@ -1401,7 +1410,8 @@ def _update_preload_for_player(px, py):
     portals = config.get("portals", ())
     preload_portal = None
     for portal in portals:
-        if _in_rect(px, py, _expand_rect(portal["rect"], PRELOAD_PORTAL_PAD_PX)):
+        preload_pad_px = portal.get("preload_pad_px", PRELOAD_PORTAL_PAD_PX)
+        if _in_rect(px, py, _expand_rect(portal["rect"], preload_pad_px)):
             preload_portal = portal
             break
 
