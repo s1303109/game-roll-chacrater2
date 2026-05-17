@@ -6,5 +6,7 @@
   "endian": "little",
   "row_order": "top_to_bottom",
   "spawn_x": 160,
-  "spawn_y": 120
+  "spawn_y": 120,
+  "collision": "collision.bin",
+  "collision_format": "u8"
 }

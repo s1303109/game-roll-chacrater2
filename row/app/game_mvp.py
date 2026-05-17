@@ -685,7 +685,6 @@ MAP_REGISTRY = {
     WOOD_MAIN_ID: {
         "asset_bases": WOOD_MAIN_ASSET_BASES,
         "prefer_stream": True,
-        "fallback_all_walkable": True,
         "portals": (
             {
                 "rect": WOOD_MAIN_PORTAL_TO_UP_RECT_PX,
@@ -720,7 +719,6 @@ MAP_REGISTRY = {
     WOOD_UP_ID: {
         "asset_bases": WOOD_UP_ASSET_BASES,
         "prefer_stream": True,
-        "fallback_all_walkable": True,
         "portals": (
             {
                 "rect": WOOD_UP_PORTAL_TO_MAIN_RECT_PX,
@@ -734,7 +732,6 @@ MAP_REGISTRY = {
     WOOD_RIGHT_ID: {
         "asset_bases": WOOD_RIGHT_ASSET_BASES,
         "prefer_stream": True,
-        "fallback_all_walkable": True,
         "portals": (
             {
                 "rect": WOOD_RIGHT_PORTAL_TO_MAIN_RECT_PX,
@@ -748,7 +745,6 @@ MAP_REGISTRY = {
     WOOD_LEFT_ID: {
         "asset_bases": WOOD_LEFT_ASSET_BASES,
         "prefer_stream": True,
-        "fallback_all_walkable": True,
         "portals": (
             {
                 "rect": WOOD_LEFT_PORTAL_TO_MAIN_RECT_PX,
