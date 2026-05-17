@@ -551,6 +551,10 @@ LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
 MAP1_ID = 1
 MAP2_ID = 2
 MAP3_ID = 3
+WOOD_MAIN_ID = 4
+WOOD_UP_ID = 5
+WOOD_RIGHT_ID = 6
+WOOD_LEFT_ID = 7
 MAP1_SPAWN_OFFSET_X = 0
 MAP1_SPAWN_OFFSET_Y = -63
 MAP2_LOCAL_ASSET_BASE = "/out_map2"
@@ -561,9 +565,26 @@ MAP3_LOCAL_ASSET_BASE = "/out_map3"
 MAP3_ASSET_BASE = "/sd/out_map3"
 MAP3_REMOTE_ASSET_BASE = "/remote/assets/out_map3"
 MAP3_ASSET_BASES = (MAP3_LOCAL_ASSET_BASE, MAP3_ASSET_BASE, MAP3_REMOTE_ASSET_BASE)
+WOOD_MAIN_LOCAL_ASSET_BASE = "/out_wood_main"
+WOOD_MAIN_ASSET_BASE = "/sd/out_wood_main"
+WOOD_MAIN_REMOTE_ASSET_BASE = "/remote/assets/out_wood_main"
+WOOD_MAIN_ASSET_BASES = (WOOD_MAIN_LOCAL_ASSET_BASE, WOOD_MAIN_ASSET_BASE, WOOD_MAIN_REMOTE_ASSET_BASE)
+WOOD_UP_LOCAL_ASSET_BASE = "/out_wood_up"
+WOOD_UP_ASSET_BASE = "/sd/out_wood_up"
+WOOD_UP_REMOTE_ASSET_BASE = "/remote/assets/out_wood_up"
+WOOD_UP_ASSET_BASES = (WOOD_UP_LOCAL_ASSET_BASE, WOOD_UP_ASSET_BASE, WOOD_UP_REMOTE_ASSET_BASE)
+WOOD_RIGHT_LOCAL_ASSET_BASE = "/out_wood_right"
+WOOD_RIGHT_ASSET_BASE = "/sd/out_wood_right"
+WOOD_RIGHT_REMOTE_ASSET_BASE = "/remote/assets/out_wood_right"
+WOOD_RIGHT_ASSET_BASES = (WOOD_RIGHT_LOCAL_ASSET_BASE, WOOD_RIGHT_ASSET_BASE, WOOD_RIGHT_REMOTE_ASSET_BASE)
+WOOD_LEFT_LOCAL_ASSET_BASE = "/out_wood_left"
+WOOD_LEFT_ASSET_BASE = "/sd/out_wood_left"
+WOOD_LEFT_REMOTE_ASSET_BASE = "/remote/assets/out_wood_left"
+WOOD_LEFT_ASSET_BASES = (WOOD_LEFT_LOCAL_ASSET_BASE, WOOD_LEFT_ASSET_BASE, WOOD_LEFT_REMOTE_ASSET_BASE)
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
 # Restrict transfer to the dark arch entrance (not the outer corridor).
 MAP2_PORTAL_TO_MAP1_RECT_PX = (54, 156, 22, 64)
+MAP2_PORTAL_TO_WOOD_MAIN_RECT_PX = (842, 176, 30, 84)
 MAP1_TO_MAP2_SPAWN = (152, 228)
 MAP2_TO_MAP1_SPAWN = (320, 272)
 # Keep transition at stair edges only.
@@ -571,6 +592,13 @@ MAP2_PORTAL_TO_MAP3_RECT_PX = (448, 584, 64, 6)
 MAP3_PORTAL_TO_MAP2_RECT_PX = (448, 0, 64, 8)
 MAP2_FROM_MAP3_SPAWN_X = 480
 MAP2_FROM_MAP3_SPAWN_Y = 590
+WOOD_MAIN_PORTAL_TO_UP_RECT_PX = (144, 0, 32, 24)
+WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX = (296, 106, 24, 36)
+WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX = (0, 106, 24, 36)
+WOOD_MAIN_PORTAL_TO_MAP2_RECT_PX = (144, 216, 32, 24)
+WOOD_UP_PORTAL_TO_MAIN_RECT_PX = (136, 216, 48, 24)
+WOOD_RIGHT_PORTAL_TO_MAIN_RECT_PX = (0, 120, 24, 80)
+WOOD_LEFT_PORTAL_TO_MAIN_RECT_PX = (296, 120, 24, 80)
 PRELOAD_PORTAL_PAD_PX = 32
 TELEPORT_COOLDOWN_FRAMES = 30
 LAMP_DIALOG_TEXT_W = 214
@@ -632,6 +660,13 @@ MAP_REGISTRY = {
                 "target_spawn": (480, 116),
                 "entry_move_y_sign": 1,
             },
+            {
+                "rect": MAP2_PORTAL_TO_WOOD_MAIN_RECT_PX,
+                "target_map_id": WOOD_MAIN_ID,
+                "target_spawn": (160, 206),
+                "entry_move_x_sign": 1,
+                "preload_pad_px": 96,
+            },
         ),
     },
     MAP3_ID: {
@@ -644,6 +679,83 @@ MAP_REGISTRY = {
                 "target_map_id": MAP2_ID,
                 "target_spawn": (MAP2_FROM_MAP3_SPAWN_X, MAP2_FROM_MAP3_SPAWN_Y),
                 "entry_move_y_sign": -1,
+            },
+        ),
+    },
+    WOOD_MAIN_ID: {
+        "asset_bases": WOOD_MAIN_ASSET_BASES,
+        "prefer_stream": True,
+        "fallback_all_walkable": True,
+        "portals": (
+            {
+                "rect": WOOD_MAIN_PORTAL_TO_UP_RECT_PX,
+                "target_map_id": WOOD_UP_ID,
+                "target_spawn": (160, 206),
+                "entry_move_y_sign": -1,
+                "preload_pad_px": 40,
+            },
+            {
+                "rect": WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX,
+                "target_map_id": WOOD_RIGHT_ID,
+                "target_spawn": (36, 160),
+                "entry_move_x_sign": 1,
+                "preload_pad_px": 40,
+            },
+            {
+                "rect": WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX,
+                "target_map_id": WOOD_LEFT_ID,
+                "target_spawn": (284, 160),
+                "entry_move_x_sign": -1,
+                "preload_pad_px": 40,
+            },
+            {
+                "rect": WOOD_MAIN_PORTAL_TO_MAP2_RECT_PX,
+                "target_map_id": MAP2_ID,
+                "target_spawn": (824, 248),
+                "entry_move_y_sign": 1,
+                "preload_pad_px": 48,
+            },
+        ),
+    },
+    WOOD_UP_ID: {
+        "asset_bases": WOOD_UP_ASSET_BASES,
+        "prefer_stream": True,
+        "fallback_all_walkable": True,
+        "portals": (
+            {
+                "rect": WOOD_UP_PORTAL_TO_MAIN_RECT_PX,
+                "target_map_id": WOOD_MAIN_ID,
+                "target_spawn": (160, 34),
+                "entry_move_y_sign": 1,
+                "preload_pad_px": 36,
+            },
+        ),
+    },
+    WOOD_RIGHT_ID: {
+        "asset_bases": WOOD_RIGHT_ASSET_BASES,
+        "prefer_stream": True,
+        "fallback_all_walkable": True,
+        "portals": (
+            {
+                "rect": WOOD_RIGHT_PORTAL_TO_MAIN_RECT_PX,
+                "target_map_id": WOOD_MAIN_ID,
+                "target_spawn": (286, 124),
+                "entry_move_x_sign": -1,
+                "preload_pad_px": 36,
+            },
+        ),
+    },
+    WOOD_LEFT_ID: {
+        "asset_bases": WOOD_LEFT_ASSET_BASES,
+        "prefer_stream": True,
+        "fallback_all_walkable": True,
+        "portals": (
+            {
+                "rect": WOOD_LEFT_PORTAL_TO_MAIN_RECT_PX,
+                "target_map_id": WOOD_MAIN_ID,
+                "target_spawn": (34, 124),
+                "entry_move_x_sign": 1,
+                "preload_pad_px": 36,
             },
         ),
     },
