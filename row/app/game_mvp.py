@@ -557,7 +557,8 @@ WOOD_MAIN_ID = 4
 WOOD_UP_ID = 5
 WOOD_RIGHT_ID = 6
 WOOD_LEFT_ID = 7
-WOOD_SLOW_MAP_IDS = (WOOD_MAIN_ID, WOOD_UP_ID, WOOD_RIGHT_ID, WOOD_LEFT_ID)
+# Apply slow movement only in the main wood room.
+WOOD_SLOW_MAP_IDS = (WOOD_MAIN_ID,)
 MAP1_SPAWN_OFFSET_X = 0
 MAP1_SPAWN_OFFSET_Y = -63
 MAP2_LOCAL_ASSET_BASE = "/out_map2"
@@ -603,6 +604,18 @@ WOOD_UP_PORTAL_TO_MAIN_RECT_PX = (136, 216, 48, 24)
 WOOD_RIGHT_PORTAL_TO_MAIN_RECT_PX = (0, 120, 24, 80)
 WOOD_LEFT_PORTAL_TO_MAIN_RECT_PX = (296, 120, 24, 80)
 PRELOAD_PORTAL_PAD_PX = 32
+PRELOAD_DEBOUNCE_PX = 8
+PRELOAD_DWELL_MS = 220
+PRELOAD_COOLDOWN_MS = 350
+PRELOAD_RELEASE_GRACE_MS = 500
+PRELOAD_POST_SWITCH_PAUSE_MS = 1200
+# Fast-track preload for selected return targets (to reduce backtrack wait).
+PRELOAD_FAST_TRACK_TARGET_MAP_IDS = (MAP1_ID,)
+GC_DEFER_ENABLE = True
+GC_DEFER_MIN_INTERVAL_MS = 900
+GC_DEFER_IDLE_ONLY = True
+GC_POST_SWITCH_PAUSE_MS = 1500
+DEBUG_PERF = False
 TELEPORT_COOLDOWN_FRAMES = 30
 LAMP_DIALOG_TEXT_W = 214
 LAMP_DIALOG_TEXT_H = 27
@@ -761,6 +774,28 @@ MAP_REGISTRY = {
 }
 
 preload_cache = None
+preload_zone_target_map_id = None
+preload_zone_enter_ms = 0
+preload_last_build_ms = 0
+preload_last_release_ms = 0
+preload_release_due_ms = 0
+preload_suspend_until_ms = 0
+gc_pending = False
+gc_last_run_ms = 0
+gc_suspend_until_ms = 0
+perf_preload_build_count = 0
+perf_preload_build_fail_count = 0
+perf_preload_build_ms_total = 0
+perf_preload_release_count = 0
+perf_preload_skip_cached = 0
+perf_preload_skip_cooldown = 0
+perf_preload_skip_debounce = 0
+perf_preload_skip_dwell = 0
+perf_preload_skip_same_zone = 0
+perf_preload_skip_motion = 0
+perf_preload_skip_post_switch = 0
+perf_gc_run_count = 0
+perf_gc_run_ms_total = 0
 
 ITEM_HEAL_TEST = {
     "id": "heal_candy",
@@ -1339,6 +1374,8 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
     global explore_force_full_redraw, teleport_cooldown_frames
     global tile, map_w, map_h, world_w, world_h, runtime_endian
+    global move_carry_x, move_carry_y, prev_input_x, prev_input_y
+    global preload_suspend_until_ms, gc_suspend_until_ms, gc_pending
     global preload_cache
 
     phase = {
@@ -1497,6 +1534,11 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     prev_scroll_y = scroll_y
     prev_player_x = player_x
     prev_player_y = player_y
+    # Drop per-axis carry across map boundaries so map-specific speed never leaks.
+    move_carry_x = 0
+    move_carry_y = 0
+    prev_input_x = 0
+    prev_input_y = 0
 
     leaf_zone_prev_inside = False
     explore_overlay_dirty = False
@@ -1506,9 +1548,15 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     phase["spawn_finalize_ms"] = time.ticks_diff(time.ticks_ms(), t0)
     current_map_id = target_map_id
+    now = time.ticks_ms()
+    preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
+    gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
     _print_switch_timings()
     _release_preload_cache("switch_success")
-    gc.collect()
+    if GC_DEFER_ENABLE:
+        gc_pending = True
+    else:
+        gc.collect()
     return True
 
 
@@ -1582,13 +1630,20 @@ def _expand_rect(rect, pad):
 
 
 def _release_preload_cache(reason=None):
-    global preload_cache
+    global preload_cache, preload_last_release_ms, preload_release_due_ms
+    global gc_pending, perf_preload_release_count
     if preload_cache is None:
         return
     if reason:
         print("preload_release:", reason)
     preload_cache = None
-    gc.collect()
+    preload_last_release_ms = time.ticks_ms()
+    preload_release_due_ms = 0
+    perf_preload_release_count += 1
+    if GC_DEFER_ENABLE:
+        gc_pending = True
+    else:
+        gc.collect()
 
 
 def _build_preload_cache(source_map_id, portal):
@@ -1636,6 +1691,24 @@ def _build_preload_cache(source_map_id, portal):
         print("preload_ms_total:", time.ticks_diff(time.ticks_ms(), started))
 
 
+def _preload_debounce_ready(px, py, rect, debounce_px):
+    if debounce_px <= 0:
+        return True
+    x, y, w, h = rect
+    if w <= 0 or h <= 0:
+        return False
+    left_gap = px - x
+    top_gap = py - y
+    right_gap = (x + w - 1) - px
+    bottom_gap = (y + h - 1) - py
+    return (
+        left_gap >= debounce_px
+        and top_gap >= debounce_px
+        and right_gap >= debounce_px
+        and bottom_gap >= debounce_px
+    )
+
+
 def _portal_direction_ok(portal, move_dx, move_dy):
     x_sign = portal.get("entry_move_x_sign")
     if x_sign == 1 and move_dx <= 0:
@@ -1663,33 +1736,123 @@ def _get_current_portal(px, py, move_dx=0, move_dy=0):
 
 
 def _update_preload_for_player(px, py):
+    global preload_zone_target_map_id, preload_zone_enter_ms
+    global preload_last_build_ms, preload_release_due_ms, preload_suspend_until_ms
+    global perf_preload_build_count, perf_preload_build_fail_count
+    global perf_preload_build_ms_total
+    global perf_preload_skip_cached, perf_preload_skip_cooldown
+    global perf_preload_skip_debounce, perf_preload_skip_dwell, perf_preload_skip_same_zone
+    global perf_preload_skip_motion, perf_preload_skip_post_switch
+
+    now = time.ticks_ms()
     config = MAP_REGISTRY.get(current_map_id)
     if not config:
+        preload_zone_target_map_id = None
+        preload_zone_enter_ms = 0
+        preload_release_due_ms = 0
         _release_preload_cache("invalid_current_map")
         return
 
     portals = config.get("portals", ())
     preload_portal = None
+    preload_zone_rect = None
     for portal in portals:
         preload_pad_px = portal.get("preload_pad_px", PRELOAD_PORTAL_PAD_PX)
-        if _in_rect(px, py, _expand_rect(portal["rect"], preload_pad_px)):
+        zone_rect = _expand_rect(portal["rect"], preload_pad_px)
+        if _in_rect(px, py, zone_rect):
             preload_portal = portal
+            preload_zone_rect = zone_rect
             break
 
     if preload_portal is None:
-        _release_preload_cache("leave_preload_zone")
+        preload_zone_target_map_id = None
+        preload_zone_enter_ms = 0
+        if preload_cache is not None:
+            if preload_release_due_ms == 0:
+                preload_release_due_ms = time.ticks_add(now, PRELOAD_RELEASE_GRACE_MS)
+            elif time.ticks_diff(now, preload_release_due_ms) >= 0:
+                _release_preload_cache("leave_preload_zone")
         return
 
     target_map_id = preload_portal.get("target_map_id")
+    fast_track_target = target_map_id in PRELOAD_FAST_TRACK_TARGET_MAP_IDS
+    if target_map_id == preload_zone_target_map_id:
+        perf_preload_skip_same_zone += 1
+    else:
+        preload_zone_target_map_id = target_map_id
+        preload_zone_enter_ms = now
+
+    preload_release_due_ms = 0
+
     if (
         preload_cache is not None
         and preload_cache.get("source_map_id") == current_map_id
         and preload_cache.get("target_map_id") == target_map_id
     ):
+        perf_preload_skip_cached += 1
+        return
+
+    if (not fast_track_target) and preload_suspend_until_ms and time.ticks_diff(now, preload_suspend_until_ms) < 0:
+        perf_preload_skip_post_switch += 1
+        return
+
+    if (not fast_track_target) and (x_dir != 0 or y_dir_raw != 0):
+        perf_preload_skip_motion += 1
+        return
+
+    if (not fast_track_target) and preload_zone_enter_ms and time.ticks_diff(now, preload_zone_enter_ms) < PRELOAD_DWELL_MS:
+        perf_preload_skip_dwell += 1
+        return
+
+    if not _preload_debounce_ready(px, py, preload_zone_rect, PRELOAD_DEBOUNCE_PX):
+        perf_preload_skip_debounce += 1
+        return
+
+    if preload_last_build_ms and time.ticks_diff(now, preload_last_build_ms) < PRELOAD_COOLDOWN_MS:
+        perf_preload_skip_cooldown += 1
         return
 
     _release_preload_cache("retarget_preload")
-    _build_preload_cache(current_map_id, preload_portal)
+    started = time.ticks_ms()
+    ok = _build_preload_cache(current_map_id, preload_portal)
+    perf_preload_build_ms_total += time.ticks_diff(time.ticks_ms(), started)
+    preload_last_build_ms = now
+    if ok:
+        perf_preload_build_count += 1
+    else:
+        perf_preload_build_fail_count += 1
+
+
+def _maybe_run_deferred_gc(loop_start, moved, scrolled):
+    global gc_pending, gc_last_run_ms, gc_suspend_until_ms
+    global perf_gc_run_count, perf_gc_run_ms_total
+
+    if not gc_pending:
+        return False
+    if gc_suspend_until_ms and time.ticks_diff(loop_start, gc_suspend_until_ms) < 0:
+        return False
+    if not GC_DEFER_ENABLE:
+        started = time.ticks_ms()
+        gc.collect()
+        perf_gc_run_count += 1
+        perf_gc_run_ms_total += time.ticks_diff(time.ticks_ms(), started)
+        gc_pending = False
+        gc_last_run_ms = loop_start
+        return True
+    if gc_last_run_ms and time.ticks_diff(loop_start, gc_last_run_ms) < GC_DEFER_MIN_INTERVAL_MS:
+        return False
+    if GC_DEFER_IDLE_ONLY:
+        if mode != MODE_EXPLORE:
+            return False
+        if moved or scrolled:
+            return False
+    started = time.ticks_ms()
+    gc.collect()
+    perf_gc_run_count += 1
+    perf_gc_run_ms_total += time.ticks_diff(time.ticks_ms(), started)
+    gc_pending = False
+    gc_last_run_ms = loop_start
+    return True
 
 
 def _get_move_step_for_map(map_id):
@@ -2321,7 +2484,10 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
         if nav_dir != 0 and nav_dir != inv_drop_nav_prev_dir:
             if inv_drop_choice_count < 2:
                 inv_drop_choice_count = 2
-            inv_drop_choice_index = (inv_drop_choice_index + 1) % inv_drop_choice_count
+            if nav_dir > 0:
+                inv_drop_choice_index = (inv_drop_choice_index + inv_drop_choice_count - 1) % inv_drop_choice_count
+            else:
+                inv_drop_choice_index = (inv_drop_choice_index + 1) % inv_drop_choice_count
             inv_screen_dirty = True
         inv_drop_nav_prev_dir = nav_dir
         if not interact_pressed:
@@ -4271,12 +4437,40 @@ while True:
         update_battle_fight(loop_start)
 
     draw_all(loop_start)
+    _maybe_run_deferred_gc(loop_start, explore_moved, explore_scrolled)
 
     if frame % 120 == 0:
-        gc.collect()
         dt = time.ticks_diff(time.ticks_ms(), t0)
         fps = (frame * 1000 / dt) if dt else 0
         print("frame", frame, "fps", fps, "mode", mode, "cooldown", encounter_cooldown_frames, "stats", lgfx.stats(), "mem_free", gc.mem_free())
+        if DEBUG_PERF:
+            avg_preload_ms = 0
+            total_preload_attempts = perf_preload_build_count + perf_preload_build_fail_count
+            if total_preload_attempts > 0:
+                avg_preload_ms = perf_preload_build_ms_total // total_preload_attempts
+            avg_gc_ms = 0
+            if perf_gc_run_count > 0:
+                avg_gc_ms = perf_gc_run_ms_total // perf_gc_run_count
+            print(
+                "perf_preload",
+                "build_ok", perf_preload_build_count,
+                "build_fail", perf_preload_build_fail_count,
+                "release", perf_preload_release_count,
+                "skip_cached", perf_preload_skip_cached,
+                "skip_cooldown", perf_preload_skip_cooldown,
+                "skip_debounce", perf_preload_skip_debounce,
+                "skip_dwell", perf_preload_skip_dwell,
+                "skip_same_zone", perf_preload_skip_same_zone,
+                "skip_motion", perf_preload_skip_motion,
+                "skip_post_switch", perf_preload_skip_post_switch,
+                "avg_ms", avg_preload_ms,
+            )
+            print(
+                "perf_gc",
+                "run", perf_gc_run_count,
+                "avg_ms", avg_gc_ms,
+                "pending", gc_pending,
+            )
 
     if mode == MODE_EXPLORE and not explore_moved and not explore_scrolled:
         time.sleep_ms(1)
