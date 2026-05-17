@@ -3270,24 +3270,25 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         act_nav_prev_dir = nav_dir
         if act_pressed:
             selected = act_choice_index
+            reply_index = 0
             if selected == 0:
-                if act_sequence_step == 0:
-                    act_sequence_step = 1
-                else:
-                    act_sequence_step = 0
-                battle_dialog_png_info = ACT_REPLY_PNG_INFOS[0]
+                act_sequence_step = 1
+                reply_index = 0
             elif selected == 1:
                 if act_sequence_step == 1:
                     act_sequence_step = 2
+                    reply_index = 1
                 else:
                     act_sequence_step = 0
-                battle_dialog_png_info = ACT_REPLY_PNG_INFOS[1]
+                    reply_index = 0
             else:
                 if act_sequence_step == 2:
                     act_sequence_step = 3
+                    reply_index = 2
                 else:
                     act_sequence_step = 0
-                battle_dialog_png_info = ACT_REPLY_PNG_INFOS[2]
+                    reply_index = 0
+            battle_dialog_png_info = ACT_REPLY_PNG_INFOS[reply_index]
             act_menu_active = False
             act_nav_prev_dir = 0
             act_menu_slot_cache = None
