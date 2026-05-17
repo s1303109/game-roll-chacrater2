@@ -550,14 +550,24 @@ LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
 LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
 MAP1_ID = 1
 MAP2_ID = 2
+MAP3_ID = 3
 MAP1_SPAWN_OFFSET_X = 0
 MAP1_SPAWN_OFFSET_Y = -63
 MAP2_LOCAL_ASSET_BASE = "/out_map2"
 MAP2_ASSET_BASE = "/sd/out_map2"
 MAP2_REMOTE_ASSET_BASE = "/remote/assets/out_map2"
 MAP2_ASSET_BASES = (MAP2_LOCAL_ASSET_BASE, MAP2_ASSET_BASE, MAP2_REMOTE_ASSET_BASE)
+MAP3_LOCAL_ASSET_BASE = "/out_map3"
+MAP3_ASSET_BASE = "/sd/out_map3"
+MAP3_REMOTE_ASSET_BASE = "/remote/assets/out_map3"
+MAP3_ASSET_BASES = (MAP3_LOCAL_ASSET_BASE, MAP3_ASSET_BASE, MAP3_REMOTE_ASSET_BASE)
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
 MAP2_PORTAL_TO_MAP1_RECT_PX = (96, 200, 38, 60)
+# Keep transition at the stair edge only, to avoid early teleport mid-stair.
+MAP2_PORTAL_TO_MAP3_RECT_PX = (448, 584, 64, 8)
+MAP3_PORTAL_TO_MAP2_RECT_PX = (432, 0, 96, 144)
+MAP2_FROM_MAP3_SPAWN_X = 480
+MAP2_FROM_MAP3_SPAWN_Y = 372
 PRELOAD_PORTAL_PAD_PX = 32
 TELEPORT_COOLDOWN_FRAMES = 30
 LAMP_DIALOG_TEXT_W = 214
@@ -607,6 +617,25 @@ MAP_REGISTRY = {
         "prefer_stream": True,
         "portals": (
             {"rect": MAP2_PORTAL_TO_MAP1_RECT_PX, "target_map_id": MAP1_ID},
+            {
+                "rect": MAP2_PORTAL_TO_MAP3_RECT_PX,
+                "target_map_id": MAP3_ID,
+                "target_spawn": (480, 116),
+                "entry_move_y_sign": 1,
+            },
+        ),
+    },
+    MAP3_ID: {
+        "asset_bases": MAP3_ASSET_BASES,
+        "prefer_stream": True,
+        "fallback_all_walkable": True,
+        "portals": (
+            {
+                "rect": MAP3_PORTAL_TO_MAP2_RECT_PX,
+                "target_map_id": MAP2_ID,
+                "target_spawn": (MAP2_FROM_MAP3_SPAWN_X, MAP2_FROM_MAP3_SPAWN_Y),
+                "entry_move_y_sign": -1,
+            },
         ),
     },
 }
@@ -997,17 +1026,25 @@ def _load_map_context(base, fallback_all_walkable=False, prefer_stream=False, pr
 
     t0 = time.ticks_ms()
     try:
-        collision_data = preloaded_collision
+        collision_data = None
         collision_err = None
-        if collision_data is not None and len(collision_data) != map_w * map_h:
-            raise RuntimeError("PRELOAD_COLLISION_SIZE_MISMATCH")
-        if collision_data is None:
-            collision_data, collision_err = _load_collision(meta, asset_base, map_w, map_h)
+        if fallback_all_walkable:
+            # For maps explicitly marked fallback-all-walkable, skip collision load.
+            # This prevents accidentally inheriting other map collision data.
+            pass
+        else:
+            collision_data = preloaded_collision
+            if collision_data is not None and len(collision_data) != map_w * map_h:
+                raise RuntimeError("PRELOAD_COLLISION_SIZE_MISMATCH")
+            if collision_data is None:
+                collision_data, collision_err = _load_collision(meta, asset_base, map_w, map_h)
     except Exception as err:
         raise RuntimeError("collision_load:%s" % err)
     phase["collision_load_ms"] = time.ticks_diff(time.ticks_ms(), t0)
 
-    if fallback_all_walkable or collision_data is None:
+    if collision_data is None:
+        if not fallback_all_walkable:
+            raise RuntimeError("COLLISION_REQUIRED")
         collision = bytearray(map_w * map_h)
         if collision_err:
             print("collision_fallback_all_walkable:", collision_err)
@@ -1081,7 +1118,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     prev_prev_player_y_saved = prev_player_y
     prev_current_map_id = current_map_id
 
-    fallback_all_walkable = False
+    fallback_all_walkable = bool(config.get("fallback_all_walkable", False))
     next_base = None
     next_meta = None
     preloaded_collision = None
@@ -1097,6 +1134,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
         next_meta = preload_cache.get("meta")
         preloaded_collision = preload_cache.get("collision")
         prefer_stream = bool(preload_cache.get("prefer_stream", prefer_stream))
+        fallback_all_walkable = bool(preload_cache.get("fallback_all_walkable", fallback_all_walkable))
         cached_spawn = preload_cache.get("spawn")
         if spawn_x is None and cached_spawn and len(cached_spawn) >= 2:
             spawn_x = cached_spawn[0]
@@ -1300,9 +1338,13 @@ def _build_preload_cache(source_map_id, portal):
         next_base, next_meta = _find_asset_base(config["asset_bases"])
         map_w2 = next_meta["map_w"]
         map_h2 = next_meta["map_h"]
-        collision_data, collision_err = _load_collision(next_meta, next_base, map_w2, map_h2)
-        if collision_data is None:
-            raise RuntimeError(collision_err if collision_err else "COLLISION_REQUIRED")
+        fallback_all_walkable = bool(config.get("fallback_all_walkable", False))
+        if fallback_all_walkable:
+            collision_data = None
+        else:
+            collision_data, collision_err = _load_collision(next_meta, next_base, map_w2, map_h2)
+            if collision_data is None:
+                raise RuntimeError(collision_err if collision_err else "COLLISION_REQUIRED")
 
         preload_cache = {
             "source_map_id": source_map_id,
@@ -1311,6 +1353,7 @@ def _build_preload_cache(source_map_id, portal):
             "meta": next_meta,
             "collision": collision_data,
             "prefer_stream": bool(config.get("prefer_stream", False)),
+            "fallback_all_walkable": fallback_all_walkable,
             "spawn": portal.get("target_spawn"),
         }
         print("preload_ready:", source_map_id, "->", target_map_id, "base:", next_base)
@@ -1323,13 +1366,28 @@ def _build_preload_cache(source_map_id, portal):
         print("preload_ms_total:", time.ticks_diff(time.ticks_ms(), started))
 
 
-def _get_current_portal(px, py):
+def _portal_direction_ok(portal, move_dx, move_dy):
+    x_sign = portal.get("entry_move_x_sign")
+    if x_sign == 1 and move_dx <= 0:
+        return False
+    if x_sign == -1 and move_dx >= 0:
+        return False
+
+    y_sign = portal.get("entry_move_y_sign")
+    if y_sign == 1 and move_dy <= 0:
+        return False
+    if y_sign == -1 and move_dy >= 0:
+        return False
+    return True
+
+
+def _get_current_portal(px, py, move_dx=0, move_dy=0):
     config = MAP_REGISTRY.get(current_map_id)
     if not config:
         return None
     portals = config.get("portals", ())
     for portal in portals:
-        if _in_rect(px, py, portal["rect"]):
+        if _in_rect(px, py, portal["rect"]) and _portal_direction_ok(portal, move_dx, move_dy):
             return portal
     return None
 
@@ -3597,7 +3655,9 @@ while True:
             _update_preload_for_player(player_x, player_y)
 
             if teleport_cooldown_frames == 0:
-                active_portal = _get_current_portal(player_x, player_y)
+                move_dx = player_x - prev_player_x
+                move_dy = player_y - prev_player_y
+                active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
                 if active_portal:
                     target_spawn = active_portal.get("target_spawn")
                     if target_spawn and len(target_spawn) >= 2:
