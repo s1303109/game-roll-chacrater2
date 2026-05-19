@@ -470,6 +470,7 @@ MODE_EXPLORE = 0
 MODE_BATTLE_MENU = 1
 MODE_BATTLE_FIGHT = 2
 MODE_EXPLORE_INVENTORY = 3
+MODE_BATTLE_ATTACK = 4
 ENCOUNTER_COOLDOWN_FRAMES = 120
 BATTLE_FRAME_W = 240
 BATTLE_FRAME_H = 200
@@ -491,7 +492,7 @@ BATTLE_HEART_HIT_R = 9
 BATTLE_HEART_ERASE_R = BATTLE_HEART_HIT_R + 1
 BATTLE_HEART_FAST_R = 7
 BATTLE_HEART_STEP = 2
-BATTLE_HEART_USE_PNG_ON_MOVE = True
+BATTLE_HEART_USE_PNG_ON_MOVE = False
 ENEMY_SPRITE_PATH = "/enemy.png"
 ENEMY_SPRITE_W = 72
 ENEMY_SPRITE_H = 72
@@ -557,6 +558,7 @@ WOOD_MAIN_ID = 4
 WOOD_UP_ID = 5
 WOOD_RIGHT_ID = 6
 WOOD_LEFT_ID = 7
+MAP4_ID = 8
 # Apply slow movement only in the main wood room.
 WOOD_SLOW_MAP_IDS = (WOOD_MAIN_ID,)
 MAP1_SPAWN_OFFSET_X = 0
@@ -569,6 +571,10 @@ MAP3_LOCAL_ASSET_BASE = "/out_map3"
 MAP3_ASSET_BASE = "/sd/out_map3"
 MAP3_REMOTE_ASSET_BASE = "/remote/assets/out_map3"
 MAP3_ASSET_BASES = (MAP3_LOCAL_ASSET_BASE, MAP3_ASSET_BASE, MAP3_REMOTE_ASSET_BASE)
+MAP4_LOCAL_ASSET_BASE = "/out_map4"
+MAP4_ASSET_BASE = "/sd/out_map4"
+MAP4_REMOTE_ASSET_BASE = "/remote/assets/out_map4"
+MAP4_ASSET_BASES = (MAP4_LOCAL_ASSET_BASE, MAP4_ASSET_BASE, MAP4_REMOTE_ASSET_BASE)
 WOOD_MAIN_LOCAL_ASSET_BASE = "/out_wood_main"
 WOOD_MAIN_ASSET_BASE = "/sd/out_wood_main"
 WOOD_MAIN_REMOTE_ASSET_BASE = "/remote/assets/out_wood_main"
@@ -594,8 +600,12 @@ MAP2_TO_MAP1_SPAWN = (320, 272)
 # Keep transition at stair edges only.
 MAP2_PORTAL_TO_MAP3_RECT_PX = (448, 584, 64, 6)
 MAP3_PORTAL_TO_MAP2_RECT_PX = (448, 0, 64, 8)
+MAP3_PORTAL_TO_MAP4_RECT_PX = (448, 300, 64, 96)
+MAP4_PORTAL_TO_MAP3_RECT_PX = (72, 56, 64, 112)
 MAP2_FROM_MAP3_SPAWN_X = 480
 MAP2_FROM_MAP3_SPAWN_Y = 590
+MAP4_FROM_MAP3_SPAWN = (112, 172)
+MAP3_FROM_MAP4_SPAWN = (480, 430)
 WOOD_MAIN_PORTAL_TO_UP_RECT_PX = (144, 0, 32, 24)
 WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX = (296, 106, 24, 36)
 WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX = (0, 106, 24, 36)
@@ -632,6 +642,7 @@ PLAYER_AT_BASE = 5
 PLAYER_AT_BONUS = 0
 PLAYER_DF_BASE = 5
 PLAYER_DF_BONUS = 0
+ENEMY_HP_MAX = 30
 INVENTORY_CAPACITY = 8
 MONSTER_NAME = "Grim Reaper"
 BULLET_R = 3
@@ -647,7 +658,35 @@ BATTLE_HP_BAR_FILL_COLOR = 0xFC60  # deep orange
 BATTLE_HP_BAR_EMPTY_COLOR = 0xF800  # red
 BATTLE_HP_NAME_TO_HP_GAP = 22
 FIGHT_AUTO_RETURN_MS = 7000
-BUILD_TAG = "game_mvp_tune29_heart_sprite_io_tune_20260502"
+ATTACK_BAR_TIMEOUT_MS = 10000
+ATTACK_BAR_W = 160
+ATTACK_BAR_H = 12
+ATTACK_CURSOR_W = 3
+ATTACK_CURSOR_SPEED_PX = 4
+ATTACK_BAR_Y_OFFSET = 34
+ATTACK_ENEMY_DRAW_W = 42
+ATTACK_ENEMY_DRAW_H = 42
+ATTACK_BAR_BG_COLOR = 0x0000
+ATTACK_BAR_OUTLINE_COLOR = 0xFFFF
+ATTACK_BAR_BORDER_COLOR = 0xFFE0  # bright yellow
+ATTACK_BAR_BORDER_INNER_COLOR = 0xAFE0  # yellow-green
+ATTACK_BAR_LOW_ZONE_COLOR = 0xF800  # red
+ATTACK_BAR_PERFECT_COLOR = 0x07E0  # bright green
+ATTACK_BAR_PERFECT_CORE_COLOR = 0x57EA  # lighter green
+ATTACK_BAR_TICK_COLOR = 0xFFE0  # yellow
+ATTACK_BAR_DECOR_RED = 0xF800
+ATTACK_BAR_DECOR_YELLOW = 0xFFE0
+ATTACK_BAR_CURSOR_COLOR = 0xFFFF
+ATTACK_BAR_CURSOR_SHADOW_COLOR = 0x4208
+ATTACK_BAR_CURSOR_CORE_COLOR = 0xC618  # light gray
+ATTACK_CURSOR_EXTRA_PX = 7
+ATTACK_ZONE_PERFECT_PCT = 10
+ATTACK_ZONE_GOOD_PCT = 35
+ENEMY_HP_BAR_W = 120
+ENEMY_HP_BAR_H = 8
+ENEMY_HP_BAR_FILL_COLOR = 0x801F  # purple
+ENEMY_HP_BAR_EMPTY_COLOR = 0xF800  # red
+BUILD_TAG = "game_mvp_tune36_revert_tune33_heart_20260519"
 
 print("build:", BUILD_TAG)
 
@@ -688,13 +727,32 @@ MAP_REGISTRY = {
     MAP3_ID: {
         "asset_bases": MAP3_ASSET_BASES,
         "prefer_stream": True,
-        "fallback_all_walkable": True,
         "portals": (
             {
                 "rect": MAP3_PORTAL_TO_MAP2_RECT_PX,
                 "target_map_id": MAP2_ID,
                 "target_spawn": (MAP2_FROM_MAP3_SPAWN_X, MAP2_FROM_MAP3_SPAWN_Y),
                 "entry_move_y_sign": -1,
+            },
+            {
+                "rect": MAP3_PORTAL_TO_MAP4_RECT_PX,
+                "target_map_id": MAP4_ID,
+                "target_spawn": MAP4_FROM_MAP3_SPAWN,
+                "preload_pad_px": 96,
+            },
+        ),
+    },
+    MAP4_ID: {
+        "asset_bases": MAP4_ASSET_BASES,
+        "prefer_stream": True,
+        "fallback_all_walkable": False,
+        "portals": (
+            {
+                "rect": MAP4_PORTAL_TO_MAP3_RECT_PX,
+                "target_map_id": MAP3_ID,
+                "target_spawn": MAP3_FROM_MAP4_SPAWN,
+                "entry_move_y_sign": -1,
+                "preload_pad_px": 96,
             },
         ),
     },
@@ -2044,12 +2102,19 @@ menu_cmd_y_used = battle_cmd_y
 battle_heart_needs_sprite_refresh = False
 fight_return_deadline_ms = 0
 player_hp = PLAYER_HP_MAX
+enemy_hp = ENEMY_HP_MAX
 bullets = []
 next_bullet_spawn_ms = 0
 damage_invuln_until_ms = 0
 battle_bullets_dirty = False
 battle_prev_bullet_positions = []
 battle_status_dirty = True
+attack_started_ms = 0
+attack_cursor_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+attack_cursor_dir = 1
+attack_locked = False
+battle_attack_dirty = True
+attack_prev_cursor_draw_x = -9999
 mercy_exit_pending = False
 battle_menu_full_clear_pending = True
 battle_menu_static_ready = False
@@ -3577,6 +3642,38 @@ def _draw_battle_heart_sprite(cx, cy):
     return False
 
 
+def _draw_battle_heart_mask(cx, cy, color):
+    # Stable pixel-heart style (single rendering path, no PNG decode jitter).
+    # Spans are (y_offset, ((x0, x1), ...)) relative to heart center.
+    body = (
+        (-5, ((-2, -1), (1, 2))),
+        (-4, ((-4, 4),)),
+        (-3, ((-4, 4),)),
+        (-2, ((-4, 4),)),
+        (-1, ((-3, 3),)),
+        (0, ((-3, 3),)),
+        (1, ((-2, 2),)),
+        (2, ((-1, 1),)),
+        (3, ((0, 0),)),
+    )
+    shine = (
+        (-4, ((-2, -2),)),
+        (-3, ((-3, -3), (-1, -1))),
+        (-2, ((-3, -3),)),
+    )
+
+    for y_off, spans in body:
+        yy = cy + y_off
+        for x0, x1 in spans:
+            lgfx.draw_rect(cx + x0, yy, x1 - x0 + 1, 1, color)
+
+    shine_color = 0xFD55  # light pink highlight
+    for y_off, spans in shine:
+        yy = cy + y_off
+        for x0, x1 in spans:
+            lgfx.draw_rect(cx + x0, yy, x1 - x0 + 1, 1, shine_color)
+
+
 def _rand_u32():
     global _rng_state
     _rng_state = ((_rng_state * 1103515245) + 12345) & 0x7FFFFFFF
@@ -3602,10 +3699,23 @@ def _battle_status_y_menu():
     return battle_cmd_y - (8 + BATTLE_STATUS_TO_CMD_GAP)
 
 
+def _reset_attack_state():
+    global attack_started_ms, attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty
+    global attack_prev_cursor_draw_x
+
+    attack_started_ms = 0
+    attack_cursor_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+    attack_cursor_dir = 1
+    attack_locked = False
+    battle_attack_dirty = True
+    attack_prev_cursor_draw_x = -9999
+
+
 def _reset_battle_state():
     global bullets, next_bullet_spawn_ms, damage_invuln_until_ms
     global battle_bullets_dirty, battle_prev_bullet_positions, battle_status_dirty
     global fight_heart_x, fight_heart_y, battle_prev_heart_x, battle_prev_heart_y
+    global battle_heart_needs_sprite_refresh
 
     bullets = []
     next_bullet_spawn_ms = 0
@@ -3617,6 +3727,27 @@ def _reset_battle_state():
     fight_heart_y = battle_heart_init_y
     battle_prev_heart_x = fight_heart_x
     battle_prev_heart_y = fight_heart_y
+    battle_heart_needs_sprite_refresh = False
+    _reset_attack_state()
+
+
+def _exit_battle_to_explore():
+    global mode, encounter_cooldown_frames, mercy_exit_pending
+    global explore_force_full_redraw
+    global battle_menu_dirty, battle_dialog_visible
+    global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
+
+    mode = MODE_EXPLORE
+    encounter_cooldown_frames = ENCOUNTER_COOLDOWN_FRAMES
+    _clear_act_dialog_state(True)
+    mercy_exit_pending = False
+    explore_force_full_redraw = True
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_prev_dialog_active = False
+    _reset_battle_state()
 
 
 def _clear_act_dialog_state(reset_sequence):
@@ -3642,7 +3773,7 @@ def _clear_act_dialog_state(reset_sequence):
 
 
 def _start_battle_from_explore():
-    global mode, mercy_exit_pending
+    global mode, mercy_exit_pending, enemy_hp
     global battle_menu_dirty, battle_dialog_visible
     global battle_menu_full_clear_pending
     global battle_menu_static_ready, battle_menu_prev_dialog_active
@@ -3659,6 +3790,7 @@ def _start_battle_from_explore():
     battle_menu_prev_dialog_active = False
     lamp_dialog_until_ms = 0
     explore_overlay_dirty = False
+    enemy_hp = ENEMY_HP_MAX
     _reset_battle_state()
     print("battle_menu: Fight(GPIO38) Act(GPIO39) Item(GPIO40) Mercy(GPIO41)")
     explore_moved = False
@@ -3679,12 +3811,38 @@ def _draw_battle_status_line(in_menu=False):
     else:
         y = _battle_status_y()
 
+    if in_menu:
+        # Show compact enemy HP above the monster name only in battle menu.
+        enemy_bar_w = BATTLE_HP_BAR_W
+        enemy_bar_h = BATTLE_HP_BAR_H
+        enemy_bar_x = x
+        enemy_bar_y = y - enemy_bar_h - 3
+        enemy_status_text = "%d/%d" % (_clamp(enemy_hp, 0, ENEMY_HP_MAX), ENEMY_HP_MAX)
+        enemy_status_x = enemy_bar_x + enemy_bar_w + 6
+        enemy_status_y = enemy_bar_y - 1
+        _draw_rect_thick(enemy_bar_x, enemy_bar_y, enemy_bar_w, enemy_bar_h, BATTLE_COLOR_WHITE, 1)
+        enemy_inner_x = enemy_bar_x + 1
+        enemy_inner_y = enemy_bar_y + 1
+        enemy_inner_w = enemy_bar_w - 2
+        enemy_inner_h = enemy_bar_h - 2
+        if enemy_inner_w > 0 and enemy_inner_h > 0:
+            _fill_rect_solid(enemy_inner_x, enemy_inner_y, enemy_inner_w, enemy_inner_h, ENEMY_HP_BAR_EMPTY_COLOR)
+            enemy_now = _clamp(enemy_hp, 0, ENEMY_HP_MAX)
+            enemy_fill_w = 0
+            if ENEMY_HP_MAX > 0:
+                enemy_fill_w = (enemy_inner_w * enemy_now) // ENEMY_HP_MAX
+            if enemy_fill_w > 0:
+                _fill_rect_solid(enemy_inner_x, enemy_inner_y, enemy_fill_w, enemy_inner_h, ENEMY_HP_BAR_FILL_COLOR)
+
     def _draw_bold_text(tx, ty, text):
         # Simulate a slightly larger/bolder look using 2x2 overdraw.
         lgfx.draw_text(tx, ty, text, BATTLE_COLOR_WHITE)
         lgfx.draw_text(tx + 1, ty, text, BATTLE_COLOR_WHITE)
         lgfx.draw_text(tx, ty + 1, text, BATTLE_COLOR_WHITE)
         lgfx.draw_text(tx + 1, ty + 1, text, BATTLE_COLOR_WHITE)
+
+    if in_menu:
+        _draw_bold_text(enemy_status_x, enemy_status_y, enemy_status_text)
 
     _draw_bold_text(x, y, name_text)
     name_w = len(name_text) * 8
@@ -3721,14 +3879,15 @@ def _clear_battle_status_line_menu():
     y = menu_cmd_y_used - (8 + BATTLE_STATUS_TO_CMD_GAP)
     x = menu_frame_x_used + 8
     w = menu_frame_w_used - 16
-    # Only clear the status-line band; never overlap the command button row.
-    h = 10
+    clear_y = y - BATTLE_HP_BAR_H - 3
+    # Clear both enemy HP bar band and status text; never overlap command button row.
+    h = 10 + BATTLE_HP_BAR_H + 3
     max_h = menu_cmd_y_used - y - 1
     if max_h < 1:
         return
-    if h > max_h:
-        h = max_h
-    _clear_rect_black(x, y, w, h)
+    if h > (max_h + BATTLE_HP_BAR_H + 3):
+        h = max_h + BATTLE_HP_BAR_H + 3
+    _clear_rect_black(x, clear_y, w, h)
 
 
 def _get_bullet_positions():
@@ -3860,24 +4019,349 @@ def _draw_bullets():
         )
 
 
+def _attack_capsule_row_span(x, y, w, h, yy):
+    if yy < y or yy >= y + h:
+        return None
+    r = h // 2
+    if r < 1 or w <= h:
+        return x, x + w - 1
+
+    cy = y + r
+    dy = yy - cy
+    if dy < 0:
+        dy = -dy
+    v = (r * r) - (dy * dy)
+    if v < 0:
+        v = 0
+    dx = int(v ** 0.5)
+
+    left_cx = x + r
+    right_cx = x + w - r - 1
+    return left_cx - dx, right_cx + dx
+
+
+def _draw_attack_capsule_fill(x, y, w, h, color, clip_x0=None, clip_x1=None):
+    if w <= 0 or h <= 0:
+        return
+    for yy in range(y, y + h):
+        span = _attack_capsule_row_span(x, y, w, h, yy)
+        if not span:
+            continue
+        left, right = span
+        if clip_x0 is not None and left < clip_x0:
+            left = clip_x0
+        if clip_x1 is not None and right > clip_x1:
+            right = clip_x1
+        if right >= left:
+            _fill_rect_solid(left, yy, right - left + 1, 1, color)
+
+
+def _draw_attack_capsule_outline(x, y, w, h, color, clip_x0=None, clip_x1=None):
+    if w <= 0 or h <= 0:
+        return
+    for yy in range(y, y + h):
+        span = _attack_capsule_row_span(x, y, w, h, yy)
+        if not span:
+            continue
+        left, right = span
+        if clip_x0 is not None and left < clip_x0 and right < clip_x0:
+            continue
+        if clip_x1 is not None and left > clip_x1 and right > clip_x1:
+            continue
+        if clip_x0 is None or left >= clip_x0:
+            if clip_x1 is None or left <= clip_x1:
+                lgfx.draw_rect(left, yy, 1, 1, color)
+        if right != left:
+            if clip_x0 is None or right >= clip_x0:
+                if clip_x1 is None or right <= clip_x1:
+                    lgfx.draw_rect(right, yy, 1, 1, color)
+
+
+def _draw_attack_capsule_ring(x, y, w, h, ring_color, fill_color, clip_x0=None, clip_x1=None):
+    _draw_attack_capsule_fill(x, y, w, h, ring_color, clip_x0, clip_x1)
+    if w > 2 and h > 2:
+        _draw_attack_capsule_fill(x + 1, y + 1, w - 2, h - 2, fill_color, clip_x0, clip_x1)
+
+
+def _draw_attack_zone_overlays(x, y, w, h, low_w, perfect_w, clip_x0=None, clip_x1=None):
+    right_x = x + w - 1
+    left_low_end = x + low_w - 1
+    right_low_start = right_x - low_w + 1
+    perfect_x = x + ((w - perfect_w) // 2)
+    perfect_end = perfect_x + perfect_w - 1
+
+    zone_clip_x0 = clip_x0 if clip_x0 is not None else x
+    zone_clip_x1 = clip_x1 if clip_x1 is not None else right_x
+
+    if low_w > 0:
+        left_clip_x0 = zone_clip_x0 if zone_clip_x0 > x else x
+        left_clip_x1 = zone_clip_x1 if zone_clip_x1 < left_low_end else left_low_end
+        if left_clip_x1 >= left_clip_x0:
+            _draw_attack_capsule_fill(x, y, w, h, ATTACK_BAR_LOW_ZONE_COLOR, left_clip_x0, left_clip_x1)
+
+        right_clip_x0 = zone_clip_x0 if zone_clip_x0 > right_low_start else right_low_start
+        right_clip_x1 = zone_clip_x1 if zone_clip_x1 < right_x else right_x
+        if right_clip_x1 >= right_clip_x0:
+            _draw_attack_capsule_fill(x, y, w, h, ATTACK_BAR_LOW_ZONE_COLOR, right_clip_x0, right_clip_x1)
+    if perfect_w > 0:
+        perfect_clip_x0 = zone_clip_x0 if zone_clip_x0 > perfect_x else perfect_x
+        perfect_clip_x1 = zone_clip_x1 if zone_clip_x1 < perfect_end else perfect_end
+        _draw_attack_capsule_fill(
+            x,
+            y,
+            w,
+            h,
+            ATTACK_BAR_PERFECT_COLOR,
+            perfect_clip_x0,
+            perfect_clip_x1,
+        )
+        core_w = perfect_w - 6
+        if core_w > 1:
+            core_x = perfect_x + ((perfect_w - core_w) // 2)
+            core_end = core_x + core_w - 1
+            core_clip_x0 = zone_clip_x0 if zone_clip_x0 > core_x else core_x
+            core_clip_x1 = zone_clip_x1 if zone_clip_x1 < core_end else core_end
+            _draw_attack_capsule_fill(
+                x,
+                y,
+                w,
+                h,
+                ATTACK_BAR_PERFECT_CORE_COLOR,
+                core_clip_x0,
+                core_clip_x1,
+            )
+
+    tick_positions = (
+        perfect_x - 5,
+        perfect_x - 2,
+        perfect_end + 2,
+        perfect_end + 5,
+    )
+    for tx in tick_positions:
+        if tx < x or tx > right_x:
+            continue
+        if clip_x0 is not None and tx < clip_x0:
+            continue
+        if clip_x1 is not None and tx > clip_x1:
+            continue
+        _draw_attack_capsule_fill(tx, y, 1, h, ATTACK_BAR_TICK_COLOR)
+
+    return perfect_x, perfect_end
+
+
+def _draw_attack_pixel_noise(x, y, w, h, skip_x0, skip_x1, clip_x0=None, clip_x1=None):
+    if w < 10 or h < 4:
+        return
+
+    row_offsets = (1, 3, h - 4, h - 2)
+    seg_len = 4
+    step = 14
+
+    for row_i, row_off in enumerate(row_offsets):
+        yy = y + row_off
+        if yy < y or yy >= y + h:
+            continue
+        span = _attack_capsule_row_span(x, y, w, h, yy)
+        if not span:
+            continue
+        left_span, right_span = span
+        px = left_span + 4
+        while px + seg_len - 1 <= right_span - 4:
+            seg_x0 = px
+            seg_x1 = px + seg_len - 1
+            if clip_x0 is not None and seg_x1 < clip_x0:
+                px += step
+                continue
+            if clip_x1 is not None and seg_x0 > clip_x1:
+                break
+            if seg_x1 < skip_x0 or seg_x0 > skip_x1:
+                # Use absolute segment coordinate so clipped partial redraws are deterministic.
+                seg_i = (seg_x0 - x) // step
+                color = ATTACK_BAR_DECOR_RED if ((seg_i + row_i) & 1) == 0 else ATTACK_BAR_DECOR_YELLOW
+                draw_x0 = seg_x0
+                draw_x1 = seg_x1
+                if clip_x0 is not None and draw_x0 < clip_x0:
+                    draw_x0 = clip_x0
+                if clip_x1 is not None and draw_x1 > clip_x1:
+                    draw_x1 = clip_x1
+                if draw_x1 >= draw_x0:
+                    _fill_rect_solid(draw_x0, yy, draw_x1 - draw_x0 + 1, 1, color)
+            px += step
+
+
+def _draw_attack_bar_static_layers(bar_x, bar_y, clip_x0=None, clip_x1=None):
+    inner_x = bar_x + 1
+    inner_y = bar_y + 1
+    inner_w = ATTACK_BAR_W - 2
+    inner_h = ATTACK_BAR_H - 2
+    if inner_w <= 0 or inner_h <= 0:
+        return
+
+    good_w = (inner_w * ATTACK_ZONE_GOOD_PCT) // 100
+    if good_w < 1:
+        good_w = 1
+    if good_w > inner_w:
+        good_w = inner_w
+
+    perfect_w = (inner_w * ATTACK_ZONE_PERFECT_PCT) // 100
+    if perfect_w < 1:
+        perfect_w = 1
+    if perfect_w > good_w:
+        perfect_w = good_w
+
+    low_w = (inner_w - good_w) // 2
+    if low_w < 0:
+        low_w = 0
+
+    fill_clip_x0 = clip_x0
+    fill_clip_x1 = clip_x1
+    if fill_clip_x0 is None:
+        fill_clip_x0 = inner_x
+    if fill_clip_x1 is None:
+        fill_clip_x1 = inner_x + inner_w - 1
+    _draw_attack_capsule_ring(
+        bar_x - 2,
+        bar_y - 2,
+        ATTACK_BAR_W + 4,
+        ATTACK_BAR_H + 4,
+        ATTACK_BAR_OUTLINE_COLOR,
+        ATTACK_BAR_BORDER_COLOR,
+        clip_x0,
+        clip_x1,
+    )
+    _draw_attack_capsule_ring(
+        bar_x - 1,
+        bar_y - 1,
+        ATTACK_BAR_W + 2,
+        ATTACK_BAR_H + 2,
+        ATTACK_BAR_BORDER_COLOR,
+        ATTACK_BAR_BG_COLOR,
+        clip_x0,
+        clip_x1,
+    )
+    _draw_attack_capsule_fill(inner_x, inner_y, inner_w, inner_h, ATTACK_BAR_BG_COLOR, fill_clip_x0, fill_clip_x1)
+    perfect_x, perfect_end = _draw_attack_zone_overlays(inner_x, inner_y, inner_w, inner_h, low_w, perfect_w, fill_clip_x0, fill_clip_x1)
+    _draw_attack_pixel_noise(inner_x, inner_y, inner_w, inner_h, perfect_x, perfect_end, fill_clip_x0, fill_clip_x1)
+    _draw_attack_capsule_outline(inner_x, inner_y, inner_w, inner_h, ATTACK_BAR_BORDER_INNER_COLOR, clip_x0, clip_x1)
+
+
+def draw_battle_attack_screen(full_refresh=False):
+    global attack_prev_cursor_draw_x
+
+    bar_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+    bar_y = battle_frame_y + (BATTLE_FRAME_H // 2) - (ATTACK_BAR_H // 2) + ATTACK_BAR_Y_OFFSET
+    cursor_y = bar_y - ATTACK_CURSOR_EXTRA_PX
+    cursor_h = ATTACK_BAR_H + (ATTACK_CURSOR_EXTRA_PX * 2)
+    if cursor_h < 1:
+        cursor_h = 1
+
+    if full_refresh:
+        lgfx.clear()
+        _draw_battle_frame()
+
+        enemy_drawn = False
+        enemy_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_ENEMY_DRAW_W) // 2)
+        enemy_y = battle_frame_y + 12
+        if hasattr(lgfx, "draw_png_file") and _path_exists(ENEMY_SPRITE_PATH):
+            enemy_drawn = bool(
+                lgfx.draw_png_file(
+                    ENEMY_SPRITE_PATH,
+                    enemy_x,
+                    enemy_y,
+                    ATTACK_ENEMY_DRAW_W,
+                    ATTACK_ENEMY_DRAW_H,
+                )
+            )
+        if not enemy_drawn:
+            lgfx.draw_circle(
+                battle_frame_x + (BATTLE_FRAME_W // 2),
+                enemy_y + (ATTACK_ENEMY_DRAW_H // 2),
+                ATTACK_ENEMY_DRAW_H // 2,
+                BATTLE_COLOR_WHITE,
+            )
+
+        if hasattr(lgfx, "draw_text"):
+            hp_text = "ENEMY HP %d/%d" % (enemy_hp, ENEMY_HP_MAX)
+            _draw_text_in_box(battle_frame_x + 8, enemy_y + ATTACK_ENEMY_DRAW_H + 4, BATTLE_FRAME_W - 16, 12, hp_text, BATTLE_COLOR_WHITE)
+
+        hp_bar_x = battle_frame_x + ((BATTLE_FRAME_W - ENEMY_HP_BAR_W) // 2)
+        hp_bar_y = enemy_y + ATTACK_ENEMY_DRAW_H + 18
+        _draw_rect_thick(hp_bar_x, hp_bar_y, ENEMY_HP_BAR_W, ENEMY_HP_BAR_H, BATTLE_COLOR_WHITE, 1)
+        hp_inner_x = hp_bar_x + 1
+        hp_inner_y = hp_bar_y + 1
+        hp_inner_w = ENEMY_HP_BAR_W - 2
+        hp_inner_h = ENEMY_HP_BAR_H - 2
+        if hp_inner_w > 0 and hp_inner_h > 0:
+            _fill_rect_solid(hp_inner_x, hp_inner_y, hp_inner_w, hp_inner_h, ENEMY_HP_BAR_EMPTY_COLOR)
+            enemy_hp_now = _clamp(enemy_hp, 0, ENEMY_HP_MAX)
+            hp_fill_w = 0
+            if ENEMY_HP_MAX > 0:
+                hp_fill_w = (hp_inner_w * enemy_hp_now) // ENEMY_HP_MAX
+            if hp_fill_w > 0:
+                _fill_rect_solid(hp_inner_x, hp_inner_y, hp_fill_w, hp_inner_h, ENEMY_HP_BAR_FILL_COLOR)
+
+        _draw_battle_status_line()
+
+        _draw_attack_bar_static_layers(bar_x, bar_y)
+        attack_prev_cursor_draw_x = -9999
+
+    cursor_x = _clamp(attack_cursor_x, bar_x, bar_x + ATTACK_BAR_W - 1)
+    cursor_draw_x = cursor_x - (ATTACK_CURSOR_W // 2)
+    max_cursor_x = bar_x + ATTACK_BAR_W - ATTACK_CURSOR_W
+    cursor_draw_x = _clamp(cursor_draw_x, bar_x, max_cursor_x)
+    bar_top = bar_y
+    bar_bottom = bar_y + ATTACK_BAR_H
+    cursor_bottom = cursor_y + cursor_h
+    if not full_refresh and attack_prev_cursor_draw_x > -9000:
+        prev_x0 = attack_prev_cursor_draw_x
+        prev_x1 = attack_prev_cursor_draw_x + ATTACK_CURSOR_W - 1
+        curr_x0 = cursor_draw_x
+        curr_x1 = cursor_draw_x + ATTACK_CURSOR_W - 1
+
+        restore_x0 = prev_x0 if prev_x0 < curr_x0 else curr_x0
+        restore_x1 = prev_x1 if prev_x1 > curr_x1 else curr_x1
+        bar_min_x = bar_x
+        bar_max_x = bar_x + ATTACK_BAR_W - 1
+        if restore_x0 < bar_min_x:
+            restore_x0 = bar_min_x
+        if restore_x1 > bar_max_x:
+            restore_x1 = bar_max_x
+        if restore_x1 >= restore_x0:
+            _draw_attack_bar_static_layers(bar_x, bar_y, restore_x0, restore_x1)
+
+        # Only clear the old cursor segments outside the bar body.
+        if cursor_y < bar_top:
+            top_h = bar_top - cursor_y
+            if top_h > 0:
+                _clear_rect_black(prev_x0, cursor_y, ATTACK_CURSOR_W, top_h)
+        if cursor_bottom > bar_bottom:
+            bottom_h = cursor_bottom - bar_bottom
+            if bottom_h > 0:
+                _clear_rect_black(prev_x0, bar_bottom, ATTACK_CURSOR_W, bottom_h)
+
+    if ATTACK_CURSOR_W >= 3:
+        _fill_rect_solid(cursor_draw_x, cursor_y, 1, cursor_h, ATTACK_BAR_CURSOR_COLOR)
+        _fill_rect_solid(cursor_draw_x + 1, cursor_y, ATTACK_CURSOR_W - 2, cursor_h, ATTACK_BAR_CURSOR_CORE_COLOR)
+        _fill_rect_solid(cursor_draw_x + ATTACK_CURSOR_W - 1, cursor_y, 1, cursor_h, ATTACK_BAR_CURSOR_COLOR)
+    else:
+        _fill_rect_solid(cursor_draw_x, cursor_y, ATTACK_CURSOR_W, cursor_h, ATTACK_BAR_CURSOR_COLOR)
+
+    attack_prev_cursor_draw_x = cursor_draw_x
+
+
 def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mercy_pressed):
-    global mode, encounter_cooldown_frames, act_dialog_until_ms
+    global mode, act_dialog_until_ms
     global battle_dialog_mode, mercy_exit_pending, battle_dialog_started_ms, battle_dialog_png_info, battle_dialog_text
-    global explore_force_full_redraw, fight_heart_x, fight_heart_y
-    global battle_menu_dirty, battle_fight_dirty, battle_heart_needs_sprite_refresh, fight_return_deadline_ms
+    global battle_menu_dirty
     global act_menu_active, act_choice_index, act_sequence_step, act_nav_prev_dir
     global act_prev_selected_index, act_selection_dirty, act_menu_slot_cache
     global item_menu_active, item_choice_index, item_nav_prev_dir, item_menu_slot_cache
     global item_prev_selected_index, item_selection_dirty, item_view_offset
+    global attack_started_ms, attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty
 
     dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
     if mercy_exit_pending and not dialog_active:
-        mode = MODE_EXPLORE
-        encounter_cooldown_frames = ENCOUNTER_COOLDOWN_FRAMES
-        _clear_act_dialog_state(True)
-        mercy_exit_pending = False
-        explore_force_full_redraw = True
-        battle_menu_dirty = True
+        _exit_battle_to_explore()
         return
     if dialog_active:
         return
@@ -3892,12 +4376,13 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             battle_dialog_mode = BATTLE_DIALOG_NONE
             battle_dialog_png_info = None
             battle_dialog_text = None
-            mode = MODE_BATTLE_FIGHT
-            fight_heart_x = battle_heart_init_x
-            fight_heart_y = battle_heart_init_y
-            battle_fight_dirty = True
-            battle_heart_needs_sprite_refresh = False
-            fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
+            mode = MODE_BATTLE_ATTACK
+            bar_min_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+            attack_started_ms = loop_start
+            attack_cursor_x = bar_min_x
+            attack_cursor_dir = 1
+            attack_locked = False
+            battle_attack_dirty = True
             battle_menu_dirty = True
             print("FIGHT")
             return
@@ -3980,12 +4465,13 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             battle_dialog_mode = BATTLE_DIALOG_NONE
             battle_dialog_png_info = None
             battle_dialog_text = None
-            mode = MODE_BATTLE_FIGHT
-            fight_heart_x = battle_heart_init_x
-            fight_heart_y = battle_heart_init_y
-            battle_fight_dirty = True
-            battle_heart_needs_sprite_refresh = False
-            fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
+            mode = MODE_BATTLE_ATTACK
+            bar_min_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+            attack_started_ms = loop_start
+            attack_cursor_x = bar_min_x
+            attack_cursor_dir = 1
+            attack_locked = False
+            battle_attack_dirty = True
             battle_menu_dirty = True
             print("FIGHT")
             return
@@ -4088,12 +4574,13 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         return
 
     if fight_pressed:
-        mode = MODE_BATTLE_FIGHT
-        fight_heart_x = battle_heart_init_x
-        fight_heart_y = battle_heart_init_y
-        battle_fight_dirty = True
-        battle_heart_needs_sprite_refresh = False
-        fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
+        mode = MODE_BATTLE_ATTACK
+        bar_min_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+        attack_started_ms = loop_start
+        attack_cursor_x = bar_min_x
+        attack_cursor_dir = 1
+        attack_locked = False
+        battle_attack_dirty = True
         battle_dialog_text = None
         print("FIGHT")
         return
@@ -4148,6 +4635,72 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         battle_menu_dirty = True
 
 
+def update_battle_attack(loop_start, fight_pressed):
+    global mode, enemy_hp
+    global attack_started_ms, attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty
+    global fight_return_deadline_ms, battle_fight_dirty, battle_status_dirty
+    global battle_dialog_mode, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms
+    global mercy_exit_pending
+
+    bar_min_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+    bar_max_x = bar_min_x + ATTACK_BAR_W - 1
+    if attack_started_ms == 0:
+        attack_started_ms = loop_start
+        attack_cursor_x = bar_min_x
+        attack_cursor_dir = 1
+        attack_locked = False
+    if attack_cursor_x < bar_min_x:
+        attack_cursor_x = bar_min_x
+    elif attack_cursor_x > bar_max_x:
+        attack_cursor_x = bar_max_x
+
+    attack_cursor_x += attack_cursor_dir * ATTACK_CURSOR_SPEED_PX
+    if attack_cursor_x <= bar_min_x:
+        attack_cursor_x = bar_min_x
+        attack_cursor_dir = 1
+    elif attack_cursor_x >= bar_max_x:
+        attack_cursor_x = bar_max_x
+        attack_cursor_dir = -1
+
+    timed_out = time.ticks_diff(loop_start, attack_started_ms) >= ATTACK_BAR_TIMEOUT_MS
+    if (not fight_pressed) and (not timed_out):
+        return
+
+    attack_locked = True
+    player_at = PLAYER_AT_BASE + PLAYER_AT_BONUS
+    mult = 1
+    if not timed_out:
+        bar_center_x = bar_min_x + (ATTACK_BAR_W // 2)
+        dist = abs(attack_cursor_x - bar_center_x)
+        half = ATTACK_BAR_W // 2
+        if dist <= (half * ATTACK_ZONE_PERFECT_PCT) // 100:
+            mult = 3
+        elif dist <= (half * ATTACK_ZONE_GOOD_PCT) // 100:
+            mult = 2
+    damage = player_at * mult
+    if damage < 1:
+        damage = 1
+    enemy_hp -= damage
+    if enemy_hp < 0:
+        enemy_hp = 0
+    battle_status_dirty = True
+    print("attack_hit: mult", mult, "damage", damage, "enemy_hp", enemy_hp)
+
+    if enemy_hp <= 0:
+        _exit_battle_to_explore()
+        return
+
+    mode = MODE_BATTLE_FIGHT
+    _reset_battle_state()
+    fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
+    battle_fight_dirty = True
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    battle_dialog_png_info = None
+    battle_dialog_text = None
+    act_dialog_until_ms = 0
+    mercy_exit_pending = False
+
+
 def update_battle_fight(loop_start):
     global mode, fight_heart_x, fight_heart_y
     global battle_menu_dirty, battle_dialog_visible, fight_return_deadline_ms
@@ -4181,6 +4734,7 @@ def update_battle_fight(loop_start):
         item_menu_active = False
         item_nav_prev_dir = 0
         mercy_exit_pending = False
+        _reset_attack_state()
         return
 
     if x_dir > 0:
@@ -4210,7 +4764,7 @@ def draw_all(loop_start):
     global battle_prev_heart_x, battle_prev_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
     global battle_bullets_dirty, battle_prev_bullet_positions
-    global battle_status_dirty
+    global battle_status_dirty, battle_attack_dirty
     global act_selection_dirty, act_prev_selected_index
     global item_selection_dirty
     global inv_screen_dirty
@@ -4300,6 +4854,14 @@ def draw_all(loop_start):
             _draw_battle_status_line(True)
         return
 
+    if mode == MODE_BATTLE_ATTACK:
+        if battle_attack_dirty:
+            draw_battle_attack_screen(True)
+            battle_attack_dirty = False
+        else:
+            draw_battle_attack_screen(False)
+        return
+
     moved = (fight_heart_x != battle_prev_heart_x) or (fight_heart_y != battle_prev_heart_y)
     can_draw_png = hasattr(lgfx, "draw_png_file")
 
@@ -4316,16 +4878,21 @@ def draw_all(loop_start):
         if moved:
             lgfx.draw_circle(battle_prev_heart_x, battle_prev_heart_y, BATTLE_HEART_ERASE_R, 0x0000)
 
-    heart_drawn = _draw_battle_heart_sprite(fight_heart_x, fight_heart_y) if can_draw_png else False
+    # Keep one rendering path in fight mode to avoid rapid visual toggling.
+    use_png_heart = can_draw_png and BATTLE_HEART_USE_PNG_ON_MOVE
+
+    heart_drawn = False
+    if use_png_heart:
+        heart_drawn = _draw_battle_heart_sprite(fight_heart_x, fight_heart_y)
     if not heart_drawn:
-        lgfx.draw_circle(fight_heart_x, fight_heart_y, BATTLE_HEART_FAST_R, BATTLE_COLOR_RED)
+        _draw_battle_heart_mask(fight_heart_x, fight_heart_y, BATTLE_COLOR_RED)
+        battle_heart_needs_sprite_refresh = False
 
     # Repaint border after local erase paths so edge pixels remain stable.
     _draw_battle_frame()
     if battle_status_dirty or battle_fight_dirty:
         _draw_battle_status_line()
         battle_status_dirty = False
-    battle_heart_needs_sprite_refresh = False
 
     battle_prev_heart_x = fight_heart_x
     battle_prev_heart_y = fight_heart_y
@@ -4430,6 +4997,11 @@ while True:
         explore_scrolled = False
         explore_anim_changed = False
         update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mercy_pressed)
+    elif mode == MODE_BATTLE_ATTACK:
+        explore_moved = False
+        explore_scrolled = False
+        explore_anim_changed = False
+        update_battle_attack(loop_start, fight_pressed)
     else:
         explore_moved = False
         explore_scrolled = False
