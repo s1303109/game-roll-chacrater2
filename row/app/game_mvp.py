@@ -471,6 +471,26 @@ MODE_BATTLE_MENU = 1
 MODE_BATTLE_FIGHT = 2
 MODE_EXPLORE_INVENTORY = 3
 MODE_BATTLE_ATTACK = 4
+MODE_TITLE_MENU = 5
+TITLE_COVER_PATHS = (
+    "/front_cover_320x240.png",
+    "/workspace/front_cover_320x240.png",
+    "/workspace/front cover.png",
+    "/front cover.png",
+)
+TITLE_NOTICE_MS = 1200
+TITLE_NAV_SWITCH_COOLDOWN_MS = 140
+TITLE_MENU_CONTINUE = "CONTINUE"
+TITLE_MENU_NEW_GAME = "NEW GAME"
+TITLE_NOTICE_CONTINUE_TEXT = "Not available yet"
+TITLE_UI_START_PATHS = ("/title_ui_start_112x54.png", "/workspace/title_ui_start_112x54.png")
+TITLE_UI_CONTINUE_PATHS = ("/title_ui_continue_112x54.png", "/workspace/title_ui_continue_112x54.png")
+TITLE_UI_X = 8
+TITLE_UI_W = 112
+TITLE_UI_H = 54
+TITLE_UI_Y = 150
+TITLE_OPTION_NEW_GAME_RECT = (TITLE_UI_X, TITLE_UI_Y, TITLE_UI_W, 27)
+TITLE_OPTION_CONTINUE_RECT = (TITLE_UI_X, TITLE_UI_Y + 27, TITLE_UI_W, 27)
 ENCOUNTER_COOLDOWN_FRAMES = 120
 BATTLE_FRAME_W = 240
 BATTLE_FRAME_H = 200
@@ -2068,7 +2088,15 @@ explore_moved = False
 explore_scrolled = False
 explore_anim_changed = False
 explore_force_full_redraw = False
-mode = MODE_EXPLORE
+mode = MODE_TITLE_MENU
+title_menu_index = 0
+title_nav_prev_dir = 0
+title_nav_next_ms = 0
+title_notice_until_ms = 0
+title_notice_text = None
+title_dirty = True
+title_full_redraw = True
+title_cover_drew_png = False
 encounter_cooldown_frames = 0
 act_dialog_until_ms = 0
 fight_heart_x = battle_heart_init_x
@@ -2164,26 +2192,14 @@ spawn_intro_active = bool(ENABLE_SPAWN_INTRO and (current_map_id == MAP1_ID))
 spawn_intro_overlay_path = _resolve_first_existing_path(SPAWN_OVERLAY_PATHS) if spawn_intro_active else None
 spawn_intro_needs_redraw = spawn_intro_active
 inventory_portrait_path = _resolve_first_existing_path(INVENTORY_PORTRAIT_PATHS)
+title_cover_path = _resolve_first_existing_path(TITLE_COVER_PATHS)
+title_ui_start_path = _resolve_first_existing_path(TITLE_UI_START_PATHS)
+title_ui_continue_path = _resolve_first_existing_path(TITLE_UI_CONTINUE_PATHS)
 
 if player_sheet_enabled:
     lgfx.player_frame_set(anim_row * 3 + anim_col)
     if hasattr(lgfx, "player_flip_x_set"):
         lgfx.player_flip_x_set(face_right)
-
-_render_scene(scroll_x, scroll_y, player_x, player_y, True)
-if spawn_intro_active:
-    # Defer to draw_all() (function is defined later in file).
-    # Calling it here before definition causes startup NameError -> reboot loop.
-    spawn_intro_needs_redraw = True
-if ENABLE_SPAWN_OVERLAY and hasattr(lgfx, "draw_png_file") and _path_exists(SPAWN_OVERLAY_PATH):
-    lgfx.draw_png_file(
-        SPAWN_OVERLAY_PATH,
-        player_x - scroll_x - (PLAYER_FRAME_W // 2),
-        player_y - scroll_y - (PLAYER_FRAME_H // 2),
-        PLAYER_FRAME_W,
-        PLAYER_FRAME_H,
-    )
-    time.sleep_ms(180)
 
 def update_player(loop_start, frame_dt):
     global player_x, player_y, scroll_x, scroll_y
@@ -2366,6 +2382,124 @@ def _menu_nav_dir_horizontal():
     if x_dir < 0:
         return -1
     return 0
+
+
+def _draw_title_menu_screen(loop_start, full_redraw):
+    global title_cover_drew_png
+
+    if full_redraw:
+        lgfx.clear()
+        drew_cover = False
+        if title_cover_path and hasattr(lgfx, "draw_png_file"):
+            try:
+                drew_cover = bool(lgfx.draw_png_file(title_cover_path, 0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H))
+            except Exception:
+                drew_cover = False
+        if not drew_cover:
+            _fill_rect_solid(0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H, 0x0000)
+        title_cover_drew_png = drew_cover
+    else:
+        drew_cover = title_cover_drew_png
+
+    ui_drawn = False
+    if hasattr(lgfx, "draw_png_file"):
+        ui_path = title_ui_start_path if title_menu_index == 0 else title_ui_continue_path
+        if ui_path:
+            try:
+                ui_drawn = bool(lgfx.draw_png_file(ui_path, TITLE_UI_X, TITLE_UI_Y, TITLE_UI_W, TITLE_UI_H))
+            except Exception:
+                ui_drawn = False
+
+    option_rects = (TITLE_OPTION_NEW_GAME_RECT, TITLE_OPTION_CONTINUE_RECT)
+    if drew_cover and ui_drawn:
+        pass
+    elif drew_cover:
+        for i, rect in enumerate(option_rects):
+            rx, ry, rw, rh = rect
+            if i == title_menu_index:
+                _draw_rect_thick(rx, ry, rw, rh, BATTLE_CMD_COLOR, 2)
+            else:
+                _draw_rect_thick(rx, ry, rw, rh, BATTLE_COLOR_WHITE, 1)
+    else:
+        panel_w = 136
+        panel_h = 66
+        panel_x = 8
+        panel_y = ACTIVE_VIEW_H - panel_h - 12
+        _fill_rect_solid(panel_x, panel_y, panel_w, panel_h, 0x0000)
+        _draw_rect_thick(panel_x, panel_y, panel_w, panel_h, BATTLE_COLOR_WHITE, 2)
+
+        labels = (TITLE_MENU_NEW_GAME, TITLE_MENU_CONTINUE)
+        row_h = 24
+        row_y0 = panel_y + 8
+        for i, label in enumerate(labels):
+            row_y = row_y0 + (i * row_h)
+            if i == title_menu_index:
+                _fill_rect_solid(panel_x + 6, row_y, panel_w - 12, row_h - 2, 0x4208)
+                _draw_rect_thick(panel_x + 6, row_y, panel_w - 12, row_h - 2, BATTLE_CMD_COLOR, 1)
+                text_color = BATTLE_CMD_COLOR
+            else:
+                text_color = BATTLE_COLOR_WHITE
+            _draw_text_in_box(panel_x + 8, row_y, panel_w - 16, row_h - 2, label, text_color)
+
+    if title_notice_text and time.ticks_diff(title_notice_until_ms, loop_start) > 0:
+        notice_h = 20
+        if drew_cover:
+            notice_w = 136
+            notice_x = 8
+            notice_y = TITLE_OPTION_NEW_GAME_RECT[1] - notice_h - 8
+        else:
+            notice_w = panel_w
+            notice_x = panel_x
+            notice_y = panel_y - notice_h - 6
+        if notice_y < 6:
+            notice_y = 6
+        _fill_rect_solid(notice_x, notice_y, notice_w, notice_h, 0x0000)
+        _draw_rect_thick(notice_x, notice_y, notice_w, notice_h, BATTLE_COLOR_WHITE, 1)
+        _draw_text_in_box(notice_x + 4, notice_y + 2, notice_w - 8, notice_h - 4, title_notice_text, BATTLE_COLOR_WHITE)
+
+
+def update_title_menu(loop_start, interact_pressed):
+    global mode, title_menu_index, title_nav_prev_dir, title_nav_next_ms
+    global title_notice_until_ms, title_notice_text, title_dirty, title_full_redraw
+    global explore_force_full_redraw, spawn_intro_needs_redraw
+
+    if title_notice_text and time.ticks_diff(title_notice_until_ms, loop_start) <= 0:
+        title_notice_text = None
+        title_notice_until_ms = 0
+        title_dirty = True
+        title_full_redraw = True
+
+    nav_dir = _menu_nav_dir_vertical()
+    if nav_dir == 0:
+        title_nav_prev_dir = 0
+    elif nav_dir != title_nav_prev_dir:
+        if time.ticks_diff(loop_start, title_nav_next_ms) >= 0:
+            if nav_dir > 0:
+                title_menu_index = (title_menu_index + 1) % 2
+            else:
+                title_menu_index = (title_menu_index - 1 + 2) % 2
+            title_nav_next_ms = time.ticks_add(loop_start, TITLE_NAV_SWITCH_COOLDOWN_MS)
+            title_dirty = True
+        title_nav_prev_dir = nav_dir
+
+    if not interact_pressed:
+        return
+
+    if title_menu_index == 0:
+        title_notice_text = None
+        title_notice_until_ms = 0
+        mode = MODE_EXPLORE
+        explore_force_full_redraw = True
+        spawn_intro_needs_redraw = spawn_intro_active
+        title_dirty = True
+        return
+
+    if title_menu_index == 1:
+        title_notice_text = TITLE_NOTICE_CONTINUE_TEXT
+        title_notice_until_ms = time.ticks_add(loop_start, TITLE_NOTICE_MS)
+        title_dirty = True
+        title_full_redraw = True
+        return
 
 
 def _open_explore_inventory():
@@ -4761,6 +4895,7 @@ def draw_all(loop_start):
     global prev_player_x, prev_player_y, prev_scroll_x, prev_scroll_y
     global explore_force_full_redraw, explore_overlay_dirty
     global spawn_intro_needs_redraw
+    global title_dirty, title_full_redraw
     global battle_prev_heart_x, battle_prev_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
     global battle_bullets_dirty, battle_prev_bullet_positions
@@ -4769,6 +4904,13 @@ def draw_all(loop_start):
     global item_selection_dirty
     global inv_screen_dirty
     global weapon_pickup_dialog_active, weapon_pickup_dialog_dirty
+
+    if mode == MODE_TITLE_MENU:
+        if title_dirty:
+            _draw_title_menu_screen(loop_start, title_full_redraw)
+            title_dirty = False
+            title_full_redraw = False
+        return
 
     if mode == MODE_EXPLORE:
         scene_redrawn = False
@@ -4933,7 +5075,7 @@ while True:
     y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
 
     # Robust intro-exit gate: clear on stick deflection even before axis dir hysteresis engages.
-    if spawn_intro_active:
+    if mode == MODE_EXPLORE and spawn_intro_active:
         intro_neutral = axis_max // DEADZONE_DIV
         if (rx - cx) > intro_neutral or (rx - cx) < -intro_neutral or (ry - cy) > intro_neutral or (ry - cy) < -intro_neutral:
             spawn_intro_active = False
@@ -4946,7 +5088,12 @@ while True:
     btn_item_prev, item_pressed = _read_falling_edge(btn_item, btn_item_prev)
     btn_mercy_prev, mercy_pressed = _read_falling_edge(btn_mercy, btn_mercy_prev)
 
-    if mode == MODE_EXPLORE:
+    if mode == MODE_TITLE_MENU:
+        explore_moved = False
+        explore_scrolled = False
+        explore_anim_changed = False
+        update_title_menu(loop_start, interact_pressed)
+    elif mode == MODE_EXPLORE:
         if weapon_pickup_dialog_active:
             explore_moved = False
             explore_scrolled = False

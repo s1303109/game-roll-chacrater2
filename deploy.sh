@@ -18,6 +18,12 @@ SPAWN_OVERLAY_NAME="${SPAWN_OVERLAY_NAME:-spawn_closed_eyes_32x32.rgb565}"
 SPAWN_OVERLAY_SRC="${SPAWN_OVERLAY_SRC:-${ASSET_DIR}/spawn_closed_eyes_32x32.rgb565}"
 INVENTORY_PORTRAIT_NAME="${INVENTORY_PORTRAIT_NAME:-inventory_portrait.png}"
 INVENTORY_PORTRAIT_SRC="${INVENTORY_PORTRAIT_SRC:-/workspace/inventory_portrait.png}"
+COVER_NAME="${COVER_NAME:-front_cover_320x240.png}"
+COVER_SRC="${COVER_SRC:-/workspace/front_cover_320x240.png}"
+TITLE_UI_START_NAME="${TITLE_UI_START_NAME:-title_ui_start_112x54.png}"
+TITLE_UI_START_SRC="${TITLE_UI_START_SRC:-/workspace/title_ui_start_112x54.png}"
+TITLE_UI_CONTINUE_NAME="${TITLE_UI_CONTINUE_NAME:-title_ui_continue_112x54.png}"
+TITLE_UI_CONTINUE_SRC="${TITLE_UI_CONTINUE_SRC:-/workspace/title_ui_continue_112x54.png}"
 
 # Prefer system mpremote. Fallback to repo-local mpremote module.
 if command -v mpremote >/dev/null 2>&1; then
@@ -101,6 +107,9 @@ copy_one "${MAIN_SRC}" "/main.py" "main.py"
 copy_one "${GAME_SRC}" "/game_mvp.py" "game_mvp.py"
 copy_one "${SPAWN_OVERLAY_SRC}" "/${SPAWN_OVERLAY_NAME}" "${SPAWN_OVERLAY_NAME}"
 copy_one "${INVENTORY_PORTRAIT_SRC}" "/${INVENTORY_PORTRAIT_NAME}" "${INVENTORY_PORTRAIT_NAME}"
+copy_one "${COVER_SRC}" "/${COVER_NAME}" "${COVER_NAME}"
+copy_one "${TITLE_UI_START_SRC}" "/${TITLE_UI_START_NAME}" "${TITLE_UI_START_NAME}"
+copy_one "${TITLE_UI_CONTINUE_SRC}" "/${TITLE_UI_CONTINUE_NAME}" "${TITLE_UI_CONTINUE_NAME}"
 
 sync_assets_to_sd() {
   local py
