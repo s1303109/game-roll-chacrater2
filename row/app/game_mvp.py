@@ -580,6 +580,7 @@ BATTLE_DIALOG_MERCY_LOCKED = 3
 BATTLE_DIALOG_MERCY_EXIT = 4
 BATTLE_DIALOG_ITEM_RESULT = 5
 LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
+MAP1_OPENING_BATTLE_DELAY_MS = 5000
 # Expand to cover the full triple-lamp poles and nearby interaction area.
 LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
 MAP1_ID = 1
@@ -664,6 +665,35 @@ ACT_DIALOG_MS = 1000
 MERCY_DIALOG_MS = 2500
 LAMP_DIALOG_MS = 2000
 ITEM_REPLY_MS = 1000
+MAP1_STORY_LINE_MS = 4000
+MAP1_STORY_ENEMY_SLIDE_MS = 300
+MAP1_STORY_STAGE_NONE = 0
+MAP1_STORY_STAGE_INTRO_LINES = 1
+MAP1_STORY_STAGE_PHASE1 = 2
+MAP1_STORY_STAGE_MID_LINES = 3
+MAP1_STORY_STAGE_PHASE2 = 4
+MAP1_ENEMY_ANCHOR_CENTER = 0
+MAP1_ENEMY_ANCHOR_SLIDING_LEFT = 1
+MAP1_ENEMY_ANCHOR_LEFT = 2
+MAP1_FLOWEY_SPRITE_PATHS = ("/workspace/FLOWEY.png", "/FLOWEY.png")
+MAP1_ANGRY_FLOWEY_SPRITE_PATHS = ("/workspace/ANGRY FLOWEY.png", "/ANGRY FLOWEY.png")
+MAP1_STORY_LINE_PNG_PATHS = (
+    ("/workspace/map1_story_line_01.png", "/map1_story_line_01.png"),
+    ("/workspace/map1_story_line_02.png", "/map1_story_line_02.png"),
+    ("/workspace/map1_story_line_03.png", "/map1_story_line_03.png"),
+    ("/workspace/map1_story_line_07.png", "/map1_story_line_07.png"),
+    ("/workspace/map1_story_line_04.png", "/map1_story_line_04.png"),
+    ("/workspace/map1_story_line_05.png", "/map1_story_line_05.png"),
+    ("/workspace/map1_story_line_06.png", "/map1_story_line_06.png"),
+)
+MAP1_STORY_LINE_PNG_W = 200
+MAP1_STORY_LINE_PNG_H = 72
+MAP1_STORY_LINE1_PNG_W = 200
+MAP1_STORY_LINE1_PNG_H = 72
+MAP1_STORY_ENEMY_DRAW_W = 96
+MAP1_STORY_ENEMY_DRAW_H = 96
+MAP1_STORY_PHASE1_BULLET_SPEED_PX = 2
+MAP1_STORY_PHASE2_BULLET_SPEED_PX = 1
 PLAYER_HP_MAX = 20
 PLAYER_NAME = "OTIS"
 PLAYER_LV = 1
@@ -861,6 +891,183 @@ MAP_REGISTRY = {
         ),
     },
 }
+
+MAP_ENCOUNTER_PORTAL_SAFE_PAD_PX = 32
+MAP_ENCOUNTER_ENTRY_MIN_TRAVEL_PX = 0
+MAP_ENCOUNTER_ENTRY_GRACE_MIN_MS = 10000
+MAP_ENCOUNTER_ENTRY_GRACE_MAX_MS = 15000
+MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN = "round_robin"
+DEFAULT_BATTLE_ENEMY_ID = "MAP1_FALLBACK_ENEMY"
+
+ENEMY_REGISTRY = {
+    "MAP1_FALLBACK_ENEMY": {
+        "enemy_id": "MAP1_FALLBACK_ENEMY",
+        "display_name": MONSTER_NAME,
+        "sprite_path": ENEMY_SPRITE_PATH,
+        "sprite_w": ENEMY_SPRITE_W,
+        "sprite_h": ENEMY_SPRITE_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "It watches you."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "It stares silently."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "It loosens up."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP2_ENEMY1": {
+        "enemy_id": "MAP2_ENEMY1",
+        "display_name": "MAP2 Enemy 1",
+        "sprite_path": ENEMY_SPRITE_PATH,
+        "sprite_w": ENEMY_SPRITE_W,
+        "sprite_h": ENEMY_SPRITE_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP2 Enemy 1 replies A."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP2 Enemy 1 replies B."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP2 Enemy 1 replies C."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP2_ENEMY2": {
+        "enemy_id": "MAP2_ENEMY2",
+        "display_name": "MAP2 Enemy 2",
+        "sprite_path": ENEMY_SPRITE_PATH,
+        "sprite_w": ENEMY_SPRITE_W,
+        "sprite_h": ENEMY_SPRITE_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP2 Enemy 2 replies A."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP2 Enemy 2 replies B."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP2 Enemy 2 replies C."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP3_ENEMY1": {
+        "enemy_id": "MAP3_ENEMY1",
+        "display_name": "MAP3 Enemy 1",
+        "sprite_path": ENEMY_SPRITE_PATH,
+        "sprite_w": ENEMY_SPRITE_W,
+        "sprite_h": ENEMY_SPRITE_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP3 Enemy 1 replies A."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP3 Enemy 1 replies B."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP3 Enemy 1 replies C."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP3_ENEMY2": {
+        "enemy_id": "MAP3_ENEMY2",
+        "display_name": "MAP3 Enemy 2",
+        "sprite_path": ENEMY_SPRITE_PATH,
+        "sprite_w": ENEMY_SPRITE_W,
+        "sprite_h": ENEMY_SPRITE_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP3 Enemy 2 replies A."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP3 Enemy 2 replies B."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP3 Enemy 2 replies C."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP4_ENEMY1": {
+        "enemy_id": "MAP4_ENEMY1",
+        "display_name": "MAP4 Enemy 1",
+        "sprite_path": ENEMY_SPRITE_PATH,
+        "sprite_w": ENEMY_SPRITE_W,
+        "sprite_h": ENEMY_SPRITE_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 1 replies A."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP4 Enemy 1 replies B."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 1 replies C."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP4_ENEMY2": {
+        "enemy_id": "MAP4_ENEMY2",
+        "display_name": "MAP4 Enemy 2",
+        "sprite_path": ENEMY_SPRITE_PATH,
+        "sprite_w": ENEMY_SPRITE_W,
+        "sprite_h": ENEMY_SPRITE_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 2 replies A."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP4 Enemy 2 replies B."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 2 replies C."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+}
+
+MAP_ENCOUNTER_CONFIG = {
+    MAP2_ID: {
+        "enabled": True,
+        "quota_range": (1, 1),
+        "enemy_ids": ("MAP2_ENEMY1",),
+        "pick_mode": MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN,
+    },
+    MAP3_ID: {
+        "enabled": True,
+        "quota_range": (1, 1),
+        "enemy_ids": ("MAP3_ENEMY1",),
+        "pick_mode": MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN,
+    },
+    MAP4_ID: {
+        "enabled": True,
+        "quota_range": (1, 1),
+        "enemy_ids": ("MAP4_ENEMY1",),
+        "pick_mode": MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN,
+    },
+}
+
+map_encounter_state = {}
+for _encounter_map_id in MAP_ENCOUNTER_CONFIG:
+    map_encounter_state[_encounter_map_id] = {
+        "rolled_quota": None,
+        "remaining": 0,
+        "cleared": False,
+        "enemy_cursor": 0,
+        "entry_travel_px": 0,
+        "entry_ready_after_ms": 0,
+    }
+
+current_battle_enemy = ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID)
 
 preload_cache = None
 preload_zone_target_map_id = None
@@ -1821,6 +2028,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     phase["spawn_finalize_ms"] = time.ticks_diff(time.ticks_ms(), t0)
     current_map_id = target_map_id
+    _encounter_on_map_enter(current_map_id)
     now = time.ticks_ms()
     preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
     gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
@@ -2345,11 +2553,24 @@ battle_menu_static_frame_x = battle_frame_x
 battle_menu_static_frame_y = battle_frame_y
 battle_menu_static_frame_w = BATTLE_FRAME_W
 battle_menu_enemy_bottom_used = battle_frame_y + 88
+battle_menu_enemy_x = battle_frame_x + ((BATTLE_FRAME_W - ENEMY_SPRITE_W) // 2)
+battle_menu_enemy_y = battle_frame_y + 16
+battle_menu_enemy_w = ENEMY_SPRITE_W
+battle_menu_enemy_h = ENEMY_SPRITE_H
 battle_menu_prev_dialog_active = False
 battle_menu_prev_dialog_x = 0
 battle_menu_prev_dialog_y = 0
 battle_menu_prev_dialog_w = 0
 battle_menu_prev_dialog_h = 0
+map1_story_active = False
+map1_story_stage = MAP1_STORY_STAGE_NONE
+map1_story_line_index = -1
+map1_story_next_ms = 0
+map1_story_enemy_angry = False
+map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_CENTER
+map1_enemy_slide_start_ms = 0
+map1_story_phase2_center_x = 0
+map1_story_phase2_center_y = 0
 _rng_state = (time.ticks_ms() | 1) & 0x7FFFFFFF
 interact_sw_prev = interact_sw.value()
 btn_fight_prev = btn_fight.value()
@@ -2357,6 +2578,9 @@ btn_act_prev = btn_act.value()
 btn_item_prev = btn_item.value()
 btn_mercy_prev = btn_mercy.value()
 leaf_zone_prev_inside = False
+map1_opening_battle_timer_started = False
+map1_opening_battle_due_ms = 0
+map1_opening_battle_done = False
 lamp_dialog_until_ms = 0
 explore_overlay_dirty = False
 current_map_id = MAP1_ID
@@ -3348,28 +3572,93 @@ def _rect_union(x1, y1, w1, h1, x2, y2, w2, h2):
     return x, y, right - x, bottom - y
 
 
+def _map1_story_dialog_safe_rect(frame_x, frame_y, frame_w, cmd_y):
+    if map1_story_line_index == 0:
+        # Keep the first line on the right while FLOWEY transitions to left.
+        target_enemy_left_x = frame_x + 4
+        target_enemy_right_x = target_enemy_left_x + MAP1_STORY_ENEMY_DRAW_W
+        dialog_left = target_enemy_right_x + 8
+        dialog_right = frame_x + frame_w - 8
+        dialog_top = frame_y + 10
+    else:
+        dialog_left = battle_menu_enemy_x + battle_menu_enemy_w + 8
+        dialog_right = frame_x + frame_w - 8
+        dialog_top = frame_y + 10
+    status_y = cmd_y - (8 + BATTLE_STATUS_TO_CMD_GAP)
+    status_band_top = status_y - BATTLE_HP_BAR_H - 3
+    dialog_bottom = status_band_top - 4
+
+    if map1_story_line_index != 0 and dialog_right - dialog_left < 72:
+        dialog_left = frame_x + 10
+        dialog_top = battle_menu_enemy_y + battle_menu_enemy_h + 6
+    if dialog_top < frame_y + 8:
+        dialog_top = frame_y + 8
+    if dialog_bottom <= dialog_top:
+        dialog_top = frame_y + 8
+        dialog_bottom = status_band_top - 4
+    if dialog_bottom <= dialog_top:
+        dialog_bottom = dialog_top + 20
+
+    dialog_w = dialog_right - dialog_left
+    dialog_h = dialog_bottom - dialog_top
+    if dialog_w < 24:
+        dialog_w = 24
+    if dialog_h < 20:
+        dialog_h = 20
+    return dialog_left, dialog_top, dialog_w, dialog_h
+
+
 def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd_w):
+    global battle_menu_enemy_x, battle_menu_enemy_y, battle_menu_enemy_w, battle_menu_enemy_h
+    global map1_enemy_anchor_mode
+
     _draw_battle_frame(frame_x, frame_y, frame_w, BATTLE_FRAME_H)
 
-    enemy_x = frame_x + ((frame_w - ENEMY_SPRITE_W) // 2)
-    enemy_y = frame_y + 16
-    enemy_bottom = enemy_y + ENEMY_SPRITE_H
+    enemy_sprite_path, enemy_sprite_w, enemy_sprite_h = _battle_enemy_sprite_info()
+    enemy_x = frame_x + ((frame_w - enemy_sprite_w) // 2)
+    if _map1_story_is_active():
+        enemy_sprite_path = _map1_story_enemy_sprite_path()
+        enemy_sprite_w = MAP1_STORY_ENEMY_DRAW_W
+        enemy_sprite_h = MAP1_STORY_ENEMY_DRAW_H
+        center_x = frame_x + ((frame_w - enemy_sprite_w) // 2)
+        left_x = frame_x + 4
+        if map1_enemy_anchor_mode == MAP1_ENEMY_ANCHOR_LEFT:
+            enemy_x = left_x
+        elif map1_enemy_anchor_mode == MAP1_ENEMY_ANCHOR_SLIDING_LEFT:
+            elapsed = time.ticks_diff(time.ticks_ms(), map1_enemy_slide_start_ms)
+            if elapsed < 0:
+                elapsed = 0
+            if elapsed >= MAP1_STORY_ENEMY_SLIDE_MS:
+                enemy_x = left_x
+                map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_LEFT
+            else:
+                enemy_x = center_x + (((left_x - center_x) * elapsed) // MAP1_STORY_ENEMY_SLIDE_MS)
+    enemy_y = frame_y + 10 if _map1_story_is_active() else (frame_y + 16)
+    enemy_bottom = enemy_y + enemy_sprite_h
     enemy_drawn = False
-    if hasattr(lgfx, "draw_png_file") and _path_exists(ENEMY_SPRITE_PATH):
+    if hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
         enemy_drawn = bool(
             lgfx.draw_png_file(
-                ENEMY_SPRITE_PATH,
+                enemy_sprite_path,
                 enemy_x,
                 enemy_y,
-                ENEMY_SPRITE_W,
-                ENEMY_SPRITE_H,
+                enemy_sprite_w,
+                enemy_sprite_h,
             )
         )
     if not enemy_drawn:
         monster_cx = frame_x + (frame_w // 2)
         monster_cy = frame_y + 75
         lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
+        enemy_x = monster_cx - 22
+        enemy_y = monster_cy - 22
+        enemy_sprite_w = 44
+        enemy_sprite_h = 44
         enemy_bottom = monster_cy + 22
+    battle_menu_enemy_x = enemy_x
+    battle_menu_enemy_y = enemy_y
+    battle_menu_enemy_w = enemy_sprite_w
+    battle_menu_enemy_h = enemy_sprite_h
 
     for i, label in enumerate(("FIGHT", "ACT", "ITEM", "MERCY")):
         bx = cmd_x0 + i * (cmd_w + BATTLE_CMD_GAP)
@@ -3483,8 +3772,8 @@ def _draw_star_line_with_png(png_info, x, y, w, h):
     text_x = x + icon_pad + star_size + 2
     text_w = w - (text_x - x) - icon_pad
     if text_w < 1:
-        return star_drawn
-    return _draw_png_in_box(
+        return False
+    text_drawn = _draw_png_in_box(
         png_info,
         text_x,
         y + 1,
@@ -3492,7 +3781,8 @@ def _draw_star_line_with_png(png_info, x, y, w, h):
         h - 2,
         preserve_aspect=True,
         allow_upscale=False,
-    ) or star_drawn
+    )
+    return text_drawn
 
 
 def _draw_star_line_with_text(text, x, y, w, h):
@@ -3678,7 +3968,7 @@ def _act_slots_for_layout(mode, inner_x, inner_y, inner_w, inner_h):
 def _act_slots_fit(slots):
     min_scale_q8 = 220  # ~0.86, keep text close to native size for clarity
     for i, slot in enumerate(slots):
-        _, src_w, src_h = ACT_OPTION_PNG_INFOS[i]
+        src_w, src_h = _battle_enemy_act_option_source_size(i)
         slot_h = slot[3]
         star_size = slot_h - 4
         if star_size > 22:
@@ -3746,6 +4036,8 @@ def _draw_battle_menu_screen(dialog_active):
     global battle_menu_full_clear_pending
     global battle_menu_static_ready, battle_menu_static_frame_x, battle_menu_static_frame_y, battle_menu_static_frame_w
     global battle_menu_enemy_bottom_used
+    global battle_menu_enemy_x, battle_menu_enemy_y, battle_menu_enemy_w, battle_menu_enemy_h
+    global map1_enemy_anchor_mode
     global battle_menu_prev_dialog_active, battle_menu_prev_dialog_x, battle_menu_prev_dialog_y
     global battle_menu_prev_dialog_w, battle_menu_prev_dialog_h
 
@@ -3806,6 +4098,7 @@ def _draw_battle_menu_screen(dialog_active):
         or (frame_x != battle_menu_static_frame_x)
         or (frame_y != battle_menu_static_frame_y)
         or (frame_w != battle_menu_static_frame_w)
+        or (_map1_story_is_active() and map1_enemy_anchor_mode == MAP1_ENEMY_ANCHOR_SLIDING_LEFT)
     )
     if static_changed:
         if (not did_full_clear) and battle_menu_static_ready:
@@ -3844,10 +4137,13 @@ def _draw_battle_menu_screen(dialog_active):
 
     dialog_render_y = dialog_y
     if not act_menu_active and not item_menu_active:
-        dialog_render_y = battle_menu_enemy_bottom_used + 6
-        max_dialog_y = cmd_y - dialog_h - 6
-        if dialog_render_y > max_dialog_y:
-            dialog_render_y = max_dialog_y
+        if _map1_story_is_active():
+            dialog_x, dialog_render_y, dialog_w, dialog_h = _map1_story_dialog_safe_rect(frame_x, frame_y, frame_w, cmd_y)
+        else:
+            dialog_render_y = battle_menu_enemy_bottom_used + 6
+            max_dialog_y = cmd_y - dialog_h - 6
+            if dialog_render_y > max_dialog_y:
+                dialog_render_y = max_dialog_y
 
     clear_x = dialog_x
     clear_y = dialog_render_y
@@ -3877,8 +4173,12 @@ def _draw_battle_menu_screen(dialog_active):
         for i, slot in enumerate(act_slots):
             if i == act_choice_index:
                 lgfx.draw_rect(slot[0], slot[1] + slot[3] - 1, slot[2], 1, BATTLE_COLOR_RED)
-            _draw_star_line_with_png(
-                ACT_OPTION_PNG_INFOS[i],
+            option_entry = _battle_enemy_act_option_entry(i)
+            option_png_info = _enemy_entry_png_info(option_entry)
+            if option_png_info and _draw_star_line_with_png(option_png_info, slot[0], slot[1], slot[2], slot[3]):
+                continue
+            _draw_star_line_with_text(
+                _enemy_entry_text(option_entry, "ACT"),
                 slot[0],
                 slot[1],
                 slot[2],
@@ -3929,16 +4229,27 @@ def _draw_battle_menu_screen(dialog_active):
     item_menu_slot_cache = None
     item_prev_selected_index = -1
 
-    # Reply mode: fixed single-line centered render with no text fallback.
+    rendered = False
     if battle_dialog_png_info:
-        _draw_star_line_with_png(
-            battle_dialog_png_info,
-            dialog_x,
-            dialog_render_y + ((dialog_h - 20) // 2),
-            dialog_w,
-            20,
-        )
-    elif battle_dialog_text:
+        if _map1_story_is_active():
+            rendered = _draw_png_in_box(
+                battle_dialog_png_info,
+                dialog_x + 2,
+                dialog_render_y + 2,
+                dialog_w - 4,
+                dialog_h - 4,
+                preserve_aspect=True,
+                allow_upscale=False,
+            )
+        else:
+            rendered = _draw_star_line_with_png(
+                battle_dialog_png_info,
+                dialog_x,
+                dialog_render_y + ((dialog_h - 20) // 2),
+                dialog_w,
+                20,
+            )
+    if (not _map1_story_is_active()) and (not rendered) and battle_dialog_text:
         _draw_text_in_box(
             dialog_x + 4,
             dialog_render_y + ((dialog_h - 16) // 2),
@@ -4016,6 +4327,565 @@ def _rand_range(lo, hi):
     return lo + (_rand_u32() % span)
 
 
+def _battle_enemy_profile():
+    if current_battle_enemy:
+        return current_battle_enemy
+    return ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {})
+
+
+def _battle_enemy_resolve(enemy_id=None):
+    if enemy_id:
+        resolved = ENEMY_REGISTRY.get(enemy_id)
+        if resolved:
+            return resolved
+    return ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {})
+
+
+def _set_current_battle_enemy(enemy_id=None):
+    global current_battle_enemy
+    current_battle_enemy = _battle_enemy_resolve(enemy_id)
+
+
+def _enemy_entry_png_info(entry):
+    if not entry:
+        return None
+    path = entry.get("png")
+    if not path:
+        return None
+    src_w = int(entry.get("png_w", 0))
+    src_h = int(entry.get("png_h", 0))
+    if src_w < 1:
+        src_w = 120
+    if src_h < 1:
+        src_h = 18
+    return (path, src_w, src_h)
+
+
+def _enemy_entry_text(entry, fallback_text=""):
+    if not entry:
+        return fallback_text
+    text = entry.get("text")
+    if not text:
+        return fallback_text
+    return text
+
+
+def _battle_enemy_sprite_info():
+    profile = _battle_enemy_profile()
+    path = profile.get("sprite_path", ENEMY_SPRITE_PATH)
+    draw_w = int(profile.get("sprite_w", ENEMY_SPRITE_W))
+    draw_h = int(profile.get("sprite_h", ENEMY_SPRITE_H))
+    if draw_w < 1:
+        draw_w = ENEMY_SPRITE_W
+    if draw_h < 1:
+        draw_h = ENEMY_SPRITE_H
+    return path, draw_w, draw_h
+
+
+def _battle_enemy_display_name():
+    if _map1_story_is_active():
+        return "FLOWEY"
+    profile = _battle_enemy_profile()
+    return profile.get("display_name", MONSTER_NAME)
+
+
+def _battle_enemy_act_option_entry(index):
+    profile = _battle_enemy_profile()
+    options = profile.get("act_options", ())
+    if index >= 0 and index < len(options):
+        entry = options[index]
+        if entry:
+            return entry
+    fallback = ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {}).get("act_options", ())
+    if index >= 0 and index < len(fallback):
+        return fallback[index]
+    return {"text": "ACT"}
+
+
+def _battle_enemy_act_reply_entry(index):
+    profile = _battle_enemy_profile()
+    replies = profile.get("act_replies", ())
+    if index >= 0 and index < len(replies):
+        entry = replies[index]
+        if entry:
+            return entry
+    fallback = ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {}).get("act_replies", ())
+    if index >= 0 and index < len(fallback):
+        return fallback[index]
+    return {"text": "..."}
+
+
+def _battle_enemy_mercy_locked_entry():
+    profile = _battle_enemy_profile()
+    entry = profile.get("mercy_locked")
+    if entry:
+        return entry
+    return ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {}).get("mercy_locked")
+
+
+def _battle_enemy_mercy_success_entry():
+    profile = _battle_enemy_profile()
+    entry = profile.get("mercy_success")
+    if entry:
+        return entry
+    return ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {}).get("mercy_success")
+
+
+def _battle_enemy_dialog_apply_entry(entry):
+    global battle_dialog_png_info, battle_dialog_text
+    battle_dialog_png_info = _enemy_entry_png_info(entry)
+    text = _enemy_entry_text(entry, "")
+    battle_dialog_text = text if text else None
+
+
+def _battle_enemy_act_option_source_size(index):
+    entry = _battle_enemy_act_option_entry(index)
+    png_info = _enemy_entry_png_info(entry)
+    if png_info:
+        return png_info[1], png_info[2]
+    text = _enemy_entry_text(entry, "ACT")
+    text_w = len(text) * 8
+    if text_w < 32:
+        text_w = 32
+    return text_w, 12
+
+
+def _map1_story_is_active():
+    return bool(map1_story_active and (current_map_id == MAP1_ID))
+
+
+def _map1_story_reset():
+    global map1_story_active, map1_story_stage, map1_story_line_index, map1_story_next_ms
+    global map1_story_enemy_angry, map1_enemy_anchor_mode, map1_enemy_slide_start_ms
+    global map1_story_phase2_center_x, map1_story_phase2_center_y
+
+    map1_story_active = False
+    map1_story_stage = MAP1_STORY_STAGE_NONE
+    map1_story_line_index = -1
+    map1_story_next_ms = 0
+    map1_story_enemy_angry = False
+    map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_CENTER
+    map1_enemy_slide_start_ms = 0
+    map1_story_phase2_center_x = 0
+    map1_story_phase2_center_y = 0
+
+
+def _map1_story_enemy_sprite_path():
+    paths = MAP1_ANGRY_FLOWEY_SPRITE_PATHS if map1_story_enemy_angry else MAP1_FLOWEY_SPRITE_PATHS
+    resolved = _resolve_first_existing_path(paths)
+    if resolved:
+        return resolved
+    return paths[0]
+
+
+def _map1_story_dialog_png_info(index):
+    if index < 0 or index >= len(MAP1_STORY_LINE_PNG_PATHS):
+        return None
+    paths = MAP1_STORY_LINE_PNG_PATHS[index]
+    path = _resolve_first_existing_path(paths)
+    if not path:
+        path = paths[0]
+    if index == 0:
+        return (path, MAP1_STORY_LINE1_PNG_W, MAP1_STORY_LINE1_PNG_H)
+    return (path, MAP1_STORY_LINE_PNG_W, MAP1_STORY_LINE_PNG_H)
+
+
+def _map1_story_show_line(index, now_ms):
+    global map1_story_line_index, map1_story_next_ms
+    global battle_dialog_mode, battle_dialog_started_ms, battle_dialog_png_info, battle_dialog_text
+    global act_dialog_until_ms, battle_menu_dirty
+    global map1_enemy_anchor_mode, map1_enemy_slide_start_ms
+
+    map1_story_line_index = index
+    map1_story_next_ms = time.ticks_add(now_ms, MAP1_STORY_LINE_MS)
+    battle_dialog_mode = BATTLE_DIALOG_ITEM_RESULT
+    battle_dialog_started_ms = now_ms
+    battle_dialog_png_info = _map1_story_dialog_png_info(index)
+    battle_dialog_text = None
+    act_dialog_until_ms = map1_story_next_ms
+    if index == 0 and map1_enemy_anchor_mode == MAP1_ENEMY_ANCHOR_CENTER:
+        # For line 1, place FLOWEY on the left immediately.
+        map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_LEFT
+        map1_enemy_slide_start_ms = now_ms
+    battle_menu_dirty = True
+
+
+def _map1_story_set_bullet_velocity_toward(bullet, tx, ty):
+    bx = bullet[0] >> BULLET_FP_SHIFT
+    by = bullet[1] >> BULLET_FP_SHIFT
+    dx = tx - bx
+    dy = ty - by
+    scale = abs(dx)
+    if abs(dy) > scale:
+        scale = abs(dy)
+    if scale <= 0:
+        bullet[2] = 0
+        bullet[3] = 0
+        return
+    bullet[2] = (dx << BULLET_FP_SHIFT) // scale
+    bullet[3] = (dy << BULLET_FP_SHIFT) // scale
+    if bullet[2] == 0 and bullet[3] == 0:
+        bullet[2] = 1 << BULLET_FP_SHIFT
+
+
+def _map1_story_bullet_bounds():
+    inner_inset = BATTLE_FRAME_BORDER_THICK
+    if BATTLE_BORDER_THICK > inner_inset:
+        inner_inset = BATTLE_BORDER_THICK
+    min_x = battle_frame_x + inner_inset + BULLET_R
+    max_x = battle_frame_x + BATTLE_FRAME_W - inner_inset - BULLET_R - 1
+    min_y = battle_frame_y + inner_inset + BULLET_R
+    max_y = battle_frame_y + BATTLE_FRAME_H - inner_inset - BULLET_R - 1
+    return min_x, max_x, min_y, max_y
+
+
+def _map1_story_spawn_phase1_bullets():
+    global bullets
+
+    min_x, max_x, min_y, max_y = _map1_story_bullet_bounds()
+    mid_x = (min_x + max_x) // 2
+    mid_y = (min_y + max_y) // 2
+    points = (
+        (mid_x, min_y),
+        (min_x, mid_y),
+        (max_x, mid_y),
+        (min_x, min_y),
+        (max_x, max_y),
+    )
+    bullets = []
+    for sx, sy in points:
+        b = [sx << BULLET_FP_SHIFT, sy << BULLET_FP_SHIFT, 0, 0]
+        _map1_story_set_bullet_velocity_toward(b, fight_heart_x, fight_heart_y)
+        bullets.append(b)
+
+
+def _map1_story_spawn_phase2_bullets():
+    global bullets, map1_story_phase2_center_x, map1_story_phase2_center_y
+
+    min_x, max_x, min_y, max_y = _map1_story_bullet_bounds()
+    cx = _clamp(fight_heart_x, min_x, max_x)
+    cy = _clamp(fight_heart_y, min_y, max_y)
+    map1_story_phase2_center_x = cx
+    map1_story_phase2_center_y = cy
+    ring_r = cx - min_x
+    if (max_x - cx) < ring_r:
+        ring_r = max_x - cx
+    if (cy - min_y) < ring_r:
+        ring_r = cy - min_y
+    if (max_y - cy) < ring_r:
+        ring_r = max_y - cy
+    if ring_r < 20:
+        ring_r = 20
+    dirs = (
+        (100, 0),
+        (86, 50),
+        (50, 86),
+        (0, 100),
+        (-50, 86),
+        (-86, 50),
+        (-100, 0),
+        (-86, -50),
+        (-50, -86),
+        (0, -100),
+        (50, -86),
+        (86, -50),
+    )
+    bullets = []
+    for dxp, dyp in dirs:
+        sx = cx + ((ring_r * dxp) // 100)
+        sy = cy + ((ring_r * dyp) // 100)
+        sx = _clamp(sx, min_x, max_x)
+        sy = _clamp(sy, min_y, max_y)
+        b = [sx << BULLET_FP_SHIFT, sy << BULLET_FP_SHIFT, 0, 0]
+        _map1_story_set_bullet_velocity_toward(b, cx, cy)
+        bullets.append(b)
+
+
+def _map1_story_begin_phase1(loop_start):
+    global mode, map1_story_stage, battle_menu_dirty, battle_dialog_visible
+    global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
+    global battle_dialog_mode, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms
+    global battle_fight_dirty, battle_bullets_dirty
+
+    map1_story_stage = MAP1_STORY_STAGE_PHASE1
+    mode = MODE_BATTLE_FIGHT
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_prev_dialog_active = False
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    battle_dialog_png_info = None
+    battle_dialog_text = None
+    act_dialog_until_ms = 0
+    _reset_battle_state()
+    _map1_story_spawn_phase1_bullets()
+    battle_fight_dirty = True
+    battle_bullets_dirty = True
+
+
+def _map1_story_begin_phase2(loop_start):
+    global mode, map1_story_stage, battle_menu_dirty, battle_dialog_visible
+    global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
+    global battle_dialog_mode, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms
+    global battle_fight_dirty, battle_bullets_dirty
+
+    map1_story_stage = MAP1_STORY_STAGE_PHASE2
+    mode = MODE_BATTLE_FIGHT
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_prev_dialog_active = False
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    battle_dialog_png_info = None
+    battle_dialog_text = None
+    act_dialog_until_ms = 0
+    _reset_battle_state()
+    _map1_story_spawn_phase2_bullets()
+    battle_fight_dirty = True
+    battle_bullets_dirty = True
+
+
+def _map1_story_begin_stage_lines(loop_start, stage):
+    global map1_story_stage
+    map1_story_stage = stage
+    if stage == MAP1_STORY_STAGE_INTRO_LINES:
+        _map1_story_show_line(0, loop_start)
+    else:
+        _map1_story_show_line(5, loop_start)
+
+
+def _map1_story_begin(loop_start):
+    global map1_story_active, map1_story_enemy_angry, map1_enemy_anchor_mode
+
+    _map1_story_reset()
+    map1_story_active = True
+    map1_story_enemy_angry = False
+    map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_CENTER
+    _map1_story_begin_stage_lines(loop_start, MAP1_STORY_STAGE_INTRO_LINES)
+
+
+def _map1_story_update_menu(loop_start):
+    if map1_story_stage == MAP1_STORY_STAGE_INTRO_LINES:
+        if time.ticks_diff(loop_start, map1_story_next_ms) < 0:
+            return
+        if map1_story_line_index < 4:
+            _map1_story_show_line(map1_story_line_index + 1, loop_start)
+            return
+        _map1_story_begin_phase1(loop_start)
+        return
+    if map1_story_stage == MAP1_STORY_STAGE_MID_LINES:
+        if time.ticks_diff(loop_start, map1_story_next_ms) < 0:
+            return
+        if map1_story_line_index < 6:
+            _map1_story_show_line(map1_story_line_index + 1, loop_start)
+            return
+        _map1_story_begin_phase2(loop_start)
+
+
+def _map1_story_finish_phase1_hit(loop_start):
+    global mode, bullets, map1_story_enemy_angry, map1_story_stage
+    global battle_menu_dirty, battle_dialog_visible, battle_menu_full_clear_pending
+    global battle_menu_static_ready, battle_menu_prev_dialog_active
+    global battle_prev_bullet_positions, battle_bullets_dirty
+
+    bullets = []
+    battle_prev_bullet_positions = []
+    battle_bullets_dirty = False
+    map1_story_enemy_angry = True
+    mode = MODE_BATTLE_MENU
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_prev_dialog_active = False
+    map1_story_stage = MAP1_STORY_STAGE_MID_LINES
+    _map1_story_show_line(5, loop_start)
+
+
+def _map1_story_update_fight(loop_start):
+    global fight_heart_x, fight_heart_y
+    global bullets, battle_bullets_dirty, battle_fight_dirty, battle_status_dirty
+    global player_hp
+
+    if x_dir > 0:
+        fight_heart_x += BATTLE_HEART_STEP
+    elif x_dir < 0:
+        fight_heart_x -= BATTLE_HEART_STEP
+    if y_dir_raw > 0:
+        fight_heart_y -= BATTLE_HEART_STEP
+    elif y_dir_raw < 0:
+        fight_heart_y += BATTLE_HEART_STEP
+    fight_heart_x = _clamp(fight_heart_x, battle_heart_min_x, battle_heart_max_x)
+    fight_heart_y = _clamp(fight_heart_y, battle_heart_min_y, battle_heart_max_y)
+
+    hit_r = BATTLE_HEART_HIT_R + BULLET_R
+    hit_r2 = hit_r * hit_r
+    min_x, max_x, min_y, max_y = _map1_story_bullet_bounds()
+    kept = []
+    changed = False
+
+    for b in bullets:
+        if map1_story_stage == MAP1_STORY_STAGE_PHASE1:
+            _map1_story_set_bullet_velocity_toward(b, fight_heart_x, fight_heart_y)
+            speed = MAP1_STORY_PHASE1_BULLET_SPEED_PX
+        else:
+            speed = MAP1_STORY_PHASE2_BULLET_SPEED_PX
+        b[0] += b[2] * speed
+        b[1] += b[3] * speed
+        bx = b[0] >> BULLET_FP_SHIFT
+        by = b[1] >> BULLET_FP_SHIFT
+        if bx < min_x or bx > max_x or by < min_y or by > max_y:
+            changed = True
+            continue
+        dx = bx - fight_heart_x
+        dy = by - fight_heart_y
+        if (dx * dx + dy * dy) <= hit_r2:
+            if map1_story_stage == MAP1_STORY_STAGE_PHASE1:
+                player_hp = 1
+                battle_status_dirty = True
+                _map1_story_finish_phase1_hit(loop_start)
+                return
+            _exit_battle_to_explore()
+            return
+        kept.append(b)
+        changed = True
+
+    if len(kept) != len(bullets):
+        changed = True
+    bullets = kept
+    if not bullets:
+        if map1_story_stage == MAP1_STORY_STAGE_PHASE1:
+            _map1_story_spawn_phase1_bullets()
+            changed = True
+        elif map1_story_stage == MAP1_STORY_STAGE_PHASE2:
+            _map1_story_spawn_phase2_bullets()
+            changed = True
+    battle_bullets_dirty = changed or bool(bullets)
+    battle_fight_dirty = False
+
+
+def _encounter_state_for_map(map_id):
+    state = map_encounter_state.get(map_id)
+    if state is None:
+        state = {
+            "rolled_quota": None,
+            "remaining": 0,
+            "cleared": False,
+            "enemy_cursor": 0,
+            "entry_travel_px": 0,
+            "entry_ready_after_ms": 0,
+        }
+        map_encounter_state[map_id] = state
+    return state
+
+
+def _encounter_config_for_map(map_id):
+    config = MAP_ENCOUNTER_CONFIG.get(map_id)
+    if not config:
+        return None
+    if not config.get("enabled"):
+        return None
+    return config
+
+
+def _encounter_roll_quota_once(map_id):
+    config = _encounter_config_for_map(map_id)
+    if not config:
+        return
+    state = _encounter_state_for_map(map_id)
+    if state.get("rolled_quota") is not None:
+        return
+    quota_lo, quota_hi = config.get("quota_range", (0, 0))
+    quota = _rand_range(quota_lo, quota_hi)
+    if quota < 0:
+        quota = 0
+    state["rolled_quota"] = quota
+    state["remaining"] = quota
+    state["cleared"] = quota <= 0
+    print("encounter_quota_roll:", map_id, quota)
+
+
+def _encounter_on_map_enter(map_id):
+    state = _encounter_state_for_map(map_id)
+    state["entry_travel_px"] = 0
+    entry_grace_ms = _rand_range(MAP_ENCOUNTER_ENTRY_GRACE_MIN_MS, MAP_ENCOUNTER_ENTRY_GRACE_MAX_MS)
+    state["entry_ready_after_ms"] = time.ticks_add(time.ticks_ms(), entry_grace_ms)
+    _encounter_roll_quota_once(map_id)
+
+
+def _encounter_note_travel(map_id, travel_px):
+    if travel_px <= 0:
+        return
+    config = _encounter_config_for_map(map_id)
+    if not config:
+        return
+    state = _encounter_state_for_map(map_id)
+    state["entry_travel_px"] = int(state.get("entry_travel_px", 0)) + int(travel_px)
+
+
+def _encounter_entry_ready(map_id):
+    config = _encounter_config_for_map(map_id)
+    if not config:
+        return True
+    state = _encounter_state_for_map(map_id)
+    ready_after_ms = int(state.get("entry_ready_after_ms", 0))
+    if ready_after_ms and time.ticks_diff(time.ticks_ms(), ready_after_ms) < 0:
+        return False
+    return int(state.get("entry_travel_px", 0)) >= MAP_ENCOUNTER_ENTRY_MIN_TRAVEL_PX
+
+
+def _encounter_in_portal_safe_zone(map_id, px, py):
+    del map_id, px, py
+    return False
+
+
+def _encounter_pick_enemy_id(map_id):
+    config = _encounter_config_for_map(map_id)
+    if not config:
+        return None
+    enemy_ids = config.get("enemy_ids", ())
+    if not enemy_ids:
+        return None
+    state = _encounter_state_for_map(map_id)
+    pick_mode = config.get("pick_mode", MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN)
+    if pick_mode != MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN:
+        pick_mode = MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN
+    cursor = int(state.get("enemy_cursor", 0))
+    enemy_index = cursor % len(enemy_ids)
+    state["enemy_cursor"] = cursor + 1
+    return enemy_ids[enemy_index]
+
+
+def _encounter_try_start(map_id, px, py):
+    config = _encounter_config_for_map(map_id)
+    if not config:
+        return None
+    _encounter_roll_quota_once(map_id)
+    state = _encounter_state_for_map(map_id)
+    if state.get("cleared"):
+        return None
+    if int(state.get("remaining", 0)) <= 0:
+        state["remaining"] = 0
+        state["cleared"] = True
+        return None
+    if not _encounter_entry_ready(map_id):
+        return None
+    if _encounter_in_portal_safe_zone(map_id, px, py):
+        return None
+    enemy_id = _encounter_pick_enemy_id(map_id)
+    if not enemy_id:
+        return None
+    state["remaining"] = int(state.get("remaining", 0)) - 1
+    if state["remaining"] <= 0:
+        state["remaining"] = 0
+        state["cleared"] = True
+        print("encounter_map_cleared:", map_id)
+    print("encounter_pick:", map_id, enemy_id, "remaining", state["remaining"])
+    return enemy_id
+
+
 def _battle_status_y():
     y = battle_frame_y + BATTLE_FRAME_H + 4
     max_y = ACTIVE_VIEW_H - 9
@@ -4076,6 +4946,7 @@ def _exit_battle_to_explore():
     battle_menu_full_clear_pending = True
     battle_menu_static_ready = False
     battle_menu_prev_dialog_active = False
+    _map1_story_reset()
     _reset_battle_state()
 
 
@@ -4101,7 +4972,7 @@ def _clear_act_dialog_state(reset_sequence):
         act_sequence_step = 0
 
 
-def _start_battle_from_explore():
+def _start_battle_from_explore(enemy_id=None):
     global mode, mercy_exit_pending, enemy_hp
     global battle_menu_dirty, battle_dialog_visible
     global battle_menu_full_clear_pending
@@ -4119,8 +4990,13 @@ def _start_battle_from_explore():
     battle_menu_prev_dialog_active = False
     lamp_dialog_until_ms = 0
     explore_overlay_dirty = False
+    _set_current_battle_enemy(enemy_id)
     enemy_hp = ENEMY_HP_MAX
     _reset_battle_state()
+    if current_map_id == MAP1_ID and (not map1_opening_battle_done):
+        _map1_story_begin(time.ticks_ms())
+    else:
+        _map1_story_reset()
     print("battle_menu: Fight(GPIO38) Act(GPIO39) Item(GPIO40) Mercy(GPIO41)")
     explore_moved = False
     explore_scrolled = False
@@ -4130,7 +5006,7 @@ def _start_battle_from_explore():
 def _draw_battle_status_line(in_menu=False):
     if not hasattr(lgfx, "draw_text"):
         return
-    name_text = MONSTER_NAME
+    name_text = _battle_enemy_display_name()
     hp_text = "HP"
     right_text = "%2d/%d" % (player_hp, PLAYER_HP_MAX)
     x = battle_frame_x + 12
@@ -4174,15 +5050,26 @@ def _draw_battle_status_line(in_menu=False):
         _draw_bold_text(enemy_status_x, enemy_status_y, enemy_status_text)
 
     _draw_bold_text(x, y, name_text)
-    name_w = len(name_text) * 8
-    hp_x = x + name_w + BATTLE_HP_NAME_TO_HP_GAP
-    _draw_bold_text(hp_x, y, hp_text)
-
-    hp_w = len(hp_text) * 8
-    bar_x = hp_x + hp_w + BATTLE_HP_BAR_GAP
     bar_y = y + ((8 - BATTLE_HP_BAR_H) // 2)
     if bar_y < y:
         bar_y = y
+    hp_w = len(hp_text) * 8
+    bar_w = BATTLE_HP_BAR_W
+    bar_h = BATTLE_HP_BAR_H
+
+    if in_menu and _map1_story_is_active():
+        # Keep player HP cluster on the right side during MAP1 story battle.
+        right_w = len(right_text) * 8
+        right_x = (menu_frame_x_used + menu_frame_w_used) - 10 - right_w
+        bar_x = right_x - BATTLE_HP_BAR_GAP - bar_w
+        hp_x = bar_x - BATTLE_HP_BAR_GAP - hp_w
+        _draw_bold_text(hp_x, y, hp_text)
+    else:
+        name_w = len(name_text) * 8
+        hp_x = x + name_w + BATTLE_HP_NAME_TO_HP_GAP
+        _draw_bold_text(hp_x, y, hp_text)
+        bar_x = hp_x + hp_w + BATTLE_HP_BAR_GAP
+
     bar_w = BATTLE_HP_BAR_W
     bar_h = BATTLE_HP_BAR_H
 
@@ -4200,7 +5087,8 @@ def _draw_battle_status_line(in_menu=False):
         if fill_w > 0:
             _fill_rect_solid(inner_x, inner_y, fill_w, inner_h, BATTLE_HP_BAR_FILL_COLOR)
 
-    right_x = bar_x + bar_w + BATTLE_HP_BAR_GAP
+    if not (in_menu and _map1_story_is_active()):
+        right_x = bar_x + bar_w + BATTLE_HP_BAR_GAP
     _draw_bold_text(right_x, y, right_text)
 
 
@@ -4588,13 +5476,14 @@ def draw_battle_attack_screen(full_refresh=False):
         lgfx.clear()
         _draw_battle_frame()
 
+        enemy_sprite_path, _, _ = _battle_enemy_sprite_info()
         enemy_drawn = False
         enemy_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_ENEMY_DRAW_W) // 2)
         enemy_y = battle_frame_y + 12
-        if hasattr(lgfx, "draw_png_file") and _path_exists(ENEMY_SPRITE_PATH):
+        if hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
             enemy_drawn = bool(
                 lgfx.draw_png_file(
-                    ENEMY_SPRITE_PATH,
+                    enemy_sprite_path,
                     enemy_x,
                     enemy_y,
                     ATTACK_ENEMY_DRAW_W,
@@ -4688,6 +5577,10 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
     global item_prev_selected_index, item_selection_dirty, item_view_offset
     global attack_started_ms, attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty
 
+    if _map1_story_is_active():
+        _map1_story_update_menu(loop_start)
+        return
+
     dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
     if mercy_exit_pending and not dialog_active:
         _exit_battle_to_explore()
@@ -4732,16 +5625,14 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             if act_sequence_step == 3:
                 print("MERCY: success")
                 battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
-                battle_dialog_png_info = MERCY_SUCCESS_PNG_INFO
-                battle_dialog_text = None
+                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
                 act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
                 battle_dialog_started_ms = loop_start
                 mercy_exit_pending = True
             else:
                 print("MERCY: locked")
                 battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
-                battle_dialog_png_info = MERCY_LOCKED_PNG_INFO
-                battle_dialog_text = None
+                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
                 act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
                 battle_dialog_started_ms = loop_start
                 mercy_exit_pending = False
@@ -4839,16 +5730,14 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             if act_sequence_step == 3:
                 print("MERCY: success")
                 battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
-                battle_dialog_png_info = MERCY_SUCCESS_PNG_INFO
-                battle_dialog_text = None
+                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
                 act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
                 battle_dialog_started_ms = loop_start
                 mercy_exit_pending = True
             else:
                 print("MERCY: locked")
                 battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
-                battle_dialog_png_info = MERCY_LOCKED_PNG_INFO
-                battle_dialog_text = None
+                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
                 act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
                 battle_dialog_started_ms = loop_start
                 mercy_exit_pending = False
@@ -4889,7 +5778,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
                 else:
                     act_sequence_step = 0
                     reply_index = 0
-            battle_dialog_png_info = ACT_REPLY_PNG_INFOS[reply_index]
+            _battle_enemy_dialog_apply_entry(_battle_enemy_act_reply_entry(reply_index))
             act_menu_active = False
             act_nav_prev_dir = 0
             act_menu_slot_cache = None
@@ -4898,7 +5787,6 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             battle_dialog_mode = BATTLE_DIALOG_ACT_REPLY
             battle_dialog_started_ms = loop_start
             act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
-            battle_dialog_text = None
             battle_menu_dirty = True
         return
 
@@ -4948,16 +5836,14 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         if act_sequence_step == 3:
             print("MERCY: success")
             battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
-            battle_dialog_png_info = MERCY_SUCCESS_PNG_INFO
-            battle_dialog_text = None
+            _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
             act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
             battle_dialog_started_ms = loop_start
             mercy_exit_pending = True
         else:
             print("MERCY: locked")
             battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
-            battle_dialog_png_info = MERCY_LOCKED_PNG_INFO
-            battle_dialog_text = None
+            _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
             act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
             battle_dialog_started_ms = loop_start
             mercy_exit_pending = False
@@ -5039,6 +5925,10 @@ def update_battle_fight(loop_start):
     global act_menu_active, act_nav_prev_dir
     global item_menu_active, item_nav_prev_dir
     global bullets, next_bullet_spawn_ms, damage_invuln_until_ms, battle_prev_bullet_positions
+
+    if _map1_story_is_active():
+        _map1_story_update_fight(loop_start)
+        return
 
     if time.ticks_diff(fight_return_deadline_ms, loop_start) <= 0:
         mode = MODE_BATTLE_MENU
@@ -5185,7 +6075,7 @@ def draw_all(loop_start):
             _draw_act_selection_indicator(act_prev_selected_index, act_choice_index, act_menu_slot_cache)
             act_prev_selected_index = act_choice_index
             act_selection_dirty = False
-        if dialog_active:
+        if dialog_active and (not _map1_story_is_active()):
             _clear_battle_status_line_menu()
         else:
             _draw_battle_status_line(True)
@@ -5282,6 +6172,11 @@ while True:
     btn_act_prev, act_pressed = _read_falling_edge(btn_act, btn_act_prev)
     btn_item_prev, item_pressed = _read_falling_edge(btn_item, btn_item_prev)
     btn_mercy_prev, mercy_pressed = _read_falling_edge(btn_mercy, btn_mercy_prev)
+    if _map1_story_is_active():
+        fight_pressed = False
+        act_pressed = False
+        item_pressed = False
+        mercy_pressed = False
 
     if mode == MODE_TITLE_MENU:
         explore_moved = False
@@ -5314,13 +6209,33 @@ while True:
                         else:
                             switch_map(active_portal["target_map_id"])
 
-                if mode == MODE_EXPLORE and current_map_id == MAP1_ID:
-                    leaf_inside = _in_rect(player_x, player_y, LEAF_BATTLE_RECT_PX)
-                    if (not leaf_zone_prev_inside) and leaf_inside and encounter_cooldown_frames == 0:
+                if mode == MODE_EXPLORE and current_map_id == MAP1_ID and (not map1_opening_battle_done):
+                    moved_since_last_map1 = (player_x != prev_player_x) or (player_y != prev_player_y)
+                    if moved_since_last_map1 and (not map1_opening_battle_timer_started):
+                        map1_opening_battle_timer_started = True
+                        map1_opening_battle_due_ms = time.ticks_add(loop_start, MAP1_OPENING_BATTLE_DELAY_MS)
+                    if (
+                        map1_opening_battle_timer_started
+                        and encounter_cooldown_frames == 0
+                        and teleport_cooldown_frames == 0
+                        and time.ticks_diff(loop_start, map1_opening_battle_due_ms) >= 0
+                    ):
                         _start_battle_from_explore()
-                    leaf_zone_prev_inside = leaf_inside
-                else:
-                    leaf_zone_prev_inside = False
+                        map1_opening_battle_done = True
+                        map1_opening_battle_timer_started = False
+
+                if mode == MODE_EXPLORE:
+                    move_dx_for_encounter = player_x - prev_player_x
+                    move_dy_for_encounter = player_y - prev_player_y
+                    move_dist_for_encounter = abs(move_dx_for_encounter) + abs(move_dy_for_encounter)
+                    _encounter_note_travel(current_map_id, move_dist_for_encounter)
+
+                if mode == MODE_EXPLORE and encounter_cooldown_frames == 0 and teleport_cooldown_frames == 0:
+                    moved_since_last = (player_x != prev_player_x) or (player_y != prev_player_y)
+                    if moved_since_last:
+                        encounter_enemy_id = _encounter_try_start(current_map_id, player_x, player_y)
+                        if encounter_enemy_id:
+                            _start_battle_from_explore(enemy_id=encounter_enemy_id)
 
                 if mode == MODE_EXPLORE and interact_pressed:
                     if _try_open_weapon_pickup_dialog():
