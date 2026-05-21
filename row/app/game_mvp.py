@@ -681,10 +681,13 @@ MAP1_STORY_LINE_PNG_PATHS = (
     ("/workspace/map1_story_line_01.png", "/map1_story_line_01.png"),
     ("/workspace/map1_story_line_02.png", "/map1_story_line_02.png"),
     ("/workspace/map1_story_line_03.png", "/map1_story_line_03.png"),
+    ("/workspace/map1_story_line_10.png", "/map1_story_line_10.png"),
     ("/workspace/map1_story_line_07.png", "/map1_story_line_07.png"),
     ("/workspace/map1_story_line_04.png", "/map1_story_line_04.png"),
     ("/workspace/map1_story_line_05.png", "/map1_story_line_05.png"),
     ("/workspace/map1_story_line_06.png", "/map1_story_line_06.png"),
+    ("/workspace/map1_story_line_08.png", "/map1_story_line_08.png"),
+    ("/workspace/map1_story_line_09.png", "/map1_story_line_09.png"),
 )
 MAP1_STORY_LINE_PNG_W = 200
 MAP1_STORY_LINE_PNG_H = 72
@@ -4578,17 +4581,29 @@ def _map1_story_spawn_phase2_bullets():
         ring_r = 20
     dirs = (
         (100, 0),
-        (86, 50),
-        (50, 86),
+        (97, 26),
+        (87, 50),
+        (71, 71),
+        (50, 87),
+        (26, 97),
         (0, 100),
-        (-50, 86),
-        (-86, 50),
+        (-26, 97),
+        (-50, 87),
+        (-71, 71),
+        (-87, 50),
+        (-97, 26),
         (-100, 0),
-        (-86, -50),
-        (-50, -86),
+        (-97, -26),
+        (-87, -50),
+        (-71, -71),
+        (-50, -87),
+        (-26, -97),
         (0, -100),
-        (50, -86),
-        (86, -50),
+        (26, -97),
+        (50, -87),
+        (71, -71),
+        (87, -50),
+        (97, -26),
     )
     bullets = []
     for dxp, dyp in dirs:
@@ -4653,7 +4668,7 @@ def _map1_story_begin_stage_lines(loop_start, stage):
     if stage == MAP1_STORY_STAGE_INTRO_LINES:
         _map1_story_show_line(0, loop_start)
     else:
-        _map1_story_show_line(5, loop_start)
+        _map1_story_show_line(6, loop_start)
 
 
 def _map1_story_begin(loop_start):
@@ -4670,7 +4685,7 @@ def _map1_story_update_menu(loop_start):
     if map1_story_stage == MAP1_STORY_STAGE_INTRO_LINES:
         if time.ticks_diff(loop_start, map1_story_next_ms) < 0:
             return
-        if map1_story_line_index < 4:
+        if map1_story_line_index < 5:
             _map1_story_show_line(map1_story_line_index + 1, loop_start)
             return
         _map1_story_begin_phase1(loop_start)
@@ -4678,7 +4693,7 @@ def _map1_story_update_menu(loop_start):
     if map1_story_stage == MAP1_STORY_STAGE_MID_LINES:
         if time.ticks_diff(loop_start, map1_story_next_ms) < 0:
             return
-        if map1_story_line_index < 6:
+        if map1_story_line_index < 9:
             _map1_story_show_line(map1_story_line_index + 1, loop_start)
             return
         _map1_story_begin_phase2(loop_start)
@@ -4701,7 +4716,7 @@ def _map1_story_finish_phase1_hit(loop_start):
     battle_menu_static_ready = False
     battle_menu_prev_dialog_active = False
     map1_story_stage = MAP1_STORY_STAGE_MID_LINES
-    _map1_story_show_line(5, loop_start)
+    _map1_story_show_line(6, loop_start)
 
 
 def _map1_story_update_fight(loop_start):
