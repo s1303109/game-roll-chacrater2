@@ -492,8 +492,8 @@ TITLE_UI_Y = 150
 TITLE_OPTION_NEW_GAME_RECT = (TITLE_UI_X, TITLE_UI_Y, TITLE_UI_W, 27)
 TITLE_OPTION_CONTINUE_RECT = (TITLE_UI_X, TITLE_UI_Y + 27, TITLE_UI_W, 27)
 BOOT_COMIC_TIME_LABELS = ("9:00", "11:00", "1:00", "00:00", "00:00", "00:00")
-BOOT_TIME_CARD_MS = 2200
-BOOT_COMIC_FRAME_MS = 5200
+BOOT_TIME_CARD_MS = 3000
+BOOT_COMIC_FRAME_MS = 5000
 BOOT_COMIC_PATHS = (
     "/comic_01_320x240.png",
     "/comic_02_320x240.png",
@@ -1468,7 +1468,7 @@ def _boot_phase_tile_and_player():
 
 def _boot_phase_tile_data():
     global runtime_endian
-    runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=True)
+    runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=False)
     if hasattr(lgfx, "set_swap_bytes"):
         lgfx.set_swap_bytes(runtime_endian == "little")
 
@@ -1540,15 +1540,17 @@ def _play_boot_comic_intro():
         _draw_boot_time_card(BOOT_COMIC_TIME_LABELS[i])
         _wait_slot(BOOT_TIME_CARD_MS)
         _draw_boot_comic_frame(BOOT_COMIC_PATHS[i])
-        phase_deadline = time.ticks_add(time.ticks_ms(), BOOT_COMIC_FRAME_MS)
-        if i < len(phases):
-            phases[i]()
-        while time.ticks_diff(phase_deadline, time.ticks_ms()) > 0:
-            time.sleep_ms(10)
+        # Keep the first 5 comics strictly fixed.
+        if i < (len(BOOT_COMIC_TIME_LABELS) - 1):
+            _wait_slot(BOOT_COMIC_FRAME_MS)
+            continue
 
-    # Safety: if phase count changes in future, complete remaining phases.
-    for i in range(len(BOOT_COMIC_TIME_LABELS), len(phases)):
-        phases[i]()
+        # Run all startup phases during the last comic only.
+        last_deadline = time.ticks_add(time.ticks_ms(), BOOT_COMIC_FRAME_MS)
+        for phase_fn in phases:
+            phase_fn()
+        while time.ticks_diff(last_deadline, time.ticks_ms()) > 0:
+            time.sleep_ms(10)
 
 
 _play_boot_comic_intro()
