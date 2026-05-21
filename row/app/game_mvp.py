@@ -491,6 +491,17 @@ TITLE_UI_H = 54
 TITLE_UI_Y = 150
 TITLE_OPTION_NEW_GAME_RECT = (TITLE_UI_X, TITLE_UI_Y, TITLE_UI_W, 27)
 TITLE_OPTION_CONTINUE_RECT = (TITLE_UI_X, TITLE_UI_Y + 27, TITLE_UI_W, 27)
+BOOT_COMIC_TIME_LABELS = ("9:00", "11:00", "1:00", "00:00", "00:00", "00:00")
+BOOT_TIME_CARD_MS = 2200
+BOOT_COMIC_FRAME_MS = 5200
+BOOT_COMIC_PATHS = (
+    "/comic_01_320x240.png",
+    "/comic_02_320x240.png",
+    "/comic_03_320x240.png",
+    "/comic_04_320x240.png",
+    "/comic_05_320x240.png",
+    "/comic_06_320x240.png",
+)
 ENCOUNTER_COOLDOWN_FRAMES = 120
 BATTLE_FRAME_W = 240
 BATTLE_FRAME_H = 200
@@ -1095,28 +1106,6 @@ def _apply_spawn_offset_for_map(map_id, sx, sy):
         return sx + MAP1_SPAWN_OFFSET_X, sy + MAP1_SPAWN_OFFSET_Y
     return sx, sy
 
-if ENABLE_SD_MOUNT:
-    _try_mount_sd()
-    _sync_sd_assets_from_remote_if_needed()
-else:
-    SD_READY = False
-    print("sd_mounted:", SD_READY, "(disabled)")
-asset_base, meta = _find_asset_base(ASSET_BASES)
-print("asset:", asset_base)
-if asset_base == SD_ASSET_BASE:
-    _print_asset_files(asset_base, meta)
-tile = meta["tile_size"]
-map_w = meta["map_w"]
-map_h = meta["map_h"]
-world_w = map_w * tile
-world_h = map_h * tile
-
-spawn_x = meta.get("spawn_x", world_w // 2)
-spawn_y = meta.get("spawn_y", world_h // 2)
-spawn_x, spawn_y = _apply_spawn_offset_for_map(MAP1_ID, spawn_x, spawn_y)
-player_x = spawn_x
-player_y = spawn_y
-
 if not DISPLAY_INIT_DONE:
     lgfx.init()
     DISPLAY_INIT_DONE = True
@@ -1126,9 +1115,20 @@ if hasattr(lgfx, "tile_loader_mode"):
         print("tile_loader_mode:", lgfx.tile_loader_mode())
     except Exception as err:
         print("tile_loader_mode_error:", err)
-meta_endian = meta.get("endian", "little")
-if hasattr(lgfx, "set_swap_bytes"):
-    lgfx.set_swap_bytes(meta_endian == "little")
+
+asset_base = None
+meta = None
+tile = 0
+map_w = 0
+map_h = 0
+world_w = 0
+world_h = 0
+runtime_endian = "little"
+collision = None
+player_x = 0
+player_y = 0
+player_sheet_enabled = False
+player_sheet_err = None
 
 
 def _tile_setup_with_fallback():
@@ -1199,29 +1199,6 @@ def _render_scene(scroll_x, scroll_y, player_x, player_y, force_full):
         lgfx.tile_render(scroll_x, scroll_y, force_full)
         lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
 
-if hasattr(lgfx, "player_sheet_clear"):
-    # Release previous C-side sheet buffers before sprite allocation fallback.
-    lgfx.player_sheet_clear()
-gc.collect()
-
-if hasattr(lgfx, "player_sheet_load_file"):
-    _tile_setup_with_fallback()
-    player_sheet_enabled, player_sheet_err = _load_player_sheet(asset_base)
-else:
-    player_sheet_enabled, player_sheet_err = _load_player_sheet(asset_base)
-    _tile_setup_with_fallback()
-
-if FORCE_SIMPLE_PLAYER:
-    player_sheet_enabled = False
-    if hasattr(lgfx, "player_sheet_clear"):
-        lgfx.player_sheet_clear()
-
-if not player_sheet_enabled and player_sheet_err:
-    print("player_mode: red_dot", player_sheet_err)
-
-print("view:", ACTIVE_VIEW_W, ACTIVE_VIEW_H)
-
-
 def _update_battle_layout():
     inner_inset = BATTLE_FRAME_BORDER_THICK
     if BATTLE_BORDER_THICK > inner_inset:
@@ -1276,23 +1253,6 @@ def _update_battle_layout():
     battle_cmd_y,
     battle_cmd_w,
 ) = _update_battle_layout()
-
-runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=False)
-if hasattr(lgfx, "set_swap_bytes"):
-    lgfx.set_swap_bytes(runtime_endian == "little")
-collision, collision_err = _load_collision(meta, asset_base, map_w, map_h)
-if collision_err:
-    print("collision_error:", collision_err)
-if collision is None:
-    raise RuntimeError("COLLISION_REQUIRED")
-blocked_tiles = 0
-for v in collision:
-    if v:
-        blocked_tiles += 1
-print("collision_tiles:", blocked_tiles, "/", map_w * map_h)
-if blocked_tiles == 0:
-    raise RuntimeError("COLLISION_EMPTY")
-
 
 def _collides(nx, ny, r):
     if collision is None:
@@ -1351,14 +1311,247 @@ def _collision_selftest():
     raise RuntimeError("COLLISION_EMPTY")
 
 
-_collision_selftest()
+def _draw_boot_time_card(text):
+    lgfx.clear()
+    digit_w = 16
+    digit_h = 28
+    seg_th = 3
+    gap = 4
+    colon_w = 6
+    color = BATTLE_COLOR_WHITE
 
-# Keep startup robust when map metadata spawn lands inside a blocked tile.
-safe_start_x, safe_start_y = _nearest_walkable(player_x, player_y)
-if safe_start_x != player_x or safe_start_y != player_y:
-    print("startup_spawn_adjusted:", player_x, player_y, "->", safe_start_x, safe_start_y)
-player_x, player_y = safe_start_x, safe_start_y
+    segments_map = {
+        "0": "abcedf",
+        "1": "bc",
+        "2": "abged",
+        "3": "abgcd",
+        "4": "fgbc",
+        "5": "afgcd",
+        "6": "afgecd",
+        "7": "abc",
+        "8": "abcdefg",
+        "9": "abfgcd",
+    }
 
+    def _fill(x, y, w, h):
+        if w <= 0 or h <= 0:
+            return
+        yy = y
+        y_end = y + h
+        while yy < y_end:
+            lgfx.draw_rect(x, yy, w, 1, color)
+            yy += 1
+
+    def _draw_digit(ch, x, y):
+        segs = segments_map.get(ch)
+        if not segs:
+            return
+        mid_y = y + (digit_h // 2) - (seg_th // 2)
+        half_h = digit_h // 2
+        if "a" in segs:
+            _fill(x + seg_th, y, digit_w - (seg_th * 2), seg_th)
+        if "d" in segs:
+            _fill(x + seg_th, y + digit_h - seg_th, digit_w - (seg_th * 2), seg_th)
+        if "g" in segs:
+            _fill(x + seg_th, mid_y, digit_w - (seg_th * 2), seg_th)
+        if "f" in segs:
+            _fill(x, y + seg_th, seg_th, half_h - seg_th)
+        if "e" in segs:
+            _fill(x, y + half_h, seg_th, half_h - seg_th)
+        if "b" in segs:
+            _fill(x + digit_w - seg_th, y + seg_th, seg_th, half_h - seg_th)
+        if "c" in segs:
+            _fill(x + digit_w - seg_th, y + half_h, seg_th, half_h - seg_th)
+
+    def _draw_colon(x, y):
+        dot = seg_th + 1
+        top_y = y + (digit_h // 3) - (dot // 2)
+        bot_y = y + ((digit_h * 2) // 3) - (dot // 2)
+        _fill(x + 1, top_y, dot, dot)
+        _fill(x + 1, bot_y, dot, dot)
+
+    total_w = 0
+    for i, ch in enumerate(text):
+        if ch == ":":
+            total_w += colon_w
+        else:
+            total_w += digit_w
+        if i != len(text) - 1:
+            total_w += gap
+    x = (VIEW_W - total_w) // 2
+    y = (VIEW_H - digit_h) // 2
+    if x < 0:
+        x = 0
+    if y < 0:
+        y = 0
+
+    for i, ch in enumerate(text):
+        if ch == ":":
+            _draw_colon(x, y)
+            x += colon_w
+        else:
+            _draw_digit(ch, x, y)
+            x += digit_w
+        if i != len(text) - 1:
+            x += gap
+
+
+def _draw_boot_comic_frame(path):
+    lgfx.clear()
+    if not path or not hasattr(lgfx, "draw_png_file"):
+        return
+    try:
+        if not _path_exists(path):
+            return
+        lgfx.draw_png_file(path, 0, 0, VIEW_W, VIEW_H)
+    except Exception:
+        pass
+
+
+def _boot_phase_sd_ready():
+    global SD_READY
+    if ENABLE_SD_MOUNT:
+        _try_mount_sd()
+        _sync_sd_assets_from_remote_if_needed()
+    else:
+        SD_READY = False
+        print("sd_mounted:", SD_READY, "(disabled)")
+
+
+def _boot_phase_meta_spawn():
+    global asset_base, meta, tile, map_w, map_h, world_w, world_h
+    global player_x, player_y
+
+    asset_base, meta = _find_asset_base(ASSET_BASES)
+    print("asset:", asset_base)
+    if asset_base == SD_ASSET_BASE:
+        _print_asset_files(asset_base, meta)
+    if hasattr(lgfx, "set_swap_bytes"):
+        lgfx.set_swap_bytes(meta.get("endian", "little") == "little")
+    tile = meta["tile_size"]
+    map_w = meta["map_w"]
+    map_h = meta["map_h"]
+    world_w = map_w * tile
+    world_h = map_h * tile
+
+    spawn_x = meta.get("spawn_x", world_w // 2)
+    spawn_y = meta.get("spawn_y", world_h // 2)
+    spawn_x, spawn_y = _apply_spawn_offset_for_map(MAP1_ID, spawn_x, spawn_y)
+    player_x = spawn_x
+    player_y = spawn_y
+
+
+def _boot_phase_tile_and_player():
+    global player_sheet_enabled, player_sheet_err
+    if hasattr(lgfx, "player_sheet_clear"):
+        # Release previous C-side sheet buffers before sprite allocation fallback.
+        lgfx.player_sheet_clear()
+    gc.collect()
+
+    if hasattr(lgfx, "player_sheet_load_file"):
+        _tile_setup_with_fallback()
+        player_sheet_enabled, player_sheet_err = _load_player_sheet(asset_base)
+    else:
+        player_sheet_enabled, player_sheet_err = _load_player_sheet(asset_base)
+        _tile_setup_with_fallback()
+
+    if FORCE_SIMPLE_PLAYER:
+        player_sheet_enabled = False
+        if hasattr(lgfx, "player_sheet_clear"):
+            lgfx.player_sheet_clear()
+
+    if not player_sheet_enabled and player_sheet_err:
+        print("player_mode: red_dot", player_sheet_err)
+
+    print("view:", ACTIVE_VIEW_W, ACTIVE_VIEW_H)
+
+
+def _boot_phase_tile_data():
+    global runtime_endian
+    runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=True)
+    if hasattr(lgfx, "set_swap_bytes"):
+        lgfx.set_swap_bytes(runtime_endian == "little")
+
+
+def _boot_phase_collision():
+    global collision
+    collision, collision_err = _load_collision(meta, asset_base, map_w, map_h)
+    if collision_err:
+        print("collision_error:", collision_err)
+    if collision is None:
+        raise RuntimeError("COLLISION_REQUIRED")
+    blocked_tiles = 0
+    for v in collision:
+        if v:
+            blocked_tiles += 1
+    print("collision_tiles:", blocked_tiles, "/", map_w * map_h)
+    if blocked_tiles == 0:
+        raise RuntimeError("COLLISION_EMPTY")
+
+
+def _boot_phase_finalize_startup():
+    global player_x, player_y
+    global battle_frame_x, battle_frame_y, battle_frame_x_max, battle_frame_y_max
+    global battle_heart_init_x, battle_heart_init_y
+    global battle_heart_min_x, battle_heart_max_x, battle_heart_min_y, battle_heart_max_y
+    global battle_cmd_x0, battle_cmd_y, battle_cmd_w
+
+    _collision_selftest()
+
+    # Keep startup robust when map metadata spawn lands inside a blocked tile.
+    safe_start_x, safe_start_y = _nearest_walkable(player_x, player_y)
+    if safe_start_x != player_x or safe_start_y != player_y:
+        print("startup_spawn_adjusted:", player_x, player_y, "->", safe_start_x, safe_start_y)
+    player_x, player_y = safe_start_x, safe_start_y
+
+    (
+        battle_frame_x,
+        battle_frame_y,
+        battle_frame_x_max,
+        battle_frame_y_max,
+        battle_heart_init_x,
+        battle_heart_init_y,
+        battle_heart_min_x,
+        battle_heart_max_x,
+        battle_heart_min_y,
+        battle_heart_max_y,
+        battle_cmd_x0,
+        battle_cmd_y,
+        battle_cmd_w,
+    ) = _update_battle_layout()
+
+
+def _play_boot_comic_intro():
+    phases = (
+        _boot_phase_sd_ready,
+        _boot_phase_meta_spawn,
+        _boot_phase_tile_and_player,
+        _boot_phase_tile_data,
+        _boot_phase_collision,
+        _boot_phase_finalize_startup,
+    )
+
+    def _wait_slot(ms):
+        deadline = time.ticks_add(time.ticks_ms(), ms)
+        while time.ticks_diff(deadline, time.ticks_ms()) > 0:
+            time.sleep_ms(10)
+
+    for i in range(len(BOOT_COMIC_TIME_LABELS)):
+        _draw_boot_time_card(BOOT_COMIC_TIME_LABELS[i])
+        _wait_slot(BOOT_TIME_CARD_MS)
+        _draw_boot_comic_frame(BOOT_COMIC_PATHS[i])
+        phase_deadline = time.ticks_add(time.ticks_ms(), BOOT_COMIC_FRAME_MS)
+        if i < len(phases):
+            phases[i]()
+        while time.ticks_diff(phase_deadline, time.ticks_ms()) > 0:
+            time.sleep_ms(10)
+
+    # Safety: if phase count changes in future, complete remaining phases.
+    for i in range(len(BOOT_COMIC_TIME_LABELS), len(phases)):
+        phases[i]()
+
+
+_play_boot_comic_intro()
 
 def _load_map_context(base, fallback_all_walkable=False, prefer_stream=False, preloaded_meta=None, preloaded_collision=None):
     global asset_base, meta, tile, map_w, map_h, world_w, world_h, runtime_endian, collision

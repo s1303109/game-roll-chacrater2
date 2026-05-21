@@ -24,6 +24,7 @@ TITLE_UI_START_NAME="${TITLE_UI_START_NAME:-title_ui_start_112x54.png}"
 TITLE_UI_START_SRC="${TITLE_UI_START_SRC:-/workspace/title_ui_start_112x54.png}"
 TITLE_UI_CONTINUE_NAME="${TITLE_UI_CONTINUE_NAME:-title_ui_continue_112x54.png}"
 TITLE_UI_CONTINUE_SRC="${TITLE_UI_CONTINUE_SRC:-/workspace/title_ui_continue_112x54.png}"
+BOOT_COMIC_DIR="${BOOT_COMIC_DIR:-/workspace}"
 
 # Prefer system mpremote. Fallback to repo-local mpremote module.
 if command -v mpremote >/dev/null 2>&1; then
@@ -186,6 +187,10 @@ copy_if_changed "${INVENTORY_PORTRAIT_SRC}" "/${INVENTORY_PORTRAIT_NAME}" "${INV
 copy_if_changed "${COVER_SRC}" "/${COVER_NAME}" "${COVER_NAME}"
 copy_if_changed "${TITLE_UI_START_SRC}" "/${TITLE_UI_START_NAME}" "${TITLE_UI_START_NAME}"
 copy_if_changed "${TITLE_UI_CONTINUE_SRC}" "/${TITLE_UI_CONTINUE_NAME}" "${TITLE_UI_CONTINUE_NAME}"
+
+for i in 01 02 03 04 05 06; do
+  copy_if_changed "${BOOT_COMIC_DIR}/comic_${i}_320x240.png" "/comic_${i}_320x240.png" "comic_${i}_320x240.png"
+done
 
 sync_assets_to_sd() {
   local py
