@@ -43,6 +43,23 @@ def _find_asset_base(base_list):
         except ValueError:
             raise ValueError("MAP_JSON_INVALID")
         _validate_meta(meta)
+        # Avoid selecting a base that has map.json but incomplete/corrupt tile files.
+        tile = meta.get("tile_size", 0)
+        map_w = meta.get("map_w", 0)
+        map_h = meta.get("map_h", 0)
+        if tile <= 0 or map_w <= 0 or map_h <= 0:
+            continue
+        expected_tilemap = map_w * map_h * 2
+        tile_bytes = tile * tile * 2
+        try:
+            tilemap_size = os.stat(base + "/tilemap.bin")[6]
+            tileset_size = os.stat(base + "/tileset.bin")[6]
+        except OSError:
+            continue
+        if tilemap_size != expected_tilemap:
+            continue
+        if tile_bytes <= 0 or tileset_size <= 0 or (tileset_size % tile_bytes) != 0:
+            continue
         return base, meta
     raise RuntimeError("ASSET_MISSING")
 
@@ -356,6 +373,8 @@ def _load_player_sheet(base):
             paths.append(path)
 
     _add_path(base + "/" + PLAYER_SHEET_NAME)
+    if base.startswith("/sd/"):
+        _add_path(REMOTE_ASSET_BASE + "/" + PLAYER_SHEET_NAME)
     for b in ASSET_BASES:
         _add_path(b + "/" + PLAYER_SHEET_NAME)
     for p in PLAYER_SHEET_FALLBACK_PATHS:
@@ -404,7 +423,7 @@ SD_ASSET_BASE = "/sd/out"
 REMOTE_ASSET_BASE = "/remote/assets/out"
 ASSET_BASES = ("/", SD_ASSET_BASE, REMOTE_ASSET_BASE)
 ENABLE_AUTO_SD_SYNC = False
-ENABLE_SD_MOUNT = False
+ENABLE_SD_MOUNT = True
 PLAYER_SHEET_NAME = "player_sheet.rgb565"
 PLAYER_SHEET_FALLBACK_PATHS = (
     "/player_sheet.rgb565",
@@ -1072,7 +1091,6 @@ for _encounter_map_id in MAP_ENCOUNTER_CONFIG:
 
 current_battle_enemy = ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID)
 
-preload_cache = None
 preload_zone_target_map_id = None
 preload_zone_enter_ms = 0
 preload_last_build_ms = 0
@@ -1095,6 +1113,40 @@ perf_preload_skip_motion = 0
 perf_preload_skip_post_switch = 0
 perf_gc_run_count = 0
 perf_gc_run_ms_total = 0
+
+SLOT_ROLE_NONE = 0
+SLOT_ROLE_BACK = 1
+SLOT_ROLE_ACTIVE = 2
+SLOT_ROLE_AHEAD = 3
+
+SLOT_STATE_EMPTY = 0
+SLOT_STATE_LOADING = 1
+SLOT_STATE_READY = 2
+SLOT_STATE_FAILED = 3
+
+SLOT_STAGE_NONE = 0
+SLOT_STAGE_VALIDATE = 1
+SLOT_STAGE_ACQUIRE_TILESET = 2
+SLOT_STAGE_WAIT_TILESET = 3
+SLOT_STAGE_LOAD_TILESET = 4
+SLOT_STAGE_LOAD_TILEMAP = 5
+SLOT_STAGE_READY = 6
+
+RESIDENT_SLOT_IDS = (0, 1, 2)
+RESIDENT_BACK_SLOT_ID = 0
+RESIDENT_ACTIVE_SLOT_ID = 1
+RESIDENT_AHEAD_SLOT_ID = 2
+PRELOAD_BUDGET_BYTES = 8192
+
+resident_slots = {
+    0: {"role": SLOT_ROLE_BACK, "map_id": None, "map_token": 0, "tileset_token": 0, "asset_base": None, "tile_base": None, "meta": None, "collision": None, "spawn": None},
+    1: {"role": SLOT_ROLE_ACTIVE, "map_id": None, "map_token": 0, "tileset_token": 0, "asset_base": None, "tile_base": None, "meta": None, "collision": None, "spawn": None},
+    2: {"role": SLOT_ROLE_AHEAD, "map_id": None, "map_token": 0, "tileset_token": 0, "asset_base": None, "tile_base": None, "meta": None, "collision": None, "spawn": None},
+}
+resident_back_slot_id = RESIDENT_BACK_SLOT_ID
+resident_active_slot_id = RESIDENT_ACTIVE_SLOT_ID
+resident_ahead_slot_id = RESIDENT_AHEAD_SLOT_ID
+resident_transition_active = False
 
 ITEM_HEAL_TEST = {
     "id": "heal_candy",
@@ -1678,16 +1730,13 @@ def _boot_phase_tile_and_player():
 
 def _boot_phase_tile_data():
     global runtime_endian
-    runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=False)
+    _resident_boot_activate_map(MAP1_ID)
+    runtime_endian = "little"
     if hasattr(lgfx, "set_swap_bytes"):
         lgfx.set_swap_bytes(runtime_endian == "little")
 
 
 def _boot_phase_collision():
-    global collision
-    collision, collision_err = _load_collision(meta, asset_base, map_w, map_h)
-    if collision_err:
-        print("collision_error:", collision_err)
     if collision is None:
         raise RuntimeError("COLLISION_REQUIRED")
     blocked_tiles = 0
@@ -1695,7 +1744,7 @@ def _boot_phase_collision():
         if v:
             blocked_tiles += 1
     print("collision_tiles:", blocked_tiles, "/", map_w * map_h)
-    if blocked_tiles == 0:
+    if blocked_tiles == 0 and (not resident_slots[resident_active_slot_id].get("fallback_all_walkable")):
         raise RuntimeError("COLLISION_EMPTY")
 
 
@@ -1729,6 +1778,289 @@ def _boot_phase_finalize_startup():
         battle_cmd_y,
         battle_cmd_w,
     ) = _update_battle_layout()
+
+
+def _fnv1a32_text(text):
+    h = 2166136261
+    for b in text.encode():
+        h ^= b
+        h = (h * 16777619) & 0xFFFFFFFF
+    return h
+
+
+def _resident_map_token(map_id):
+    return int(map_id) & 0xFFFFFFFF
+
+
+def _resident_tileset_token(config, tile_base):
+    tileset_key = config.get("tileset_id")
+    if tileset_key is None:
+        tileset_key = tile_base + "/tileset.bin"
+    return _fnv1a32_text(str(tileset_key))
+
+
+def _resident_slot_state_name(state):
+    if state == SLOT_STATE_EMPTY:
+        return "EMPTY"
+    if state == SLOT_STATE_LOADING:
+        return "LOADING"
+    if state == SLOT_STATE_READY:
+        return "READY"
+    if state == SLOT_STATE_FAILED:
+        return "FAILED"
+    return "?"
+
+
+def _resident_slot_stage_name(stage):
+    if stage == SLOT_STAGE_NONE:
+        return "NONE"
+    if stage == SLOT_STAGE_VALIDATE:
+        return "VALIDATE"
+    if stage == SLOT_STAGE_ACQUIRE_TILESET:
+        return "ACQUIRE_TILESET"
+    if stage == SLOT_STAGE_WAIT_TILESET:
+        return "WAIT_TILESET"
+    if stage == SLOT_STAGE_LOAD_TILESET:
+        return "LOAD_TILESET"
+    if stage == SLOT_STAGE_LOAD_TILEMAP:
+        return "LOAD_TILEMAP"
+    if stage == SLOT_STAGE_READY:
+        return "READY"
+    return "?"
+
+
+def _resident_role_name(role):
+    if role == SLOT_ROLE_BACK:
+        return "back"
+    if role == SLOT_ROLE_ACTIVE:
+        return "active"
+    if role == SLOT_ROLE_AHEAD:
+        return "ahead"
+    return "none"
+
+
+def _resident_slot_info(slot_id):
+    if not hasattr(lgfx, "slot_info"):
+        return None
+    info = lgfx.slot_info(slot_id)
+    if not info or len(info) < 10:
+        return None
+    return {
+        "role": info[0],
+        "state": info[1],
+        "map_token": info[2],
+        "tileset_token": info[3],
+        "load_stage": info[4],
+        "loaded_bytes": info[5],
+        "total_bytes": info[6],
+        "ref_count": info[7],
+        "waiter_count": info[8],
+        "is_active": bool(info[9]),
+    }
+
+
+def _resident_sync_roles():
+    resident_slots[resident_back_slot_id]["role"] = SLOT_ROLE_BACK
+    resident_slots[resident_active_slot_id]["role"] = SLOT_ROLE_ACTIVE
+    resident_slots[resident_ahead_slot_id]["role"] = SLOT_ROLE_AHEAD
+    if hasattr(lgfx, "slot_set_role"):
+        lgfx.slot_set_role(resident_back_slot_id, SLOT_ROLE_BACK)
+        lgfx.slot_set_role(resident_active_slot_id, SLOT_ROLE_ACTIVE)
+        lgfx.slot_set_role(resident_ahead_slot_id, SLOT_ROLE_AHEAD)
+
+
+def _resident_clear_slot_record(slot_id):
+    role = resident_slots[slot_id]["role"]
+    resident_slots[slot_id] = {
+        "role": role,
+        "map_id": None,
+        "map_token": 0,
+        "tileset_token": 0,
+        "asset_base": None,
+        "tile_base": None,
+        "meta": None,
+        "collision": None,
+        "spawn": None,
+        "fallback_all_walkable": False,
+    }
+
+
+def _resident_release_slot(slot_id, reason=None):
+    global preload_last_release_ms, preload_release_due_ms
+    global perf_preload_release_count
+    if slot_id == resident_active_slot_id:
+        return False
+    info = _resident_slot_info(slot_id)
+    if info is not None and info["state"] == SLOT_STATE_LOADING and hasattr(lgfx, "display_wait_idle"):
+        lgfx.display_wait_idle()
+    ok = True
+    if info is not None and info["state"] == SLOT_STATE_LOADING and hasattr(lgfx, "slot_cancel_load"):
+        ok = bool(lgfx.slot_cancel_load(slot_id))
+    elif hasattr(lgfx, "slot_release"):
+        ok = bool(lgfx.slot_release(slot_id))
+    _resident_clear_slot_record(slot_id)
+    _resident_sync_roles()
+    if reason:
+        print("preload_release:", reason)
+    preload_last_release_ms = time.ticks_ms()
+    preload_release_due_ms = 0
+    perf_preload_release_count += 1
+    return ok
+
+
+def _resident_apply_slot_globals(slot_id):
+    global asset_base, meta, tile, map_w, map_h, world_w, world_h
+    global collision, runtime_endian
+    slot = resident_slots[slot_id]
+    meta = slot["meta"]
+    asset_base = slot["asset_base"]
+    collision = slot["collision"]
+    tile = meta["tile_size"]
+    map_w = meta["map_w"]
+    map_h = meta["map_h"]
+    world_w = map_w * tile
+    world_h = map_h * tile
+    runtime_endian = "little"
+
+
+def _resident_log_slots(prefix):
+    for slot_id in RESIDENT_SLOT_IDS:
+        info = _resident_slot_info(slot_id)
+        record = resident_slots[slot_id]
+        if info is None:
+            print(prefix, "slot", slot_id, "info:missing")
+            continue
+        print(
+            prefix,
+            "slot", slot_id,
+            _resident_role_name(record["role"]),
+            "map", record["map_id"],
+            "state", _resident_slot_state_name(info["state"]),
+            "stage", _resident_slot_stage_name(info["load_stage"]),
+            "loaded", info["loaded_bytes"], "/", info["total_bytes"],
+            "ref", info["ref_count"],
+            "wait", info["waiter_count"],
+            "active", info["is_active"],
+        )
+
+
+def _resident_resolve_map_record(target_map_id, spawn=None):
+    config = MAP_REGISTRY.get(target_map_id)
+    if not config:
+        raise RuntimeError("TARGET_MAP_UNKNOWN")
+    base, next_meta = _find_asset_base(config["asset_bases"])
+    if next_meta.get("endian", "little") != "little":
+        raise RuntimeError("TILE_ENDIAN_UNSUPPORTED")
+    fallback_all_walkable = bool(config.get("fallback_all_walkable", False))
+    map_w2 = next_meta["map_w"]
+    map_h2 = next_meta["map_h"]
+    if fallback_all_walkable:
+        collision_data = bytearray(map_w2 * map_h2)
+    else:
+        collision_data, collision_err = _load_collision(next_meta, base, map_w2, map_h2)
+        if collision_data is None:
+            raise RuntimeError(collision_err if collision_err else "COLLISION_REQUIRED")
+    return {
+        "map_id": target_map_id,
+        "map_token": _resident_map_token(target_map_id),
+        "tileset_token": _resident_tileset_token(config, base),
+        "asset_base": base,
+        "tile_base": base,
+        "meta": next_meta,
+        "collision": collision_data,
+        "spawn": spawn,
+        "fallback_all_walkable": fallback_all_walkable,
+    }
+
+
+def _resident_slot_has_target(slot_id, target_map_id):
+    record = resident_slots[slot_id]
+    if record["map_id"] != target_map_id:
+        return False
+    info = _resident_slot_info(slot_id)
+    if info is None or info["state"] not in (SLOT_STATE_LOADING, SLOT_STATE_READY):
+        return False
+    if not hasattr(lgfx, "slot_has_map"):
+        return False
+    return bool(lgfx.slot_has_map(slot_id, record["map_token"]))
+
+
+def _resident_start_slot_load(slot_id, record, sync_load):
+    _resident_release_slot(slot_id, "replace_slot")
+    resident_slots[slot_id].update(record)
+    resident_slots[slot_id]["role"] = resident_slots[slot_id]["role"]
+    args = (
+        slot_id,
+        record["map_token"],
+        record["tileset_token"],
+        record["tile_base"] + "/tileset.bin",
+        record["tile_base"] + "/tilemap.bin",
+        record["meta"]["tile_size"],
+        record["meta"]["map_w"],
+        record["meta"]["map_h"],
+    )
+    if sync_load:
+        ok = lgfx.slot_load_files(*args)
+    else:
+        ok = lgfx.slot_begin_load_files(*args)
+    if not ok:
+        state = _resident_slot_info(slot_id)
+        print("resident_slot_load_fail:", slot_id, record["map_id"], state)
+        resident_slots[slot_id]["map_id"] = record["map_id"]
+        return False
+    return True
+
+
+def _resident_finish_slot_sync(slot_id):
+    info = _resident_slot_info(slot_id)
+    if info is None:
+        return False
+    if info["state"] == SLOT_STATE_READY:
+        return True
+    if info["state"] != SLOT_STATE_LOADING:
+        return False
+    while True:
+        pumped = lgfx.slot_pump_load(slot_id, PRELOAD_BUDGET_BYTES * 16)
+        if pumped < 0:
+            return False
+        info = _resident_slot_info(slot_id)
+        if info is None:
+            return False
+        if info["state"] == SLOT_STATE_READY:
+            return True
+        if info["state"] == SLOT_STATE_FAILED:
+            return False
+        if pumped == 0:
+            time.sleep_ms(1)
+
+
+def _resident_prepare_active_slot(slot_id):
+    _resident_apply_slot_globals(slot_id)
+    _tile_setup_with_fallback()
+    if hasattr(lgfx, "display_wait_idle"):
+        lgfx.display_wait_idle()
+    if not lgfx.slot_select(slot_id, True):
+        raise RuntimeError("slot_select_fail")
+
+
+def _resident_restore_active_slot(slot_id):
+    _resident_prepare_active_slot(slot_id)
+
+
+def _resident_boot_activate_map(target_map_id):
+    global resident_back_slot_id, resident_active_slot_id, resident_ahead_slot_id
+    resident_back_slot_id = RESIDENT_BACK_SLOT_ID
+    resident_active_slot_id = RESIDENT_ACTIVE_SLOT_ID
+    resident_ahead_slot_id = RESIDENT_AHEAD_SLOT_ID
+    for slot_id in RESIDENT_SLOT_IDS:
+        _resident_clear_slot_record(slot_id)
+    _resident_sync_roles()
+    record = _resident_resolve_map_record(target_map_id)
+    if not _resident_start_slot_load(resident_active_slot_id, record, True):
+        raise RuntimeError("RESIDENT_BOOT_LOAD_FAIL")
+    resident_slots[resident_active_slot_id].update(record)
+    _resident_prepare_active_slot(resident_active_slot_id)
+    _resident_log_slots("boot_slot")
 
 
 def _play_boot_comic_intro():
@@ -1859,7 +2191,9 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     global tile, map_w, map_h, world_w, world_h, runtime_endian
     global move_carry_x, move_carry_y, prev_input_x, prev_input_y
     global preload_suspend_until_ms, gc_suspend_until_ms, gc_pending
-    global preload_cache
+    global resident_back_slot_id, resident_active_slot_id, resident_ahead_slot_id
+    global resident_transition_active
+    global preload_zone_target_map_id, preload_zone_enter_ms
 
     phase = {
         "resolve_base_ms": 0,
@@ -1885,7 +2219,6 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     if not config:
         print("switch_map_fail_stage:resolve_base")
         _print_switch_timings()
-        _release_preload_cache("switch_fail")
         teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
         return False
 
@@ -1907,66 +2240,74 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     prev_prev_player_x_saved = prev_player_x
     prev_prev_player_y_saved = prev_player_y
     prev_current_map_id = current_map_id
+    prev_back_slot_id = resident_back_slot_id
+    prev_active_slot_id = resident_active_slot_id
+    prev_ahead_slot_id = resident_ahead_slot_id
 
-    fallback_all_walkable = bool(config.get("fallback_all_walkable", False))
-    next_base = None
-    next_meta = None
-    preloaded_collision = None
-    prefer_stream = bool(config.get("prefer_stream", False))
-
-    use_preload = (
-        preload_cache is not None
-        and preload_cache.get("source_map_id") == current_map_id
-        and preload_cache.get("target_map_id") == target_map_id
-    )
-    if use_preload:
-        next_base = preload_cache.get("base")
-        next_meta = preload_cache.get("meta")
-        preloaded_collision = preload_cache.get("collision")
-        prefer_stream = bool(preload_cache.get("prefer_stream", prefer_stream))
-        fallback_all_walkable = bool(preload_cache.get("fallback_all_walkable", fallback_all_walkable))
-        cached_spawn = preload_cache.get("spawn")
-        if spawn_x is None and cached_spawn and len(cached_spawn) >= 2:
-            spawn_x = cached_spawn[0]
-        if spawn_y is None and cached_spawn and len(cached_spawn) >= 2:
-            spawn_y = cached_spawn[1]
+    target_slot_id = None
+    if _resident_slot_has_target(resident_back_slot_id, target_map_id):
+        target_slot_id = resident_back_slot_id
+    elif _resident_slot_has_target(resident_ahead_slot_id, target_map_id):
+        target_slot_id = resident_ahead_slot_id
     else:
         fail_stage = "resolve_base"
         t0 = time.ticks_ms()
         try:
-            next_base = _resolve_asset_base(config["asset_bases"])
+            record = _resident_resolve_map_record(target_map_id, (spawn_x, spawn_y) if spawn_x is not None and spawn_y is not None else None)
         except Exception as err:
             print("switch_map_skip_target:", target_map_id, err)
             print("switch_map_fail_stage:resolve_base")
             phase["resolve_base_ms"] = time.ticks_diff(time.ticks_ms(), t0)
             _print_switch_timings()
-            _release_preload_cache("switch_fail")
             teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
             return False
         phase["resolve_base_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+        target_slot_id = resident_ahead_slot_id
+        if not _resident_start_slot_load(target_slot_id, record, False):
+            print("switch_map_fail_stage:slot_begin")
+            _print_switch_timings()
+            teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+            return False
+
+    target_record = resident_slots[target_slot_id]
+    if spawn_x is None and target_record.get("spawn") and len(target_record["spawn"]) >= 2:
+        spawn_x = target_record["spawn"][0]
+    if spawn_y is None and target_record.get("spawn") and len(target_record["spawn"]) >= 2:
+        spawn_y = target_record["spawn"][1]
 
     collision = None
     meta = None
     asset_base = None
     gc.collect()
+    resident_transition_active = True
 
     try:
+        fail_stage = "tile_load"
+        t0 = time.ticks_ms()
+        target_info = _resident_slot_info(target_slot_id)
+        if target_info is None:
+            raise RuntimeError("slot_info_missing")
+        if target_info["state"] != SLOT_STATE_READY:
+            if not _resident_finish_slot_sync(target_slot_id):
+                raise RuntimeError("resident_load_failed")
+        phase["tile_load_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+
         fail_stage = "map_context"
-        load_phase = _load_map_context(
-            next_base,
-            fallback_all_walkable=fallback_all_walkable,
-            prefer_stream=prefer_stream,
-            preloaded_meta=next_meta,
-            preloaded_collision=preloaded_collision,
-        )
-        phase["map_json_ms"] = load_phase["map_json_ms"]
-        phase["tile_setup_ms"] = load_phase["tile_setup_ms"]
-        phase["tile_load_ms"] = load_phase["tile_load_ms"]
-        phase["collision_load_ms"] = load_phase["collision_load_ms"]
+        _resident_apply_slot_globals(target_slot_id)
+        phase["map_json_ms"] = 0
+        phase["collision_load_ms"] = 0
+
+        fail_stage = "tile_setup"
+        t0 = time.ticks_ms()
+        _tile_setup_with_fallback()
+        phase["tile_setup_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+
+        fail_stage = "slot_select"
+        if hasattr(lgfx, "display_wait_idle"):
+            lgfx.display_wait_idle()
+        if not lgfx.slot_select(target_slot_id, True):
+            raise RuntimeError("slot_select_failed")
     except Exception as err:
-        err_text = str(err)
-        if ":" in err_text:
-            fail_stage = err_text.split(":", 1)[0]
         collision = prev_collision
         meta = prev_meta
         asset_base = prev_asset_base
@@ -1985,11 +2326,19 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
         prev_player_x = prev_prev_player_x_saved
         prev_player_y = prev_prev_player_y_saved
         current_map_id = prev_current_map_id
+        resident_back_slot_id = prev_back_slot_id
+        resident_active_slot_id = prev_active_slot_id
+        resident_ahead_slot_id = prev_ahead_slot_id
+        _resident_sync_roles()
+        try:
+            _resident_restore_active_slot(prev_active_slot_id)
+        except Exception as restore_err:
+            print("switch_map_restore_slot_fail:", restore_err)
         print("switch_map_restore:", err)
         print("switch_map_fail_stage:%s" % (fail_stage if fail_stage else "unknown"))
         _print_switch_timings()
-        _release_preload_cache("switch_fail")
         teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+        resident_transition_active = False
         gc.collect()
         return False
 
@@ -2032,15 +2381,32 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     phase["spawn_finalize_ms"] = time.ticks_diff(time.ticks_ms(), t0)
     current_map_id = target_map_id
     _encounter_on_map_enter(current_map_id)
+
+    if target_slot_id == prev_back_slot_id:
+        resident_active_slot_id = prev_back_slot_id
+        resident_back_slot_id = prev_active_slot_id
+    else:
+        resident_active_slot_id = target_slot_id
+        resident_back_slot_id = prev_active_slot_id
+    for slot_id in RESIDENT_SLOT_IDS:
+        if slot_id not in (resident_active_slot_id, resident_back_slot_id):
+            resident_ahead_slot_id = slot_id
+            break
+    _resident_sync_roles()
+    _resident_release_slot(resident_ahead_slot_id, "switch_recycle")
+    preload_zone_target_map_id = None
+    preload_zone_enter_ms = 0
+
     now = time.ticks_ms()
     preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
     gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
     _print_switch_timings()
-    _release_preload_cache("switch_success")
+    _resident_log_slots("switch_slot")
     if GC_DEFER_ENABLE:
         gc_pending = True
     else:
         gc.collect()
+    resident_transition_active = False
     return True
 
 
@@ -2114,16 +2480,13 @@ def _expand_rect(rect, pad):
 
 
 def _release_preload_cache(reason=None):
-    global preload_cache, preload_last_release_ms, preload_release_due_ms
+    global preload_last_release_ms, preload_release_due_ms
     global gc_pending, perf_preload_release_count
-    if preload_cache is None:
+    info = _resident_slot_info(resident_ahead_slot_id)
+    if info is None or info["state"] == SLOT_STATE_EMPTY:
         return
-    if reason:
-        print("preload_release:", reason)
-    preload_cache = None
-    preload_last_release_ms = time.ticks_ms()
-    preload_release_due_ms = 0
-    perf_preload_release_count += 1
+    if not _resident_release_slot(resident_ahead_slot_id, reason):
+        return
     if GC_DEFER_ENABLE:
         gc_pending = True
     else:
@@ -2131,11 +2494,7 @@ def _release_preload_cache(reason=None):
 
 
 def _build_preload_cache(source_map_id, portal):
-    global preload_cache
-
     started = time.ticks_ms()
-    preload_cache = None
-
     target_map_id = portal.get("target_map_id")
     config = MAP_REGISTRY.get(target_map_id)
     if not config:
@@ -2144,32 +2503,13 @@ def _build_preload_cache(source_map_id, portal):
         return False
 
     try:
-        next_base, next_meta = _find_asset_base(config["asset_bases"])
-        map_w2 = next_meta["map_w"]
-        map_h2 = next_meta["map_h"]
-        fallback_all_walkable = bool(config.get("fallback_all_walkable", False))
-        if fallback_all_walkable:
-            collision_data = None
-        else:
-            collision_data, collision_err = _load_collision(next_meta, next_base, map_w2, map_h2)
-            if collision_data is None:
-                raise RuntimeError(collision_err if collision_err else "COLLISION_REQUIRED")
-
-        preload_cache = {
-            "source_map_id": source_map_id,
-            "target_map_id": target_map_id,
-            "base": next_base,
-            "meta": next_meta,
-            "collision": collision_data,
-            "prefer_stream": bool(config.get("prefer_stream", False)),
-            "fallback_all_walkable": fallback_all_walkable,
-            "spawn": portal.get("target_spawn"),
-        }
-        print("preload_ready:", source_map_id, "->", target_map_id, "base:", next_base)
+        record = _resident_resolve_map_record(target_map_id, portal.get("target_spawn"))
+        if not _resident_start_slot_load(resident_ahead_slot_id, record, False):
+            raise RuntimeError("slot_begin_failed")
+        print("preload_ready:", source_map_id, "->", target_map_id, "base:", record["tile_base"])
         return True
     except Exception as err:
         print("preload_fail:", err)
-        preload_cache = None
         return False
     finally:
         print("preload_ms_total:", time.ticks_diff(time.ticks_ms(), started))
@@ -2228,6 +2568,9 @@ def _update_preload_for_player(px, py):
     global perf_preload_skip_debounce, perf_preload_skip_dwell, perf_preload_skip_same_zone
     global perf_preload_skip_motion, perf_preload_skip_post_switch
 
+    if resident_transition_active:
+        return
+
     now = time.ticks_ms()
     config = MAP_REGISTRY.get(current_map_id)
     if not config:
@@ -2251,7 +2594,8 @@ def _update_preload_for_player(px, py):
     if preload_portal is None:
         preload_zone_target_map_id = None
         preload_zone_enter_ms = 0
-        if preload_cache is not None:
+        ahead_info = _resident_slot_info(resident_ahead_slot_id)
+        if ahead_info is not None and ahead_info["state"] != SLOT_STATE_EMPTY:
             if preload_release_due_ms == 0:
                 preload_release_due_ms = time.ticks_add(now, PRELOAD_RELEASE_GRACE_MS)
             elif time.ticks_diff(now, preload_release_due_ms) >= 0:
@@ -2268,11 +2612,7 @@ def _update_preload_for_player(px, py):
 
     preload_release_due_ms = 0
 
-    if (
-        preload_cache is not None
-        and preload_cache.get("source_map_id") == current_map_id
-        and preload_cache.get("target_map_id") == target_map_id
-    ):
+    if _resident_slot_has_target(resident_ahead_slot_id, target_map_id):
         perf_preload_skip_cached += 1
         return
 
@@ -2305,6 +2645,22 @@ def _update_preload_for_player(px, py):
         perf_preload_build_count += 1
     else:
         perf_preload_build_fail_count += 1
+
+
+def _resident_pump_preload():
+    if resident_transition_active:
+        return
+    info = _resident_slot_info(resident_ahead_slot_id)
+    if info is None or info["state"] != SLOT_STATE_LOADING:
+        return
+    pumped = lgfx.slot_pump_load(resident_ahead_slot_id, PRELOAD_BUDGET_BYTES)
+    if pumped < 0:
+        print("preload_pump_fail:", resident_ahead_slot_id, _resident_slot_info(resident_ahead_slot_id))
+    elif pumped > 0:
+        updated = _resident_slot_info(resident_ahead_slot_id)
+        if updated and updated["state"] == SLOT_STATE_READY:
+            print("preload_slot_ready:", resident_slots[resident_ahead_slot_id]["map_id"])
+            _resident_log_slots("preload_slot")
 
 
 def _maybe_run_deferred_gc(loop_start, moved, scrolled):
@@ -6281,6 +6637,7 @@ while True:
         update_battle_fight(loop_start)
 
     draw_all(loop_start)
+    _resident_pump_preload()
     _maybe_run_deferred_gc(loop_start, explore_moved, explore_scrolled)
 
     if frame % 120 == 0:

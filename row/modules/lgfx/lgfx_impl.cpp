@@ -78,6 +78,90 @@ extern "C" bool lgfx_tile_load_files_impl(const char *tileset_path, const char *
 extern "C" int lgfx_tile_loader_mode_impl(void) {
   return 0;
 }
+extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+  (void)slot_id;
+  (void)map_token;
+  (void)tileset_token;
+  (void)tileset_path;
+  (void)tilemap_path;
+  (void)tile_size;
+  (void)map_w;
+  (void)map_h;
+  return false;
+}
+extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+  (void)slot_id;
+  (void)map_token;
+  (void)tileset_token;
+  (void)tileset_path;
+  (void)tilemap_path;
+  (void)tile_size;
+  (void)map_w;
+  (void)map_h;
+  return false;
+}
+extern "C" int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
+  (void)slot_id;
+  (void)max_bytes;
+  return 0;
+}
+extern "C" bool lgfx_slot_cancel_load_impl(int slot_id) {
+  (void)slot_id;
+  return false;
+}
+extern "C" bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
+  (void)slot_id;
+  (void)force_full_redraw;
+  return false;
+}
+extern "C" bool lgfx_slot_release_impl(int slot_id) {
+  (void)slot_id;
+  return false;
+}
+extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
+  (void)slot_id;
+  (void)map_token;
+  return false;
+}
+extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
+  (void)slot_id;
+  if (role) {
+    *role = 0;
+  }
+  if (state) {
+    *state = 0;
+  }
+  if (map_token) {
+    *map_token = 0;
+  }
+  if (tileset_token) {
+    *tileset_token = 0;
+  }
+  if (load_stage) {
+    *load_stage = 0;
+  }
+  if (loaded_bytes) {
+    *loaded_bytes = 0;
+  }
+  if (total_bytes) {
+    *total_bytes = 0;
+  }
+  if (ref_count) {
+    *ref_count = 0;
+  }
+  if (waiter_count) {
+    *waiter_count = 0;
+  }
+  if (is_active) {
+    *is_active = false;
+  }
+  return false;
+}
+extern "C" void lgfx_slot_set_role_impl(int slot_id, int role) {
+  (void)slot_id;
+  (void)role;
+}
+extern "C" void lgfx_display_wait_idle_impl(void) {}
 extern "C" int lgfx_tile_last_error_impl(void) {
   return -1;
 }
@@ -163,6 +247,7 @@ extern "C" {
 
 // Forward declarations for functions called before definition
 extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius);
+extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h);
 
 class LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9341 _panel;
@@ -236,6 +321,7 @@ struct TileState {
 
   uint16_t *tilemap = nullptr;
   uint8_t *dirty = nullptr;
+  size_t dirty_len = 0;
 
   bool tileset_stream = false;
   char tileset_path[160] = {0};
@@ -250,6 +336,7 @@ struct TileState {
   bool has_prev_scroll = false;
   int prev_scroll_x = 0;
   int prev_scroll_y = 0;
+  int active_slot_id = -1;
 } tile_state;
 
 struct RenderStats {
@@ -258,6 +345,96 @@ struct RenderStats {
   uint32_t last_us = 0;
   uint32_t last_tiles = 0;
 } render_stats;
+
+enum TileLoadError {
+  TILE_LOAD_OK = 0,
+  TILE_LOAD_ERR_ARGS = 1,
+  TILE_LOAD_ERR_MAP_OPEN = 2,
+  TILE_LOAD_ERR_MAP_READ = 3,
+  TILE_LOAD_ERR_TILESET_OPEN = 4,
+  TILE_LOAD_ERR_TILESET_SEEK = 5,
+  TILE_LOAD_ERR_TILESET_SIZE = 6,
+  TILE_LOAD_ERR_TILESET_FORMAT = 7,
+  TILE_LOAD_ERR_CACHE_ALLOC = 8,
+  TILE_LOAD_ERR_SLOT_RANGE = 9,
+  TILE_LOAD_ERR_SLOT_ACTIVE = 10,
+  TILE_LOAD_ERR_SLOT_STATE = 11,
+  TILE_LOAD_ERR_TILESET_REF = 12,
+};
+
+enum ResidentSlotState {
+  SLOT_STATE_EMPTY = 0,
+  SLOT_STATE_LOADING = 1,
+  SLOT_STATE_READY = 2,
+  SLOT_STATE_FAILED = 3,
+};
+
+enum ResidentSlotRole {
+  SLOT_ROLE_NONE = 0,
+  SLOT_ROLE_BACK = 1,
+  SLOT_ROLE_ACTIVE = 2,
+  SLOT_ROLE_AHEAD = 3,
+};
+
+enum ResidentLoadStage {
+  SLOT_STAGE_NONE = 0,
+  SLOT_STAGE_VALIDATE = 1,
+  SLOT_STAGE_ACQUIRE_TILESET = 2,
+  SLOT_STAGE_WAIT_TILESET = 3,
+  SLOT_STAGE_LOAD_TILESET = 4,
+  SLOT_STAGE_LOAD_TILEMAP = 5,
+  SLOT_STAGE_READY = 6,
+};
+
+enum TilesetCacheState {
+  CACHE_STATE_EMPTY = 0,
+  CACHE_STATE_LOADING = 1,
+  CACHE_STATE_READY = 2,
+  CACHE_STATE_FAILED = 3,
+};
+
+constexpr int RESIDENT_SLOT_COUNT = 3;
+constexpr int TILESET_CACHE_COUNT = 6;
+constexpr size_t RESIDENT_PATH_LEN = 192;
+
+struct TilesetCacheEntry {
+  uint32_t tileset_token = 0;
+  uint16_t *ptr = nullptr;
+  size_t total_bytes = 0;
+  size_t load_offset = 0;
+  size_t tile_count = 0;
+  size_t tile_bytes = 0;
+  int ref_count = 0;
+  int waiter_count = 0;
+  int state = CACHE_STATE_EMPTY;
+  bool use_psram = true;
+  char tileset_path[RESIDENT_PATH_LEN] = {0};
+};
+
+struct ResidentSlot {
+  int role = SLOT_ROLE_NONE;
+  int state = SLOT_STATE_EMPTY;
+  int load_stage = SLOT_STAGE_NONE;
+  uint32_t map_token = 0;
+  uint32_t tileset_token = 0;
+  int tile_size = 0;
+  int map_w = 0;
+  int map_h = 0;
+  uint16_t *tilemap_ptr = nullptr;
+  size_t tilemap_bytes = 0;
+  size_t tilemap_offset = 0;
+  size_t loaded_bytes = 0;
+  size_t total_bytes = 0;
+  int cache_index = -1;
+  bool cache_waiting = false;
+  bool use_psram = true;
+  bool invalid_tile_logged = false;
+  char tileset_path[RESIDENT_PATH_LEN] = {0};
+  char tilemap_path[RESIDENT_PATH_LEN] = {0};
+};
+
+static ResidentSlot resident_slots[RESIDENT_SLOT_COUNT];
+static TilesetCacheEntry tileset_cache[TILESET_CACHE_COUNT];
 
 struct PlayerOverlayState {
   bool valid = false;
@@ -299,22 +476,14 @@ struct PlayerSpriteState {
   bool enabled = false;
 } player_sprite;
 
-enum TileLoadError {
-  TILE_LOAD_OK = 0,
-  TILE_LOAD_ERR_ARGS = 1,
-  TILE_LOAD_ERR_MAP_OPEN = 2,
-  TILE_LOAD_ERR_MAP_READ = 3,
-  TILE_LOAD_ERR_TILESET_OPEN = 4,
-  TILE_LOAD_ERR_TILESET_SEEK = 5,
-  TILE_LOAD_ERR_TILESET_SIZE = 6,
-  TILE_LOAD_ERR_TILESET_FORMAT = 7,
-  TILE_LOAD_ERR_CACHE_ALLOC = 8,
-};
-
 static bool tile_fail(int code) {
   tile_state.last_error = code;
   return false;
 }
+
+static mp_obj_t vfs_open_rb(const char *path);
+static void vfs_close_quiet(mp_obj_t file);
+static bool vfs_read_exact(mp_obj_t file, void *dst, size_t len);
 
 static void *lgfx_alloc(size_t size, bool use_psram) {
   if (size == 0) {
@@ -327,6 +496,281 @@ static void *lgfx_alloc(size_t size, bool use_psram) {
     }
   }
   return heap_caps_malloc(size, MALLOC_CAP_8BIT);
+}
+
+static bool copy_cstr(char *dst, size_t dst_len, const char *src) {
+  if (!dst || dst_len == 0 || !src) {
+    return false;
+  }
+  size_t len = strlen(src);
+  if (len >= dst_len) {
+    return false;
+  }
+  memcpy(dst, src, len + 1);
+  return true;
+}
+
+static bool slot_id_valid(int slot_id) {
+  return slot_id >= 0 && slot_id < RESIDENT_SLOT_COUNT;
+}
+
+static void tileset_cache_reset(TilesetCacheEntry *cache) {
+  if (!cache) {
+    return;
+  }
+  if (cache->ptr) {
+    heap_caps_free(cache->ptr);
+    cache->ptr = nullptr;
+  }
+  cache->tileset_token = 0;
+  cache->total_bytes = 0;
+  cache->load_offset = 0;
+  cache->tile_count = 0;
+  cache->tile_bytes = 0;
+  cache->ref_count = 0;
+  cache->waiter_count = 0;
+  cache->state = CACHE_STATE_EMPTY;
+  cache->use_psram = true;
+  cache->tileset_path[0] = '\0';
+}
+
+static void resident_slot_reset(ResidentSlot *slot, bool preserve_role = true) {
+  if (!slot) {
+    return;
+  }
+  int role = preserve_role ? slot->role : SLOT_ROLE_NONE;
+  memset(slot, 0, sizeof(*slot));
+  slot->role = role;
+  slot->state = SLOT_STATE_EMPTY;
+  slot->load_stage = SLOT_STAGE_NONE;
+  slot->cache_index = -1;
+  slot->use_psram = true;
+}
+
+static void resident_slot_free_tilemap(ResidentSlot *slot) {
+  if (slot && slot->tilemap_ptr) {
+    heap_caps_free(slot->tilemap_ptr);
+    slot->tilemap_ptr = nullptr;
+  }
+}
+
+static void tileset_cache_maybe_release(int cache_index) {
+  if (cache_index < 0 || cache_index >= TILESET_CACHE_COUNT) {
+    return;
+  }
+  TilesetCacheEntry *cache = &tileset_cache[cache_index];
+  if (cache->ref_count <= 0 && cache->waiter_count <= 0) {
+    tileset_cache_reset(cache);
+  }
+}
+
+static void resident_slot_detach_cache(ResidentSlot *slot) {
+  if (!slot || slot->cache_index < 0 || slot->cache_index >= TILESET_CACHE_COUNT) {
+    slot->cache_index = -1;
+    slot->cache_waiting = false;
+    return;
+  }
+  TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
+  if (slot->cache_waiting) {
+    if (cache->waiter_count > 0) {
+      cache->waiter_count -= 1;
+    }
+    slot->cache_waiting = false;
+  } else if (cache->ref_count > 0) {
+    cache->ref_count -= 1;
+  }
+  int cache_index = slot->cache_index;
+  slot->cache_index = -1;
+  tileset_cache_maybe_release(cache_index);
+}
+
+static void resident_slot_release_resources(ResidentSlot *slot, bool preserve_role = true) {
+  if (!slot) {
+    return;
+  }
+  resident_slot_detach_cache(slot);
+  resident_slot_free_tilemap(slot);
+  resident_slot_reset(slot, preserve_role);
+}
+
+static int tileset_cache_find(uint32_t tileset_token) {
+  for (int i = 0; i < TILESET_CACHE_COUNT; ++i) {
+    if (tileset_cache[i].state != CACHE_STATE_EMPTY && tileset_cache[i].tileset_token == tileset_token) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+static int tileset_cache_find_free(void) {
+  for (int i = 0; i < TILESET_CACHE_COUNT; ++i) {
+    if (tileset_cache[i].state == CACHE_STATE_EMPTY) {
+      return i;
+    }
+  }
+  for (int i = 0; i < TILESET_CACHE_COUNT; ++i) {
+    if (tileset_cache[i].ref_count <= 0 && tileset_cache[i].waiter_count <= 0) {
+      tileset_cache_reset(&tileset_cache[i]);
+      return i;
+    }
+  }
+  return -1;
+}
+
+static bool ensure_dirty_buffer(size_t map_cells, bool use_psram) {
+  if (map_cells == 0) {
+    return false;
+  }
+  if (tile_state.dirty && tile_state.dirty_len == map_cells) {
+    memset(tile_state.dirty, 1, map_cells);
+    return true;
+  }
+  if (tile_state.dirty) {
+    heap_caps_free(tile_state.dirty);
+    tile_state.dirty = nullptr;
+    tile_state.dirty_len = 0;
+  }
+  tile_state.dirty = static_cast<uint8_t *>(lgfx_alloc(map_cells, use_psram));
+  if (!tile_state.dirty) {
+    return false;
+  }
+  tile_state.dirty_len = map_cells;
+  memset(tile_state.dirty, 1, map_cells);
+  return true;
+}
+
+static bool vfs_file_size(const char *path, size_t *size_out) {
+  if (!path || !size_out) {
+    return false;
+  }
+  mp_obj_t file = vfs_open_rb(path);
+  if (file == MP_OBJ_NULL) {
+    return false;
+  }
+  int errcode = 0;
+  mp_off_t size = mp_stream_seek(file, 0, MP_SEEK_END, &errcode);
+  vfs_close_quiet(file);
+  if (size < 0 || errcode != 0) {
+    return false;
+  }
+  *size_out = (size_t)size;
+  return true;
+}
+
+static bool resident_read_chunk(const char *path, size_t offset, void *dst, size_t len, int open_err, int seek_err, int read_err) {
+  if (!path || !dst || len == 0) {
+    return tile_fail(TILE_LOAD_ERR_ARGS);
+  }
+  mp_obj_t file = vfs_open_rb(path);
+  if (file == MP_OBJ_NULL) {
+    return tile_fail(open_err);
+  }
+  int errcode = 0;
+  mp_off_t seek_res = mp_stream_seek(file, (mp_off_t)offset, MP_SEEK_SET, &errcode);
+  if (seek_res < 0 || errcode != 0) {
+    vfs_close_quiet(file);
+    return tile_fail(seek_err);
+  }
+  bool ok = vfs_read_exact(file, dst, len);
+  vfs_close_quiet(file);
+  if (!ok) {
+    return tile_fail(read_err);
+  }
+  return true;
+}
+
+static bool resident_validate_tilemap_ids(const ResidentSlot *slot, const TilesetCacheEntry *cache) {
+  if (!slot || !cache || !slot->tilemap_ptr || cache->tile_count == 0) {
+    return tile_fail(TILE_LOAD_ERR_TILESET_REF);
+  }
+  size_t cells = (size_t)slot->map_w * (size_t)slot->map_h;
+  for (size_t i = 0; i < cells; ++i) {
+    if ((size_t)slot->tilemap_ptr[i] >= cache->tile_count) {
+      return tile_fail(TILE_LOAD_ERR_TILESET_REF);
+    }
+  }
+  return true;
+}
+
+static bool resident_activate_slot(int slot_id, bool force_full_redraw) {
+  if (!slot_id_valid(slot_id)) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
+  }
+  ResidentSlot *slot = &resident_slots[slot_id];
+  if (slot->state != SLOT_STATE_READY || slot->cache_index < 0 || slot->cache_index >= TILESET_CACHE_COUNT) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_STATE);
+  }
+  TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
+  if (cache->state != CACHE_STATE_READY || !cache->ptr || !slot->tilemap_ptr) {
+    return tile_fail(TILE_LOAD_ERR_TILESET_REF);
+  }
+  size_t map_cells = (size_t)slot->map_w * (size_t)slot->map_h;
+  if (!ensure_dirty_buffer(map_cells, tile_state.use_psram)) {
+    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
+  }
+  tile_state.tile_size = slot->tile_size;
+  tile_state.map_w = slot->map_w;
+  tile_state.map_h = slot->map_h;
+  tile_state.tileset = cache->ptr;
+  tile_state.tileset_len = cache->total_bytes;
+  tile_state.tile_count = cache->tile_count;
+  tile_state.tile_bytes = cache->tile_bytes;
+  tile_state.tilemap = slot->tilemap_ptr;
+  tile_state.tileset_stream = false;
+  tile_state.tileset_path[0] = '\0';
+  tile_state.loaded = true;
+  tile_state.last_error = TILE_LOAD_OK;
+  tile_state.active_slot_id = slot_id;
+  tile_state.has_prev_scroll = false;
+  player_overlay.valid = false;
+  slot->invalid_tile_logged = false;
+  return true;
+}
+
+static int tileset_cache_attach(uint32_t tileset_token, const char *tileset_path, size_t tileset_bytes, size_t tile_bytes, bool use_psram, ResidentSlot *slot) {
+  int cache_index = tileset_cache_find(tileset_token);
+  if (cache_index >= 0) {
+    TilesetCacheEntry *cache = &tileset_cache[cache_index];
+    if (cache->tile_bytes != tile_bytes || cache->total_bytes != tileset_bytes) {
+      return -1;
+    }
+    if (cache->state == CACHE_STATE_READY) {
+      cache->ref_count += 1;
+      slot->cache_waiting = false;
+    } else {
+      cache->waiter_count += 1;
+      slot->cache_waiting = true;
+    }
+    slot->cache_index = cache_index;
+    return cache_index;
+  }
+
+  cache_index = tileset_cache_find_free();
+  if (cache_index < 0) {
+    return -1;
+  }
+  TilesetCacheEntry *cache = &tileset_cache[cache_index];
+  cache->ptr = static_cast<uint16_t *>(lgfx_alloc(tileset_bytes, use_psram));
+  if (!cache->ptr) {
+    tileset_cache_reset(cache);
+    return -1;
+  }
+  if (!copy_cstr(cache->tileset_path, sizeof(cache->tileset_path), tileset_path)) {
+    tileset_cache_reset(cache);
+    return -1;
+  }
+  cache->tileset_token = tileset_token;
+  cache->total_bytes = tileset_bytes;
+  cache->load_offset = 0;
+  cache->tile_bytes = tile_bytes;
+  cache->tile_count = tileset_bytes / tile_bytes;
+  cache->ref_count = 0;
+  cache->waiter_count = 1;
+  cache->state = CACHE_STATE_LOADING;
+  cache->use_psram = use_psram;
+  slot->cache_index = cache_index;
+  slot->cache_waiting = true;
+  return cache_index;
 }
 
 static void tile_close_stream(void) {
@@ -426,6 +870,253 @@ static bool vfs_read_exact(mp_obj_t file, void *dst, size_t len) {
   return errcode == 0 && got == len;
 }
 
+static bool resident_slot_prepare_load(ResidentSlot *slot, uint32_t map_token, uint32_t tileset_token,
+                                       const char *tileset_path, const char *tilemap_path,
+                                       int tile_size, int map_w, int map_h) {
+  if (!slot || !tileset_path || !tilemap_path || tile_size <= 0 || map_w <= 0 || map_h <= 0) {
+    return tile_fail(TILE_LOAD_ERR_ARGS);
+  }
+
+  size_t map_cells = (size_t)map_w * (size_t)map_h;
+  size_t expected_tilemap_len = map_cells * sizeof(uint16_t);
+  size_t tilemap_bytes = 0;
+  size_t tileset_bytes = 0;
+  if (!vfs_file_size(tilemap_path, &tilemap_bytes)) {
+    return tile_fail(TILE_LOAD_ERR_MAP_OPEN);
+  }
+  if (tilemap_bytes != expected_tilemap_len) {
+    return tile_fail(TILE_LOAD_ERR_MAP_READ);
+  }
+  if (!vfs_file_size(tileset_path, &tileset_bytes)) {
+    return tile_fail(TILE_LOAD_ERR_TILESET_OPEN);
+  }
+  size_t tile_pixels = (size_t)tile_size * (size_t)tile_size;
+  size_t tile_bytes = tile_pixels * sizeof(uint16_t);
+  if (tile_bytes == 0 || (tileset_bytes % tile_bytes) != 0) {
+    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
+  }
+  size_t tile_count = tileset_bytes / tile_bytes;
+  if (tile_count == 0) {
+    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
+  }
+
+  resident_slot_release_resources(slot);
+  slot->state = SLOT_STATE_LOADING;
+  slot->load_stage = SLOT_STAGE_VALIDATE;
+  slot->map_token = map_token;
+  slot->tileset_token = tileset_token;
+  slot->tile_size = tile_size;
+  slot->map_w = map_w;
+  slot->map_h = map_h;
+  slot->tilemap_bytes = tilemap_bytes;
+  slot->tilemap_offset = 0;
+  slot->loaded_bytes = 0;
+  slot->total_bytes = tilemap_bytes + tileset_bytes;
+  slot->use_psram = true;
+  slot->invalid_tile_logged = false;
+  if (!copy_cstr(slot->tileset_path, sizeof(slot->tileset_path), tileset_path) ||
+      !copy_cstr(slot->tilemap_path, sizeof(slot->tilemap_path), tilemap_path)) {
+    resident_slot_release_resources(slot);
+    return tile_fail(TILE_LOAD_ERR_ARGS);
+  }
+
+  slot->tilemap_ptr = static_cast<uint16_t *>(lgfx_alloc(tilemap_bytes, slot->use_psram));
+  if (!slot->tilemap_ptr) {
+    resident_slot_release_resources(slot);
+    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
+  }
+  memset(slot->tilemap_ptr, 0, tilemap_bytes);
+  slot->load_stage = SLOT_STAGE_ACQUIRE_TILESET;
+
+  int cache_index = tileset_cache_attach(tileset_token, tileset_path, tileset_bytes, tile_bytes, true, slot);
+  if (cache_index < 0) {
+    resident_slot_release_resources(slot);
+    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
+  }
+
+  TilesetCacheEntry *cache = &tileset_cache[cache_index];
+  if (cache->state == CACHE_STATE_READY) {
+    slot->load_stage = SLOT_STAGE_LOAD_TILEMAP;
+  } else if (cache->load_offset == 0) {
+    slot->load_stage = SLOT_STAGE_LOAD_TILESET;
+  } else {
+    slot->load_stage = SLOT_STAGE_WAIT_TILESET;
+  }
+  return true;
+}
+
+static int tileset_cache_pump(TilesetCacheEntry *cache, size_t max_bytes) {
+  if (!cache || cache->state != CACHE_STATE_LOADING || !cache->ptr) {
+    return 0;
+  }
+  size_t remain = cache->total_bytes - cache->load_offset;
+  if (remain == 0) {
+    cache->state = CACHE_STATE_READY;
+    return 0;
+  }
+  size_t budget = max_bytes == 0 ? remain : max_bytes;
+  if (budget > remain) {
+    budget = remain;
+  }
+  if (!resident_read_chunk(cache->tileset_path, cache->load_offset,
+                           reinterpret_cast<uint8_t *>(cache->ptr) + cache->load_offset,
+                           budget,
+                           TILE_LOAD_ERR_TILESET_OPEN,
+                           TILE_LOAD_ERR_TILESET_SEEK,
+                           TILE_LOAD_ERR_TILESET_SIZE)) {
+    cache->state = CACHE_STATE_FAILED;
+    return -1;
+  }
+  cache->load_offset += budget;
+  if (cache->load_offset >= cache->total_bytes) {
+    cache->load_offset = cache->total_bytes;
+    cache->state = CACHE_STATE_READY;
+  }
+  return (int)budget;
+}
+
+static bool resident_slot_promote_tileset_ready(ResidentSlot *slot) {
+  if (!slot || slot->cache_index < 0 || slot->cache_index >= TILESET_CACHE_COUNT) {
+    return tile_fail(TILE_LOAD_ERR_TILESET_REF);
+  }
+  TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
+  if (cache->state == CACHE_STATE_FAILED) {
+    resident_slot_release_resources(slot);
+    slot->state = SLOT_STATE_FAILED;
+    slot->load_stage = SLOT_STAGE_NONE;
+    return tile_fail(TILE_LOAD_ERR_TILESET_SIZE);
+  }
+  if (cache->state != CACHE_STATE_READY) {
+    return false;
+  }
+  if (slot->cache_waiting) {
+    if (cache->waiter_count > 0) {
+      cache->waiter_count -= 1;
+    }
+    cache->ref_count += 1;
+    slot->cache_waiting = false;
+  }
+  slot->load_stage = SLOT_STAGE_LOAD_TILEMAP;
+  return true;
+}
+
+static int resident_slot_pump(ResidentSlot *slot, size_t max_bytes, bool sync_complete) {
+  if (!slot || slot->state != SLOT_STATE_LOADING) {
+    return 0;
+  }
+  size_t budget = max_bytes;
+  int pumped_total = 0;
+
+  while (slot->state == SLOT_STATE_LOADING) {
+    if (slot->load_stage == SLOT_STAGE_WAIT_TILESET) {
+      if (resident_slot_promote_tileset_ready(slot)) {
+        continue;
+      }
+      if (!sync_complete) {
+        break;
+      }
+      TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
+      int pumped = tileset_cache_pump(cache, 0);
+      if (pumped < 0) {
+        resident_slot_release_resources(slot);
+        slot->state = SLOT_STATE_FAILED;
+        slot->load_stage = SLOT_STAGE_NONE;
+        return -1;
+      }
+      pumped_total += pumped;
+      if (!resident_slot_promote_tileset_ready(slot)) {
+        break;
+      }
+      continue;
+    }
+
+    if (slot->load_stage == SLOT_STAGE_LOAD_TILESET) {
+      TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
+      size_t cache_budget = budget == 0 ? 0 : budget;
+      int pumped = tileset_cache_pump(cache, cache_budget);
+      if (pumped < 0) {
+        resident_slot_release_resources(slot);
+        slot->state = SLOT_STATE_FAILED;
+        slot->load_stage = SLOT_STAGE_NONE;
+        return -1;
+      }
+      pumped_total += pumped;
+      slot->loaded_bytes = slot->tilemap_offset + cache->load_offset;
+      if (budget > 0) {
+        if ((size_t)pumped >= budget) {
+          budget = 0;
+        } else {
+          budget -= (size_t)pumped;
+        }
+      }
+      if (!resident_slot_promote_tileset_ready(slot)) {
+        if (!sync_complete || budget == 0) {
+          break;
+        }
+        continue;
+      }
+      if (!sync_complete && budget == 0) {
+        break;
+      }
+      continue;
+    }
+
+    if (slot->load_stage == SLOT_STAGE_LOAD_TILEMAP) {
+      size_t remain = slot->tilemap_bytes - slot->tilemap_offset;
+      size_t want = budget == 0 ? remain : budget;
+      if (want > remain) {
+        want = remain;
+      }
+      if (want == 0 && !sync_complete) {
+        break;
+      }
+      if (want == 0) {
+        want = remain;
+      }
+      if (!resident_read_chunk(slot->tilemap_path, slot->tilemap_offset,
+                               reinterpret_cast<uint8_t *>(slot->tilemap_ptr) + slot->tilemap_offset,
+                               want,
+                               TILE_LOAD_ERR_MAP_OPEN,
+                               TILE_LOAD_ERR_TILESET_SEEK,
+                               TILE_LOAD_ERR_MAP_READ)) {
+        resident_slot_release_resources(slot);
+        slot->state = SLOT_STATE_FAILED;
+        slot->load_stage = SLOT_STAGE_NONE;
+        return -1;
+      }
+      slot->tilemap_offset += want;
+      pumped_total += (int)want;
+      TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
+      slot->loaded_bytes = slot->tilemap_offset + cache->load_offset;
+      if (budget > 0) {
+        if (want >= budget) {
+          budget = 0;
+        } else {
+          budget -= want;
+        }
+      }
+      if (slot->tilemap_offset >= slot->tilemap_bytes) {
+        if (!resident_validate_tilemap_ids(slot, cache)) {
+          resident_slot_release_resources(slot);
+          slot->state = SLOT_STATE_FAILED;
+          slot->load_stage = SLOT_STAGE_NONE;
+          return -1;
+        }
+        slot->state = SLOT_STATE_READY;
+        slot->load_stage = SLOT_STAGE_READY;
+        slot->loaded_bytes = slot->total_bytes;
+      }
+      if (!sync_complete || budget == 0) {
+        break;
+      }
+      continue;
+    }
+    break;
+  }
+
+  return pumped_total;
+}
+
 static const uint16_t *tile_get_pixels(uint16_t tile_idx, mp_obj_t stream_file) {
   size_t tile_pixels = (size_t)tile_state.tile_size * (size_t)tile_state.tile_size;
   if (tile_pixels == 0 || tile_idx >= tile_state.tile_count) {
@@ -521,23 +1212,19 @@ static const uint16_t *tile_get_pixels(uint16_t tile_idx, mp_obj_t stream_file) 
 static void tile_free_buffers(void) {
   tile_close_stream();
   tile_free_cache();
-  if (tile_state.tileset) {
-    heap_caps_free(tile_state.tileset);
-    tile_state.tileset = nullptr;
-  }
-  if (tile_state.tilemap) {
-    heap_caps_free(tile_state.tilemap);
-    tile_state.tilemap = nullptr;
-  }
   if (tile_state.dirty) {
     heap_caps_free(tile_state.dirty);
     tile_state.dirty = nullptr;
+    tile_state.dirty_len = 0;
   }
+  tile_state.tileset = nullptr;
+  tile_state.tilemap = nullptr;
   tile_state.tileset_len = 0;
   tile_state.tile_count = 0;
   tile_state.tile_bytes = 0;
   tile_state.loaded = false;
   tile_state.has_prev_scroll = false;
+  tile_state.active_slot_id = -1;
   player_overlay.valid = false;
 }
 
@@ -586,6 +1273,13 @@ static inline void draw_map_tile_to_sprite(int tx, int ty, int sx, int sy, mp_ob
   size_t map_idx = (size_t)ty * (size_t)tile_state.map_w + (size_t)tx;
   uint16_t tile_idx = tile_state.tilemap[map_idx];
   if (tile_idx >= tile_state.tile_count) {
+    if (slot_id_valid(tile_state.active_slot_id)) {
+      ResidentSlot *slot = &resident_slots[tile_state.active_slot_id];
+      if (!slot->invalid_tile_logged) {
+        slot->invalid_tile_logged = true;
+        printf("tile_id_oob: slot=%d idx=%u count=%u\n", tile_state.active_slot_id, (unsigned)tile_idx, (unsigned)tile_state.tile_count);
+      }
+    }
     sprite.fillRect(dst_x0, dst_y0, clip_w, clip_h, 0x0000);
     return;
   }
@@ -1376,24 +2070,23 @@ extern "C" bool lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int vi
   }
 
   size_t map_cells = (size_t)map_w * (size_t)map_h;
-  tile_state.tilemap = static_cast<uint16_t *>(lgfx_alloc(map_cells * sizeof(uint16_t), use_psram));
-  tile_state.dirty = static_cast<uint8_t *>(lgfx_alloc(map_cells, use_psram));
-  if (!tile_state.tilemap || !tile_state.dirty) {
+  if (!ensure_dirty_buffer(map_cells, use_psram)) {
     tile_free_buffers();
     return false;
   }
 
-  memset(tile_state.tilemap, 0, map_cells * sizeof(uint16_t));
-  memset(tile_state.dirty, 1, map_cells);
+  tile_state.tileset = nullptr;
+  tile_state.tilemap = nullptr;
   tile_state.loaded = false;
   tile_state.last_error = TILE_LOAD_OK;
   tile_state.has_prev_scroll = false;
+  tile_state.active_slot_id = -1;
 
   return true;
 }
 
 extern "C" bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_len, const uint8_t *tilemap_data, size_t tilemap_len) {
-  if (!tile_state.tilemap || !tile_state.dirty || !tileset_data || !tilemap_data) {
+  if (!tileset_data || !tilemap_data) {
     return tile_fail(TILE_LOAD_ERR_ARGS);
   }
   size_t map_cells = (size_t)tile_state.map_w * (size_t)tile_state.map_h;
@@ -1410,31 +2103,73 @@ extern "C" bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_
   if (new_tile_count == 0) {
     return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
   }
-
-  tile_close_stream();
-  tile_free_cache();
-  if (tile_state.tileset) {
-    heap_caps_free(tile_state.tileset);
-    tile_state.tileset = nullptr;
-    tile_state.tileset_len = 0;
-    tile_state.tile_count = 0;
+  if (!slot_id_valid(0)) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
   }
-
-  tile_state.tileset = static_cast<uint16_t *>(lgfx_alloc(tileset_len, tile_state.use_psram));
-  if (!tile_state.tileset) {
+  if (tile_state.active_slot_id == 0) {
+    tile_state.loaded = false;
+    tile_state.active_slot_id = -1;
+  }
+  ResidentSlot *slot = &resident_slots[0];
+  resident_slot_release_resources(slot);
+  slot->state = SLOT_STATE_READY;
+  slot->load_stage = SLOT_STAGE_READY;
+  slot->role = slot->role == SLOT_ROLE_NONE ? SLOT_ROLE_ACTIVE : slot->role;
+  slot->map_token = 0;
+  slot->tileset_token = 0;
+  slot->tile_size = tile_state.tile_size;
+  slot->map_w = tile_state.map_w;
+  slot->map_h = tile_state.map_h;
+  slot->tilemap_bytes = tilemap_len;
+  slot->tilemap_offset = tilemap_len;
+  slot->loaded_bytes = tilemap_len + tileset_len;
+  slot->total_bytes = slot->loaded_bytes;
+  slot->use_psram = tile_state.use_psram;
+  slot->tilemap_ptr = static_cast<uint16_t *>(lgfx_alloc(tilemap_len, tile_state.use_psram));
+  if (!slot->tilemap_ptr) {
+    resident_slot_reset(slot);
     return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
   }
-  memcpy(tile_state.tileset, tileset_data, tileset_len);
-  memcpy(tile_state.tilemap, tilemap_data, tilemap_len);
-  memset(tile_state.dirty, 1, map_cells);
+  memcpy(slot->tilemap_ptr, tilemap_data, tilemap_len);
 
-  tile_state.tileset_len = tileset_len;
-  tile_state.tile_count = new_tile_count;
-  tile_state.tile_bytes = tile_bytes;
-  tile_state.loaded = true;
-  tile_state.last_error = TILE_LOAD_OK;
-  tile_state.has_prev_scroll = false;
-  return true;
+  int cache_index = tileset_cache_find(0);
+  if (cache_index >= 0 && (tileset_cache[cache_index].total_bytes != tileset_len || tileset_cache[cache_index].tile_bytes != tile_bytes)) {
+    tileset_cache_reset(&tileset_cache[cache_index]);
+    cache_index = -1;
+  }
+  if (cache_index < 0) {
+    cache_index = tileset_cache_find_free();
+  }
+  if (cache_index < 0) {
+    resident_slot_release_resources(slot);
+    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
+  }
+  TilesetCacheEntry *cache = &tileset_cache[cache_index];
+  if (!cache->ptr) {
+    cache->ptr = static_cast<uint16_t *>(lgfx_alloc(tileset_len, tile_state.use_psram));
+  }
+  if (!cache->ptr) {
+    resident_slot_release_resources(slot);
+    tileset_cache_reset(cache);
+    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
+  }
+  memcpy(cache->ptr, tileset_data, tileset_len);
+  cache->tileset_token = 0;
+  cache->total_bytes = tileset_len;
+  cache->load_offset = tileset_len;
+  cache->tile_count = new_tile_count;
+  cache->tile_bytes = tile_bytes;
+  cache->ref_count = 1;
+  cache->waiter_count = 0;
+  cache->state = CACHE_STATE_READY;
+  cache->use_psram = tile_state.use_psram;
+  slot->cache_index = cache_index;
+  slot->cache_waiting = false;
+  if (!resident_validate_tilemap_ids(slot, cache)) {
+    resident_slot_release_resources(slot);
+    return false;
+  }
+  return resident_activate_slot(0, true);
 }
 
 extern "C" bool lgfx_tile_set_impl(int tx, int ty, int tile_index) {
@@ -1456,81 +2191,176 @@ extern "C" bool lgfx_tile_set_impl(int tx, int ty, int tile_index) {
 }
 
 extern "C" bool lgfx_tile_load_files_impl(const char *tileset_path, const char *tilemap_path) {
-  if (!tileset_path || !tilemap_path || !tile_state.tilemap || !tile_state.dirty) {
-    return tile_fail(TILE_LOAD_ERR_ARGS);
-  }
-
-  mp_obj_t f_map = vfs_open_rb(tilemap_path);
-  if (f_map == MP_OBJ_NULL) {
-    return tile_fail(TILE_LOAD_ERR_MAP_OPEN);
-  }
-  size_t map_cells = (size_t)tile_state.map_w * (size_t)tile_state.map_h;
-  size_t expected_tilemap_len = map_cells * sizeof(uint16_t);
-  bool map_ok = vfs_read_exact(f_map, tile_state.tilemap, expected_tilemap_len);
-  vfs_close_quiet(f_map);
-  if (!map_ok) {
-    return tile_fail(TILE_LOAD_ERR_MAP_READ);
-  }
-
-  mp_obj_t f_tiles = vfs_open_rb(tileset_path);
-  if (f_tiles == MP_OBJ_NULL) {
-    return tile_fail(TILE_LOAD_ERR_TILESET_OPEN);
-  }
-
-  int errcode = 0;
-  mp_off_t tile_file_size = mp_stream_seek(f_tiles, 0, MP_SEEK_END, &errcode);
-  if (tile_file_size <= 0 || errcode != 0) {
-    vfs_close_quiet(f_tiles);
-    return tile_fail(TILE_LOAD_ERR_TILESET_SEEK);
-  }
-  mp_off_t seek0 = mp_stream_seek(f_tiles, 0, MP_SEEK_SET, &errcode);
-  if (seek0 < 0 || errcode != 0) {
-    vfs_close_quiet(f_tiles);
-    return tile_fail(TILE_LOAD_ERR_TILESET_SEEK);
-  }
-
-  size_t tileset_len = (size_t)tile_file_size;
-  size_t tile_pixels = (size_t)tile_state.tile_size * (size_t)tile_state.tile_size;
-  size_t tile_bytes = tile_pixels * sizeof(uint16_t);
-  if (tile_bytes == 0 || (tileset_len % tile_bytes) != 0) {
-    vfs_close_quiet(f_tiles);
-    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
-  }
-  size_t new_tile_count = tileset_len / tile_bytes;
-  if (new_tile_count == 0) {
-    vfs_close_quiet(f_tiles);
-    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
-  }
-
-  tile_close_stream();
-  tile_free_cache();
-  if (tile_state.tileset) {
-    heap_caps_free(tile_state.tileset);
-    tile_state.tileset = nullptr;
-    tile_state.tileset_len = 0;
-    tile_state.tile_count = 0;
-  }
-  if (!tile_alloc_cache(tile_bytes, tile_state.use_psram)) {
-    vfs_close_quiet(f_tiles);
-    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
-  }
-  vfs_close_quiet(f_tiles);
-
-  memset(tile_state.dirty, 1, map_cells);
-  tile_state.tileset_len = tileset_len;
-  tile_state.tile_count = new_tile_count;
-  tile_state.tile_bytes = tile_bytes;
-  strncpy(tile_state.tileset_path, tileset_path, sizeof(tile_state.tileset_path) - 1);
-  tile_state.tileset_path[sizeof(tile_state.tileset_path) - 1] = '\0';
-  tile_state.tileset_stream = true;
-  tile_state.loaded = true;
-  tile_state.last_error = TILE_LOAD_OK;
-  tile_state.has_prev_scroll = false;
-  return true;
+  return lgfx_slot_load_files_impl(0, 0, 0, tileset_path, tilemap_path, tile_state.tile_size, tile_state.map_w, tile_state.map_h);
 }
 
 extern "C" int lgfx_tile_loader_mode_impl(void) {
-  return 2;
+  return 3;
+}
+
+extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+  if (!slot_id_valid(slot_id)) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
+  }
+  if (tile_state.active_slot_id == slot_id) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
+  }
+  ResidentSlot *slot = &resident_slots[slot_id];
+  if (!resident_slot_prepare_load(slot, map_token, tileset_token, tileset_path, tilemap_path, tile_size, map_w, map_h)) {
+    slot->state = SLOT_STATE_FAILED;
+    slot->load_stage = SLOT_STAGE_NONE;
+    return false;
+  }
+  int pumped = resident_slot_pump(slot, 0, true);
+  if (pumped < 0 || slot->state != SLOT_STATE_READY) {
+    slot->state = SLOT_STATE_FAILED;
+    slot->load_stage = SLOT_STAGE_NONE;
+    return false;
+  }
+  tile_state.last_error = TILE_LOAD_OK;
+  return true;
+}
+
+extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+  if (!slot_id_valid(slot_id)) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
+  }
+  if (tile_state.active_slot_id == slot_id) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
+  }
+  ResidentSlot *slot = &resident_slots[slot_id];
+  if (!resident_slot_prepare_load(slot, map_token, tileset_token, tileset_path, tilemap_path, tile_size, map_w, map_h)) {
+    slot->state = SLOT_STATE_FAILED;
+    slot->load_stage = SLOT_STAGE_NONE;
+    return false;
+  }
+  tile_state.last_error = TILE_LOAD_OK;
+  return true;
+}
+
+extern "C" int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
+  if (!slot_id_valid(slot_id)) {
+    tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
+    return -1;
+  }
+  if (tile_state.active_slot_id == slot_id) {
+    tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
+    return -1;
+  }
+  ResidentSlot *slot = &resident_slots[slot_id];
+  if (slot->state != SLOT_STATE_LOADING) {
+    return 0;
+  }
+  int pumped = resident_slot_pump(slot, max_bytes, false);
+  if (pumped < 0) {
+    slot->state = SLOT_STATE_FAILED;
+    slot->load_stage = SLOT_STAGE_NONE;
+  }
+  return pumped;
+}
+
+extern "C" bool lgfx_slot_cancel_load_impl(int slot_id) {
+  if (!slot_id_valid(slot_id)) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
+  }
+  if (tile_state.active_slot_id == slot_id) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
+  }
+  ResidentSlot *slot = &resident_slots[slot_id];
+  if (slot->state != SLOT_STATE_LOADING) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_STATE);
+  }
+  resident_slot_release_resources(slot);
+  tile_state.last_error = TILE_LOAD_OK;
+  return true;
+}
+
+extern "C" bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
+  if (!slot_id_valid(slot_id)) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
+  }
+  if (resident_slots[slot_id].state != SLOT_STATE_READY) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_STATE);
+  }
+  if (!resident_activate_slot(slot_id, force_full_redraw)) {
+    return false;
+  }
+  if (force_full_redraw) {
+    tile_state.has_prev_scroll = false;
+  }
+  tile_state.last_error = TILE_LOAD_OK;
+  return true;
+}
+
+extern "C" bool lgfx_slot_release_impl(int slot_id) {
+  if (!slot_id_valid(slot_id)) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
+  }
+  if (tile_state.active_slot_id == slot_id) {
+    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
+  }
+  resident_slot_release_resources(&resident_slots[slot_id]);
+  tile_state.last_error = TILE_LOAD_OK;
+  return true;
+}
+
+extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
+  if (!slot_id_valid(slot_id)) {
+    return false;
+  }
+  ResidentSlot *slot = &resident_slots[slot_id];
+  return slot->state != SLOT_STATE_EMPTY && slot->map_token == map_token;
+}
+
+extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
+  if (!slot_id_valid(slot_id)) {
+    return false;
+  }
+  ResidentSlot *slot = &resident_slots[slot_id];
+  TilesetCacheEntry *cache = (slot->cache_index >= 0 && slot->cache_index < TILESET_CACHE_COUNT) ? &tileset_cache[slot->cache_index] : nullptr;
+  if (role) {
+    *role = slot->role;
+  }
+  if (state) {
+    *state = slot->state;
+  }
+  if (map_token) {
+    *map_token = slot->map_token;
+  }
+  if (tileset_token) {
+    *tileset_token = slot->tileset_token;
+  }
+  if (load_stage) {
+    *load_stage = slot->load_stage;
+  }
+  if (loaded_bytes) {
+    *loaded_bytes = slot->loaded_bytes;
+  }
+  if (total_bytes) {
+    *total_bytes = slot->total_bytes;
+  }
+  if (ref_count) {
+    *ref_count = cache ? cache->ref_count : 0;
+  }
+  if (waiter_count) {
+    *waiter_count = cache ? cache->waiter_count : 0;
+  }
+  if (is_active) {
+    *is_active = (tile_state.active_slot_id == slot_id);
+  }
+  return true;
+}
+
+extern "C" void lgfx_slot_set_role_impl(int slot_id, int role) {
+  if (!slot_id_valid(slot_id)) {
+    return;
+  }
+  resident_slots[slot_id].role = role;
+}
+
+extern "C" void lgfx_display_wait_idle_impl(void) {
+  lcd.waitDMA();
+  lcd.waitDisplay();
 }
 
 extern "C" int lgfx_tile_last_error_impl(void) {

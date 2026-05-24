@@ -22,6 +22,16 @@ bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_len, const 
 bool lgfx_tile_load_files_impl(const char *tileset_path, const char *tilemap_path);
 int lgfx_tile_loader_mode_impl(void);
 int lgfx_tile_last_error_impl(void);
+bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h);
+bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h);
+int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes);
+bool lgfx_slot_cancel_load_impl(int slot_id);
+bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw);
+bool lgfx_slot_release_impl(int slot_id);
+bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token);
+bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active);
+void lgfx_slot_set_role_impl(int slot_id, int role);
+void lgfx_display_wait_idle_impl(void);
 bool lgfx_tile_set_impl(int tx, int ty, int tile_index);
 int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full);
 int lgfx_tile_render_player_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius, bool force_full);
@@ -181,6 +191,113 @@ static mp_obj_t lgfx_tile_last_error(void) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_tile_last_error_obj, lgfx_tile_last_error);
 
+static mp_obj_t lgfx_slot_load_files(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    int slot_id = mp_obj_get_int(args[0]);
+    uint32_t map_token = (uint32_t)mp_obj_get_int_truncated(args[1]);
+    uint32_t tileset_token = (uint32_t)mp_obj_get_int_truncated(args[2]);
+    const char *tileset_path = mp_obj_str_get_str(args[3]);
+    const char *tilemap_path = mp_obj_str_get_str(args[4]);
+    int tile_size = mp_obj_get_int(args[5]);
+    int map_w = mp_obj_get_int(args[6]);
+    int map_h = mp_obj_get_int(args[7]);
+    return mp_obj_new_bool(lgfx_slot_load_files_impl(slot_id, map_token, tileset_token, tileset_path, tilemap_path, tile_size, map_w, map_h));
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_slot_load_files_obj, 8, lgfx_slot_load_files);
+
+static mp_obj_t lgfx_slot_begin_load_files(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    int slot_id = mp_obj_get_int(args[0]);
+    uint32_t map_token = (uint32_t)mp_obj_get_int_truncated(args[1]);
+    uint32_t tileset_token = (uint32_t)mp_obj_get_int_truncated(args[2]);
+    const char *tileset_path = mp_obj_str_get_str(args[3]);
+    const char *tilemap_path = mp_obj_str_get_str(args[4]);
+    int tile_size = mp_obj_get_int(args[5]);
+    int map_w = mp_obj_get_int(args[6]);
+    int map_h = mp_obj_get_int(args[7]);
+    return mp_obj_new_bool(lgfx_slot_begin_load_files_impl(slot_id, map_token, tileset_token, tileset_path, tilemap_path, tile_size, map_w, map_h));
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_slot_begin_load_files_obj, 8, lgfx_slot_begin_load_files);
+
+static mp_obj_t lgfx_slot_pump_load(size_t n_args, const mp_obj_t *args) {
+    int slot_id = mp_obj_get_int(args[0]);
+    size_t max_bytes = 8192;
+    if (n_args >= 2) {
+        max_bytes = (size_t)mp_obj_get_int(args[1]);
+    }
+    return mp_obj_new_int(lgfx_slot_pump_load_impl(slot_id, max_bytes));
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lgfx_slot_pump_load_obj, 1, 2, lgfx_slot_pump_load);
+
+static mp_obj_t lgfx_slot_cancel_load(mp_obj_t slot_id_obj) {
+    return mp_obj_new_bool(lgfx_slot_cancel_load_impl(mp_obj_get_int(slot_id_obj)));
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(lgfx_slot_cancel_load_obj, lgfx_slot_cancel_load);
+
+static mp_obj_t lgfx_slot_select(size_t n_args, const mp_obj_t *args) {
+    int slot_id = mp_obj_get_int(args[0]);
+    bool force_full_redraw = true;
+    if (n_args >= 2) {
+        force_full_redraw = mp_obj_is_true(args[1]);
+    }
+    return mp_obj_new_bool(lgfx_slot_select_impl(slot_id, force_full_redraw));
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lgfx_slot_select_obj, 1, 2, lgfx_slot_select);
+
+static mp_obj_t lgfx_slot_release(mp_obj_t slot_id_obj) {
+    return mp_obj_new_bool(lgfx_slot_release_impl(mp_obj_get_int(slot_id_obj)));
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(lgfx_slot_release_obj, lgfx_slot_release);
+
+static mp_obj_t lgfx_slot_has_map(mp_obj_t slot_id_obj, mp_obj_t map_token_obj) {
+    int slot_id = mp_obj_get_int(slot_id_obj);
+    uint32_t map_token = (uint32_t)mp_obj_get_int_truncated(map_token_obj);
+    return mp_obj_new_bool(lgfx_slot_has_map_impl(slot_id, map_token));
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(lgfx_slot_has_map_obj, lgfx_slot_has_map);
+
+static mp_obj_t lgfx_slot_info(mp_obj_t slot_id_obj) {
+    int slot_id = mp_obj_get_int(slot_id_obj);
+    int role = 0;
+    int state = 0;
+    uint32_t map_token = 0;
+    uint32_t tileset_token = 0;
+    int load_stage = 0;
+    size_t loaded_bytes = 0;
+    size_t total_bytes = 0;
+    int ref_count = 0;
+    int waiter_count = 0;
+    bool is_active = false;
+    if (!lgfx_slot_info_impl(slot_id, &role, &state, &map_token, &tileset_token, &load_stage, &loaded_bytes, &total_bytes, &ref_count, &waiter_count, &is_active)) {
+        return mp_const_none;
+    }
+    mp_obj_t tuple[10];
+    tuple[0] = mp_obj_new_int(role);
+    tuple[1] = mp_obj_new_int(state);
+    tuple[2] = mp_obj_new_int_from_uint(map_token);
+    tuple[3] = mp_obj_new_int_from_uint(tileset_token);
+    tuple[4] = mp_obj_new_int(load_stage);
+    tuple[5] = mp_obj_new_int_from_ull((unsigned long long)loaded_bytes);
+    tuple[6] = mp_obj_new_int_from_ull((unsigned long long)total_bytes);
+    tuple[7] = mp_obj_new_int(ref_count);
+    tuple[8] = mp_obj_new_int(waiter_count);
+    tuple[9] = mp_obj_new_bool(is_active);
+    return mp_obj_new_tuple(10, tuple);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(lgfx_slot_info_obj, lgfx_slot_info);
+
+static mp_obj_t lgfx_slot_set_role(mp_obj_t slot_id_obj, mp_obj_t role_obj) {
+    lgfx_slot_set_role_impl(mp_obj_get_int(slot_id_obj), mp_obj_get_int(role_obj));
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(lgfx_slot_set_role_obj, lgfx_slot_set_role);
+
+static mp_obj_t lgfx_display_wait_idle(void) {
+    lgfx_display_wait_idle_impl();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_display_wait_idle_obj, lgfx_display_wait_idle);
+
 static mp_obj_t lgfx_tile_set(mp_obj_t tx_obj, mp_obj_t ty_obj, mp_obj_t idx_obj) {
     int tx = mp_obj_get_int(tx_obj);
     int ty = mp_obj_get_int(ty_obj);
@@ -334,6 +451,16 @@ static const mp_rom_map_elem_t lgfx_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_tile_load_files), MP_ROM_PTR(&lgfx_tile_load_files_obj) },
     { MP_ROM_QSTR(MP_QSTR_tile_loader_mode), MP_ROM_PTR(&lgfx_tile_loader_mode_obj) },
     { MP_ROM_QSTR(MP_QSTR_tile_last_error), MP_ROM_PTR(&lgfx_tile_last_error_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_load_files), MP_ROM_PTR(&lgfx_slot_load_files_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_begin_load_files), MP_ROM_PTR(&lgfx_slot_begin_load_files_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_pump_load), MP_ROM_PTR(&lgfx_slot_pump_load_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_cancel_load), MP_ROM_PTR(&lgfx_slot_cancel_load_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_select), MP_ROM_PTR(&lgfx_slot_select_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_release), MP_ROM_PTR(&lgfx_slot_release_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_has_map), MP_ROM_PTR(&lgfx_slot_has_map_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_info), MP_ROM_PTR(&lgfx_slot_info_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_set_role), MP_ROM_PTR(&lgfx_slot_set_role_obj) },
+    { MP_ROM_QSTR(MP_QSTR_display_wait_idle), MP_ROM_PTR(&lgfx_display_wait_idle_obj) },
     { MP_ROM_QSTR(MP_QSTR_tile_set), MP_ROM_PTR(&lgfx_tile_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_tile_render), MP_ROM_PTR(&lgfx_tile_render_obj) },
     { MP_ROM_QSTR(MP_QSTR_tile_render_player), MP_ROM_PTR(&lgfx_tile_render_player_obj) },

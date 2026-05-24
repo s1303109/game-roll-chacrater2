@@ -5,7 +5,7 @@ import time
 
 START_DELAY_MS = 1200
 RESTART_DELAY_MS = 1200
-APP_PATHS = ("/", "/sd/app", "/app", "/remote/app")
+APP_PATHS = ("/sd/app", "/app", "/remote/app", "/")
 
 
 def _exists(path):

@@ -14,6 +14,10 @@ SD_PIN_MOSI = 6
 SD_PIN_MISO = 7
 SD_PIN_CS = 4
 
+# Keep mounted SDCard handles alive; otherwise GC may reclaim them and
+# break /sd access mid-session on some boards/firmware builds.
+_MOUNTED_SD = {}
+
 
 def _is_busy_error(err):
     try:
@@ -69,6 +73,11 @@ def _create_sd(freq):
 
 
 def mount_sd(mount_point="/sd", freq=8_000_000, return_ok=False):
+    global _MOUNTED_SD
+    if mount_point in _MOUNTED_SD and _mount_ready(mount_point):
+        if return_ok:
+            return True
+        return _MOUNTED_SD[mount_point]
     try:
         sd = _create_sd(freq)
     except OSError as err:
@@ -99,6 +108,8 @@ def mount_sd(mount_point="/sd", freq=8_000_000, return_ok=False):
         # Already mounted in current REPL session.
         if _is_busy_error(err) or _is_invalid_state_error(err):
             mounted = _mount_ready(mount_point)
+    if mounted:
+        _MOUNTED_SD[mount_point] = sd
     if return_ok:
         return mounted
-    return sd
+    return _MOUNTED_SD.get(mount_point, sd)
