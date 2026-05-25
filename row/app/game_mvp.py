@@ -109,6 +109,10 @@ def _resolve_first_existing_path(paths):
     return None
 
 
+def _ui_asset_paths(name):
+    return ("/sd/ui/" + name, "/sd/" + name, "/" + name, "/workspace/" + name)
+
+
 def _sync_sd_assets_from_remote_if_needed():
     if not ENABLE_AUTO_SD_SYNC:
         return
@@ -502,8 +506,8 @@ TITLE_NAV_SWITCH_COOLDOWN_MS = 140
 TITLE_MENU_CONTINUE = "CONTINUE"
 TITLE_MENU_NEW_GAME = "NEW GAME"
 TITLE_NOTICE_CONTINUE_TEXT = "Not available yet"
-TITLE_UI_START_PATHS = ("/title_ui_start_112x54.png", "/workspace/title_ui_start_112x54.png")
-TITLE_UI_CONTINUE_PATHS = ("/title_ui_continue_112x54.png", "/workspace/title_ui_continue_112x54.png")
+TITLE_UI_START_PATHS = _ui_asset_paths("title_ui_start_112x54.png")
+TITLE_UI_CONTINUE_PATHS = _ui_asset_paths("title_ui_continue_112x54.png")
 TITLE_UI_X = 8
 TITLE_UI_W = 112
 TITLE_UI_H = 54
@@ -543,36 +547,38 @@ BATTLE_HEART_ERASE_R = BATTLE_HEART_HIT_R + 1
 BATTLE_HEART_FAST_R = 7
 BATTLE_HEART_STEP = 2
 BATTLE_HEART_USE_PNG_ON_MOVE = False
-ENEMY_SPRITE_PATH = "/enemy.png"
+ENEMY_SPRITE_PATH = _resolve_first_existing_path(_ui_asset_paths("enemy.png")) or "/enemy.png"
 ENEMY_SPRITE_W = 72
 ENEMY_SPRITE_H = 72
-ACT_DIALOG_TEXT_PATH = "/act_dialog_text.png"
-MERCY_DIALOG_TEXT_PATH = "/mercy_dialog_text.png"
-LAMP_DIALOG_TEXT_PATH = "/lamp_dialog_text.png"
-ACT_OPT1_PNG = "/act_opt1_text.png"
-ACT_OPT2_PNG = "/act_opt2_text.png"
-ACT_OPT3_PNG = "/act_opt3_text.png"
-ACT_REPLY1_PNG = "/act_reply1_text.png"
-ACT_REPLY2_PNG = "/act_reply2_text.png"
-ACT_REPLY3_PNG = "/act_reply3_text.png"
-MERCY_LOCKED_PNG = "/mercy_locked_text.png"
+ACT_DIALOG_TEXT_PATH = _resolve_first_existing_path(_ui_asset_paths("act_dialog_text.png")) or "/act_dialog_text.png"
+MERCY_DIALOG_TEXT_PATH = _resolve_first_existing_path(_ui_asset_paths("mercy_dialog_text.png")) or "/mercy_dialog_text.png"
+LAMP_DIALOG_TEXT_PATH = _resolve_first_existing_path(_ui_asset_paths("lamp_dialog_text.png")) or "/lamp_dialog_text.png"
+ACT_OPT1_PNG = _resolve_first_existing_path(_ui_asset_paths("act_opt1_text.png")) or "/act_opt1_text.png"
+ACT_OPT2_PNG = _resolve_first_existing_path(_ui_asset_paths("act_opt2_text.png")) or "/act_opt2_text.png"
+ACT_OPT3_PNG = _resolve_first_existing_path(_ui_asset_paths("act_opt3_text.png")) or "/act_opt3_text.png"
+ACT_REPLY1_PNG = _resolve_first_existing_path(_ui_asset_paths("act_reply1_text.png")) or "/act_reply1_text.png"
+ACT_REPLY2_PNG = _resolve_first_existing_path(_ui_asset_paths("act_reply2_text.png")) or "/act_reply2_text.png"
+ACT_REPLY3_PNG = _resolve_first_existing_path(_ui_asset_paths("act_reply3_text.png")) or "/act_reply3_text.png"
+MERCY_LOCKED_PNG = _resolve_first_existing_path(_ui_asset_paths("mercy_locked_text.png")) or "/mercy_locked_text.png"
 CMD_ICON_SRC_W = 32
 CMD_ICON_SRC_H = 32
 STAR_ICON_SRC_W = 24
 STAR_ICON_SRC_H = 24
 STAR_ICON_PATHS = ("/workspace/star_icon_24.png", "/star_icon_24.png", "/workspace/STAR .png", "/STAR .png")
 INVENTORY_PORTRAIT_PATHS = (
+    "/sd/ui/inventory_portrait.png",
     "/inventory_portrait.png",
     "/workspace/inventory_portrait.png",
+    "/sd/ui/image.png",
     "/image.png",
     "/workspace/image.png",
 )
 INVENTORY_PORTRAIT_SRC_W = 255
 INVENTORY_PORTRAIT_SRC_H = 221
-FIGHT_ICON_PATHS = ("/workspace/fight_icon.png", "/fight_icon.png")
-ACT_ICON_PATHS = ("/workspace/act_icon.png", "/act_icon.png")
-ITEM_ICON_PATHS = ("/workspace/item_icon.png", "/item_icon.png")
-MERCY_ICON_PATHS = ("/workspace/mercy_icon.png", "/mercy_icon.png")
+FIGHT_ICON_PATHS = _ui_asset_paths("fight_icon.png")
+ACT_ICON_PATHS = _ui_asset_paths("act_icon.png")
+ITEM_ICON_PATHS = _ui_asset_paths("item_icon.png")
+MERCY_ICON_PATHS = _ui_asset_paths("mercy_icon.png")
 CMD_ICON_PATHS = (
     FIGHT_ICON_PATHS,
     ACT_ICON_PATHS,
@@ -694,19 +700,19 @@ MAP1_STORY_STAGE_PHASE2 = 4
 MAP1_ENEMY_ANCHOR_CENTER = 0
 MAP1_ENEMY_ANCHOR_SLIDING_LEFT = 1
 MAP1_ENEMY_ANCHOR_LEFT = 2
-MAP1_FLOWEY_SPRITE_PATHS = ("/workspace/FLOWEY.png", "/FLOWEY.png")
-MAP1_ANGRY_FLOWEY_SPRITE_PATHS = ("/workspace/ANGRY FLOWEY.png", "/ANGRY FLOWEY.png")
+MAP1_FLOWEY_SPRITE_PATHS = ("/sd/FLOWEY_96.png",) + _ui_asset_paths("FLOWEY.png")
+MAP1_ANGRY_FLOWEY_SPRITE_PATHS = ("/sd/ANGRY_FLOWEY_96.png",) + _ui_asset_paths("ANGRY FLOWEY.png")
 MAP1_STORY_LINE_PNG_PATHS = (
-    ("/workspace/map1_story_line_01.png", "/map1_story_line_01.png"),
-    ("/workspace/map1_story_line_02.png", "/map1_story_line_02.png"),
-    ("/workspace/map1_story_line_03.png", "/map1_story_line_03.png"),
-    ("/workspace/map1_story_line_10.png", "/map1_story_line_10.png"),
-    ("/workspace/map1_story_line_07.png", "/map1_story_line_07.png"),
-    ("/workspace/map1_story_line_04.png", "/map1_story_line_04.png"),
-    ("/workspace/map1_story_line_05.png", "/map1_story_line_05.png"),
-    ("/workspace/map1_story_line_06.png", "/map1_story_line_06.png"),
-    ("/workspace/map1_story_line_08.png", "/map1_story_line_08.png"),
-    ("/workspace/map1_story_line_09.png", "/map1_story_line_09.png"),
+    _ui_asset_paths("map1_story_line_01.png"),
+    _ui_asset_paths("map1_story_line_02.png"),
+    _ui_asset_paths("map1_story_line_03.png"),
+    _ui_asset_paths("map1_story_line_10.png"),
+    _ui_asset_paths("map1_story_line_07.png"),
+    _ui_asset_paths("map1_story_line_04.png"),
+    _ui_asset_paths("map1_story_line_05.png"),
+    _ui_asset_paths("map1_story_line_06.png"),
+    _ui_asset_paths("map1_story_line_08.png"),
+    _ui_asset_paths("map1_story_line_09.png"),
 )
 MAP1_STORY_LINE_PNG_W = 200
 MAP1_STORY_LINE_PNG_H = 72
