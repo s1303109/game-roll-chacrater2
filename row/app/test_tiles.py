@@ -1,10 +1,32 @@
 import json
 import os
+import sys
 import time
+
 import lgfx
 
+from sd_host import mount_sd
 
-ASSET_BASE = "/sd/out"
+
+GAME_ROOT = "/sd/game"
+
+
+def _ensure_game_path():
+    if GAME_ROOT in sys.path:
+        sys.path.remove(GAME_ROOT)
+    sys.path.insert(0, GAME_ROOT)
+
+
+def _load_asset_base():
+    if not mount_sd("/sd", return_ok=True):
+        raise RuntimeError("SD_MOUNT_FAILED")
+    _ensure_game_path()
+    import map_registry
+
+    return map_registry.MAP_REGISTRY[map_registry.MAP1_ID]["asset_base"]
+
+
+ASSET_BASE = _load_asset_base()
 
 
 def _must_load_meta(base):
@@ -13,7 +35,7 @@ def _must_load_meta(base):
 
 
 def _print_asset_file_info(base):
-    names = ("map.json", "tilemap.bin", "tileset.bin")
+    names = ("map.json", "tilemap.bin", "tileset.bin", "collision.bin")
     for name in names:
         path = base + "/" + name
         try:

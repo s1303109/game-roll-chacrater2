@@ -73,11 +73,11 @@ make BOARD=ESP32_GENERIC_S3 USER_C_MODULES=/workspace/modules/micropython.cmake 
 - app/test_fill.py   : fill-only FPS test
 - app/test_sprite.py : sprite (back buffer) FPS test
 - app/test_sd.py     : SD read test (4KB)
-- app/test_tiles.py  : tile render test + file-size diagnostics + tile error code
-- app/game_mvp.py    : red-dot player + map scroll MVP
+- app/test_tiles.py  : tile render test using the cartridge at `/sd/game`
+- app/game_mvp.py    : game runtime module loaded by the SD cartridge launcher
 - app/test_stability.py : long-run FPS/memory test
-- app/validate_full.py : full validation (FPS + memory + long-run stability)
-- app/run_all_phases.py : run phase 4 -> phase 10 in sequence
+- app/validate_full.py : full validation (FPS + memory + long-run stability) using `/sd/game`
+- app/run_all_phases.py : runs board-side validation scripts without starting the infinite game loop
 
 ## Map conversion
 Example:
@@ -102,14 +102,36 @@ Outputs:
 - tilemap.bin
 - map.json
 
-To run tile/game tests on board, place these files at `/sd/out/`.
+## Cartridge layout
+Flash root should contain only:
+- `/boot.py`
+- `/main.py`
+- `/launcher.py`
+- `/sd_host.py`
+
+The game cartridge lives on SD:
+
+```text
+/sd/game
+├── game_mvp.py
+├── config.py
+├── map_registry.py
+├── assets/...
+├── sprites/player_sheet.rgb565
+├── ui/...
+└── save/
+```
+
+Use `./deploy.sh` for a full sync or `./deploy_changed.sh` for a changed-only sync.
+Both scripts deploy Flash launcher files plus the complete cartridge layout under `/sd/game`.
+The deploy flow creates `/sd/game/save/` if missing and does not create or overwrite `save1.json`.
 
 ## Suggested board-side validation order
 1) `import test_sd`
 2) `import test_sprite`
 3) `import test_tiles`
-4) `import game_mvp`
-5) `import validate_full`
+4) `import validate_full`
+5) reset the board or `import main` to boot the cartridge launcher
 
 Or run all at once:
 

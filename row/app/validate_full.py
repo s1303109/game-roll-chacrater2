@@ -1,5 +1,6 @@
 import gc
 import json
+import sys
 import time
 
 import lgfx
@@ -7,14 +8,27 @@ import lgfx
 from sd_host import TFT_SPI_HOST, SD_SPI_HOST, SD_SLOT, mount_sd
 
 
-def _find_asset_base(base_list):
-    for base in base_list:
-        try:
-            with open(base + "/map.json", "r") as f:
-                return base, json.loads(f.read())
-        except OSError:
-            pass
-    raise OSError("asset files not found")
+GAME_ROOT = "/sd/game"
+
+
+def _ensure_game_path():
+    if GAME_ROOT in sys.path:
+        sys.path.remove(GAME_ROOT)
+    sys.path.insert(0, GAME_ROOT)
+
+
+def _load_asset_base():
+    if not mount_sd("/sd", return_ok=True):
+        raise RuntimeError("SD_MOUNT_FAILED")
+    _ensure_game_path()
+    import map_registry
+
+    return map_registry.MAP_REGISTRY[map_registry.MAP1_ID]["asset_base"]
+
+
+def _load_meta(asset_base):
+    with open(asset_base + "/map.json", "r") as f:
+        return json.loads(f.read())
 
 
 def _clamp(v, lo, hi):
@@ -101,9 +115,8 @@ def _stability_seconds(seconds=120):
 
 
 print("SPI fixed:", "TFT=SPI%d" % TFT_SPI_HOST, "SD=SPI%d" % SD_SPI_HOST, "SD slot=%d" % SD_SLOT)
-mount_sd("/sd")
-
-asset_base, meta = _find_asset_base(("/sd/out",))
+asset_base = _load_asset_base()
+meta = _load_meta(asset_base)
 
 lgfx.init()
 gc.collect()

@@ -33,28 +33,30 @@ def _exists(path):
         return False
 
 
-def main():
-    base = "/remote/app"
-    if not _exists(base):
-        base = "/app"
+def _script_dir():
+    path = globals().get("__file__", "run_all_phases.py")
+    if "/" not in path:
+        return "."
+    return path.rsplit("/", 1)[0]
 
+
+def main():
+    base = _script_dir()
     scripts = [
         "test_sd.py",
         "test_sprite.py",
         "test_tiles.py",
-        "game_mvp.py",
         "validate_full.py",
     ]
 
-    # Optional: if remote assets exist, copy to SD first.
-    copy_script = base + "/copy_assets_to_sd.py"
-    if _exists("/remote/assets/out/map.json") and _exists(copy_script):
-        _run_script(copy_script)
-
     for name in scripts:
-        _run_script(base + "/" + name)
+        path = base + "/" + name
+        if not _exists(path):
+            raise OSError("missing script: " + path)
+        _run_script(path)
 
-    print("\nAll phases done.")
+    print("\nrun_all_phases does not launch game_mvp.main(); use reset or import main to boot the cartridge.")
+    print("All validation phases done.")
 
 
 try:

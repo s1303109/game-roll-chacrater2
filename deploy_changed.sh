@@ -1,32 +1,11 @@
 #!/bin/bash
-# Changed-only deploy script for ESP32-S3 + MicroPython.
-# It compares local/remote size+hash and copies only changed files,
-# waits 0.5s between mpremote commands, then runs import main.
-
-set -u
-set -o pipefail
+set -euo pipefail
 
 PORT="${MP_PORT:-/dev/ttyACM0}"
-ASSET_DIR="${ASSET_DIR:-/workspace/row/assets/out}"
 APP_DIR="${APP_DIR:-/workspace/row/app}"
-SD_ASSET_DIR="${SD_ASSET_DIR:-/sd/out}"
-MAIN_SRC="${MAIN_SRC:-${APP_DIR}/main.py}"
-GAME_SRC="${GAME_SRC:-${APP_DIR}/game_mvp.py}"
-BOOT_SRC="${BOOT_SRC:-${APP_DIR}/boot.py}"
-SD_HOST_SRC="${SD_HOST_SRC:-${APP_DIR}/sd_host.py}"
-SPAWN_OVERLAY_NAME="${SPAWN_OVERLAY_NAME:-spawn_closed_eyes_32x32.rgb565}"
-SPAWN_OVERLAY_SRC="${SPAWN_OVERLAY_SRC:-${ASSET_DIR}/spawn_closed_eyes_32x32.rgb565}"
-INVENTORY_PORTRAIT_NAME="${INVENTORY_PORTRAIT_NAME:-inventory_portrait.png}"
-INVENTORY_PORTRAIT_SRC="${INVENTORY_PORTRAIT_SRC:-/workspace/inventory_portrait.png}"
-COVER_NAME="${COVER_NAME:-front_cover_320x240.png}"
-COVER_SRC="${COVER_SRC:-/workspace/front_cover_320x240.png}"
-TITLE_UI_START_NAME="${TITLE_UI_START_NAME:-title_ui_start_112x54.png}"
-TITLE_UI_START_SRC="${TITLE_UI_START_SRC:-/workspace/title_ui_start_112x54.png}"
-TITLE_UI_CONTINUE_NAME="${TITLE_UI_CONTINUE_NAME:-title_ui_continue_112x54.png}"
-TITLE_UI_CONTINUE_SRC="${TITLE_UI_CONTINUE_SRC:-/workspace/title_ui_continue_112x54.png}"
-BOOT_COMIC_DIR="${BOOT_COMIC_DIR:-/workspace}"
+ASSET_ROOT="${ASSET_ROOT:-/workspace/row/assets}"
+UI_SRC_DIR="${UI_SRC_DIR:-/workspace}"
 
-# Prefer system mpremote. Fallback to repo-local mpremote module.
 if command -v mpremote >/dev/null 2>&1; then
   MPREMOTE=(mpremote)
 else
@@ -34,25 +13,117 @@ else
   export PYTHONPATH="${PYTHONPATH:-/workspace/micropython/tools/mpremote}"
 fi
 
-fail() {
-  echo "ERROR: $1" >&2
-  exit 1
-}
+FLASH_FILES=(
+  "${APP_DIR}/boot.py:/boot.py"
+  "${APP_DIR}/main.py:/main.py"
+  "${APP_DIR}/launcher.py:/launcher.py"
+  "${APP_DIR}/sd_host.py:/sd_host.py"
+)
+
+GAME_FILES=(
+  "${APP_DIR}/game_mvp.py:/sd/game/game_mvp.py"
+  "${APP_DIR}/config.py:/sd/game/config.py"
+  "${APP_DIR}/map_registry.py:/sd/game/map_registry.py"
+)
+
+MAP_DIRS=(
+  "out"
+  "out_map2"
+  "out_map3"
+  "out_map4"
+  "out_wood_main"
+  "out_wood_up"
+  "out_wood_right"
+  "out_wood_left"
+)
+
+UI_FILE_MAP=(
+  "front_cover_320x240.png|front_cover_320x240.png"
+  "title_ui_start_112x54.png|title_ui_start_112x54.png"
+  "title_ui_continue_112x54.png|title_ui_continue_112x54.png"
+  "comic_01_320x240.png|comic_01_320x240.png"
+  "comic_02_320x240.png|comic_02_320x240.png"
+  "comic_03_320x240.png|comic_03_320x240.png"
+  "comic_04_320x240.png|comic_04_320x240.png"
+  "comic_05_320x240.png|comic_05_320x240.png"
+  "comic_06_320x240.png|comic_06_320x240.png"
+  "inventory_portrait.png|inventory_portrait.png"
+  "heart_clean_18.png|heart_clean_18.png"
+  "heart.png|heart.png"
+  "star_icon_24.png|star_icon_24.png"
+  "enemy_clean.png|enemy.png"
+  "FLOWEY.png|FLOWEY.png"
+  "ANGRY FLOWEY.png|ANGRY FLOWEY.png"
+  "map1_story_line_01.png|map1_story_line_01.png"
+  "map1_story_line_02.png|map1_story_line_02.png"
+  "map1_story_line_03.png|map1_story_line_03.png"
+  "map1_story_line_04.png|map1_story_line_04.png"
+  "map1_story_line_05.png|map1_story_line_05.png"
+  "map1_story_line_06.png|map1_story_line_06.png"
+  "map1_story_line_07.png|map1_story_line_07.png"
+  "map1_story_line_08.png|map1_story_line_08.png"
+  "map1_story_line_09.png|map1_story_line_09.png"
+  "map1_story_line_10.png|map1_story_line_10.png"
+  "fight_icon.png|fight_icon.png"
+  "act_icon.png|act_icon.png"
+  "item_icon.png|item_icon.png"
+  "mercy_icon.png|mercy_icon.png"
+  "act_dialog_text.png|act_dialog_text.png"
+  "mercy_dialog_text.png|mercy_dialog_text.png"
+  "lamp_dialog_text.png|lamp_dialog_text.png"
+  "act_opt1_text.png|act_opt1_text.png"
+  "act_opt2_text.png|act_opt2_text.png"
+  "act_opt3_text.png|act_opt3_text.png"
+  "act_reply1_text.png|act_reply1_text.png"
+  "act_reply2_text.png|act_reply2_text.png"
+  "act_reply3_text.png|act_reply3_text.png"
+  "mercy_locked_text.png|mercy_locked_text.png"
+  "main character close eyes.clean.png|main character close eyes.clean.png"
+  "main character close eyes.orig.png|main character close eyes.orig.png"
+)
 
 run_mpremote() {
   "${MPREMOTE[@]}" "$@"
 }
 
+run_mpremote_with_sd() {
+  run_mpremote connect "$PORT" exec "from sd_host import mount_sd; mount_sd('/sd', return_ok=True)" "$@"
+}
+
+fail() {
+  echo "ERROR: $1" >&2
+  exit 1
+}
+
+verify_required_sources() {
+  local spec src dir name
+
+  for spec in "${FLASH_FILES[@]}" "${GAME_FILES[@]}"; do
+    src="${spec%%:*}"
+    [[ -f "$src" ]] || fail "Missing required source: $src"
+  done
+
+  [[ -f "${ASSET_ROOT}/out/player_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/player_sheet.rgb565"
+
+  for dir in "${MAP_DIRS[@]}"; do
+    for name in map.json tilemap.bin tileset.bin collision.bin; do
+      [[ -f "${ASSET_ROOT}/${dir}/${name}" ]] || fail "Missing map asset: ${ASSET_ROOT}/${dir}/${name}"
+    done
+  done
+
+  for spec in "${UI_FILE_MAP[@]}"; do
+    src="${spec%%|*}"
+    [[ -f "${UI_SRC_DIR}/${src}" ]] || fail "Missing UI asset: ${UI_SRC_DIR}/${src}"
+  done
+}
+
 local_sha256() {
-  local path="$1"
-  sha256sum "${path}" | awk '{print $1}'
+  sha256sum "$1" | awk '{print $1}'
 }
 
 remote_meta_hash() {
-  local name="$1"
-  local out
-  local py
-
+  local remote="$1"
+  local py out
   py=$(cat <<PY
 import os
 try:
@@ -63,8 +134,7 @@ try:
   import ubinascii as binascii
 except ImportError:
   import binascii
-
-name = "${name}"
+name = ${remote@Q}
 try:
   size = os.stat(name)[6]
 except OSError:
@@ -83,178 +153,202 @@ else:
     print("%d %s" % (size, binascii.hexlify(h.digest()).decode()))
 PY
 )
-
-  if ! out="$(run_mpremote connect "${PORT}" exec "${py}")"; then
-    return 1
+  if [[ "$remote" == /sd/* ]]; then
+    out="$(run_mpremote_with_sd exec "$py")" || return 1
+  else
+    out="$(run_mpremote connect "$PORT" exec "$py")" || return 1
   fi
-
-  # Keep a small gap to avoid USB busy issues.
   sleep 0.5
-
-  # mpremote may include extra lines; use the last line.
-  printf '%s\n' "${out}" | tail -n 1 | tr -d '\r'
+  printf '%s\n' "$out" | tail -n 1 | tr -d '\r'
 }
 
 copy_if_changed() {
   local src="$1"
   local remote="$2"
-  local label="${3:-${remote}}"
-  local lsize
-  local lhash
-  local rsize
-  local rhash
-  local rmeta
+  local label="${3:-$2}"
+  local lsize lhash rmeta rsize rhash
 
-  if [[ ! -f "${src}" ]]; then
-    fail "Local file not found: ${src}"
+  [[ -f "$src" ]] || fail "Local file not found: $src"
+
+  lsize="$(stat -c%s "$src")"
+  lhash="$(local_sha256 "$src")"
+  rmeta="$(remote_meta_hash "$remote")" || fail "Failed to read remote metadata for $remote"
+  rsize="$(printf '%s' "$rmeta" | awk '{print $1}')"
+  rhash="$(printf '%s' "$rmeta" | awk '{print $2}')"
+
+  if [[ "$rsize" == "$lsize" && "$rhash" == "$lhash" ]]; then
+    echo "Skipping ${label} -> ${remote}"
+    return
   fi
 
-  lsize="$(stat -c%s "${src}")"
-  lhash="$(local_sha256 "${src}")"
-
-  if ! rmeta="$(remote_meta_hash "${remote}")"; then
-    fail "Failed to read remote metadata for ${remote}"
+  echo "Copying ${label} -> ${remote}"
+  if [[ "$remote" == /sd/* ]]; then
+    run_mpremote_with_sd fs cp "$src" ":$remote"
+  else
+    run_mpremote connect "$PORT" fs cp "$src" ":$remote"
   fi
-
-  rsize="$(printf '%s' "${rmeta}" | awk '{print $1}')"
-  rhash="$(printf '%s' "${rmeta}" | awk '{print $2}')"
-
-  if [[ ! "${rsize}" =~ ^-?[0-9]+$ ]]; then
-    fail "Unexpected remote metadata output for ${remote}: ${rmeta}"
-  fi
-
-  if [[ "${rsize}" -eq "${lsize}" && "${rhash}" == "${lhash}" ]]; then
-    echo "Skipping ${label} -> ${remote} (same size+hash: ${lsize} bytes)"
-    return 0
-  fi
-
-  echo "Copying ${label} -> ${remote}..."
-  if ! run_mpremote connect "${PORT}" fs cp "${src}" ":${remote}"; then
-    fail "Failed to copy ${label} to ${remote} on ${PORT}"
-  fi
-
-  # Keep a small gap to avoid USB busy issues.
   sleep 0.5
 }
 
-prepare_sd() {
+copy_flash_files() {
+  local spec src dst
+  for spec in "${FLASH_FILES[@]}"; do
+    src="${spec%%:*}"
+    dst="${spec#*:}"
+    copy_if_changed "$src" "$dst" "$dst"
+  done
+}
+
+prepare_device() {
   local py
   py=$(cat <<'PY'
 import os
-try:
-  from sd_host import mount_sd
-except Exception:
-  mount_sd = None
+from sd_host import mount_sd
 
-if mount_sd:
-  try:
-    mount_sd("/sd", return_ok=True)
-  except Exception:
-    pass
-
-for path in ("/sd", "/sd/app", "/sd/out"):
-  cur = ""
-  for part in path.split("/"):
-    if not part:
-      continue
-    cur += "/" + part
-    try:
-      os.stat(cur)
-    except OSError:
-      try:
-        os.mkdir(cur)
-      except OSError:
-        pass
-print("sd_ready")
-PY
+STALE_FLASH_FILES = (
+    "/game_mvp.py",
+    "/config.py",
+    "/map_registry.py",
+    "/map.json",
+    "/tilemap.bin",
+    "/tileset.bin",
+    "/collision.bin",
+    "/player_sheet.rgb565",
+    "/front_cover_320x240.png",
+    "/title_ui_start_112x54.png",
+    "/title_ui_continue_112x54.png",
+    "/comic_01_320x240.png",
+    "/comic_02_320x240.png",
+    "/comic_03_320x240.png",
+    "/comic_04_320x240.png",
+    "/comic_05_320x240.png",
+    "/comic_06_320x240.png",
+    "/inventory_portrait.png",
+    "/heart_clean_18.png",
+    "/heart.png",
+    "/star_icon_24.png",
+    "/enemy.png",
+    "/FLOWEY.png",
+    "/ANGRY FLOWEY.png",
+    "/map1_story_line_01.png",
+    "/map1_story_line_02.png",
+    "/map1_story_line_03.png",
+    "/map1_story_line_04.png",
+    "/map1_story_line_05.png",
+    "/map1_story_line_06.png",
+    "/map1_story_line_07.png",
+    "/map1_story_line_08.png",
+    "/map1_story_line_09.png",
+    "/map1_story_line_10.png",
+    "/fight_icon.png",
+    "/act_icon.png",
+    "/item_icon.png",
+    "/mercy_icon.png",
+    "/act_dialog_text.png",
+    "/mercy_dialog_text.png",
+    "/lamp_dialog_text.png",
+    "/act_opt1_text.png",
+    "/act_opt2_text.png",
+    "/act_opt3_text.png",
+    "/act_reply1_text.png",
+    "/act_reply2_text.png",
+    "/act_reply3_text.png",
+    "/mercy_locked_text.png",
+    "/main character close eyes.clean.png",
+    "/main character close eyes.orig.png",
+    "/titleui.png",
+    "/comic_.png",
+    "/spawn_closed_eyes_32x32.rgb565",
 )
-  run_mpremote connect "${PORT}" exec "${py}" >/dev/null
-  sleep 0.5
-}
 
-prepare_sd
 
-for name in map.json tilemap.bin tileset.bin collision.bin player_sheet.rgb565; do
-  copy_if_changed "${ASSET_DIR}/${name}" "/${name}" "${name}"
-done
+def exists(path):
+    try:
+        os.stat(path)
+        return True
+    except OSError:
+        return False
 
-copy_if_changed "${BOOT_SRC}" "/boot.py" "boot.py"
-copy_if_changed "${SD_HOST_SRC}" "/sd_host.py" "sd_host.py"
-copy_if_changed "${MAIN_SRC}" "/main.py" "main.py"
-copy_if_changed "${GAME_SRC}" "/game_mvp.py" "game_mvp.py"
-copy_if_changed "${SPAWN_OVERLAY_SRC}" "/${SPAWN_OVERLAY_NAME}" "${SPAWN_OVERLAY_NAME}"
-copy_if_changed "${INVENTORY_PORTRAIT_SRC}" "/${INVENTORY_PORTRAIT_NAME}" "${INVENTORY_PORTRAIT_NAME}"
-copy_if_changed "${COVER_SRC}" "/${COVER_NAME}" "${COVER_NAME}"
-copy_if_changed "${TITLE_UI_START_SRC}" "/${TITLE_UI_START_NAME}" "${TITLE_UI_START_NAME}"
-copy_if_changed "${TITLE_UI_CONTINUE_SRC}" "/${TITLE_UI_CONTINUE_NAME}" "${TITLE_UI_CONTINUE_NAME}"
-
-for i in 01 02 03 04 05 06; do
-  copy_if_changed "${BOOT_COMIC_DIR}/comic_${i}_320x240.png" "/comic_${i}_320x240.png" "comic_${i}_320x240.png"
-done
-
-sync_assets_to_sd() {
-  local py
-  py=$(cat <<'PY'
-import os
-import time
-try:
-  from sd_host import mount_sd
-except Exception:
-  mount_sd = None
-
-if mount_sd:
-  try:
-    mount_sd("/sd", return_ok=True)
-  except Exception:
-    pass
 
 def ensure_dir(path):
-  cur = ""
-  for part in path.split("/"):
-    if not part:
-      continue
-    cur += "/" + part
+    cur = ""
+    for part in path.split("/"):
+        if not part:
+            continue
+        cur += "/" + part
+        try:
+            os.stat(cur)
+        except OSError:
+            os.mkdir(cur)
+
+if not mount_sd("/sd", return_ok=True):
+    raise RuntimeError("SD_MOUNT_FAILED")
+
+for path in (
+    "/sd/game",
+    "/sd/game/assets",
+    "/sd/game/assets/out",
+    "/sd/game/assets/out_map2",
+    "/sd/game/assets/out_map3",
+    "/sd/game/assets/out_map4",
+    "/sd/game/assets/out_wood_main",
+    "/sd/game/assets/out_wood_up",
+    "/sd/game/assets/out_wood_right",
+    "/sd/game/assets/out_wood_left",
+    "/sd/game/ui",
+    "/sd/game/sprites",
+    "/sd/game/save",
+):
+    ensure_dir(path)
+
+for path in STALE_FLASH_FILES:
     try:
-      os.stat(cur)
+        os.remove(path)
+        print("removed stale:", path)
     except OSError:
-      try:
-        os.mkdir(cur)
-      except OSError:
-        pass
+        if exists(path):
+            print("stale ignored:", path)
 
-def copy_file(src, dst):
-  tmp = dst + ".tmp"
-  try:
-    os.remove(tmp)
-  except OSError:
-    pass
-  with open(src, "rb") as fin, open(tmp, "wb") as fout:
-    while True:
-      b = fin.read(4096)
-      if not b:
-        break
-      fout.write(b)
-  try:
-    os.remove(dst)
-  except OSError:
-    pass
-  os.rename(tmp, dst)
-
-ensure_dir("/sd/out")
-for name in ("map.json", "tilemap.bin", "tileset.bin", "collision.bin", "player_sheet.rgb565", "spawn_closed_eyes_32x32.rgb565"):
-  copy_file("/" + name, "/sd/out/" + name)
-print("sd_sync_ok")
+print("device_ready")
 PY
 )
-  run_mpremote connect "${PORT}" exec "${py}" >/dev/null
+  run_mpremote connect "$PORT" exec "$py"
   sleep 0.5
 }
 
-sync_assets_to_sd
+copy_game_files() {
+  local spec src dst dir name src_name dst_name
 
-echo "Running import main..."
-if ! run_mpremote connect "${PORT}" exec "import main"; then
-  fail "Failed to run 'import main' on ${PORT}"
-fi
+  for spec in "${GAME_FILES[@]}"; do
+    src="${spec%%:*}"
+    dst="${spec#*:}"
+    copy_if_changed "$src" "$dst" "$dst"
+  done
+
+  copy_if_changed "${ASSET_ROOT}/out/player_sheet.rgb565" "/sd/game/sprites/player_sheet.rgb565" "/sd/game/sprites/player_sheet.rgb565"
+
+  for dir in "${MAP_DIRS[@]}"; do
+    for name in map.json tilemap.bin tileset.bin collision.bin; do
+      copy_if_changed "${ASSET_ROOT}/${dir}/${name}" "/sd/game/assets/${dir}/${name}" "/sd/game/assets/${dir}/${name}"
+    done
+  done
+
+  for spec in "${UI_FILE_MAP[@]}"; do
+    src_name="${spec%%|*}"
+    dst_name="${spec#*|}"
+    copy_if_changed "${UI_SRC_DIR}/${src_name}" "/sd/game/ui/${dst_name}" "/sd/game/ui/${dst_name}"
+  done
+}
+
+run_game() {
+  echo "Resetting board to boot launcher..."
+  run_mpremote connect "$PORT" reset
+}
+
+verify_required_sources
+copy_flash_files
+prepare_device
+copy_game_files
+run_game
 
 echo "Deploy (changed only) succeeded."

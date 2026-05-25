@@ -4,6 +4,18 @@ import os
 import time
 from machine import ADC, Pin
 import lgfx
+import config
+from map_registry import (
+    MAP1_ID,
+    MAP2_ID,
+    MAP3_ID,
+    MAP4_ID,
+    WOOD_MAIN_ID,
+    WOOD_UP_ID,
+    WOOD_RIGHT_ID,
+    WOOD_LEFT_ID,
+    MAP_REGISTRY,
+)
 
 
 SD_READY = False
@@ -110,37 +122,25 @@ def _resolve_first_existing_path(paths):
 
 
 def _ui_asset_paths(name):
-    return ("/sd/ui/" + name, "/sd/" + name, "/" + name, "/workspace/" + name)
+    return (config.ui_path(name),)
+
+
+def _resolve_runtime_png_path(path):
+    if not path:
+        return None
+    if _path_exists(path):
+        return path
+    name = path.rsplit("/", 1)[-1]
+    if not name:
+        return path
+    resolved = config.ui_path(name)
+    if _path_exists(resolved):
+        return resolved
+    return path
 
 
 def _sync_sd_assets_from_remote_if_needed():
-    if not ENABLE_AUTO_SD_SYNC:
-        return
-    if not SD_READY:
-        return
-    if not _path_exists(REMOTE_ASSET_BASE + "/map.json"):
-        return
-
-    names = ("map.json", "tilemap.bin", "tileset.bin", "collision.bin", PLAYER_SHEET_NAME)
-    needs_sync = False
-    for name in names:
-        src_size = _file_size(REMOTE_ASSET_BASE + "/" + name)
-        if src_size < 0:
-            return
-        dst_size = _file_size(SD_ASSET_BASE + "/" + name)
-        if dst_size != src_size:
-            needs_sync = True
-            break
-
-    if not needs_sync:
-        return
-
-    try:
-        import copy_assets_to_sd
-        print("sd_sync: updated_from_remote")
-        del copy_assets_to_sd
-    except Exception as err:
-        print("sd_sync_failed:", err)
+    return
 
 
 def _print_asset_files(base, meta):
@@ -161,11 +161,7 @@ def _load_collision(meta, base, map_w, map_h):
     expected = map_w * map_h
     last_err = None
 
-    # Prefer collision in the selected base first, then probe fallback bases.
     bases = [base]
-    for b in ASSET_BASES:
-        if b != base:
-            bases.append(b)
 
     for src_base in bases:
         src_meta = meta
@@ -376,13 +372,7 @@ def _load_player_sheet(base):
         if path not in paths:
             paths.append(path)
 
-    _add_path(base + "/" + PLAYER_SHEET_NAME)
-    if base.startswith("/sd/"):
-        _add_path(REMOTE_ASSET_BASE + "/" + PLAYER_SHEET_NAME)
-    for b in ASSET_BASES:
-        _add_path(b + "/" + PLAYER_SHEET_NAME)
-    for p in PLAYER_SHEET_FALLBACK_PATHS:
-        _add_path(p)
+    _add_path(PLAYER_SHEET_PATH)
 
     for path in paths:
         file_len = _file_size(path)
@@ -423,24 +413,17 @@ def _load_player_sheet(base):
     return False, last_err
 
 
-SD_ASSET_BASE = "/sd/out"
-REMOTE_ASSET_BASE = "/remote/assets/out"
-ASSET_BASES = ("/", SD_ASSET_BASE, REMOTE_ASSET_BASE)
-ENABLE_AUTO_SD_SYNC = False
+MAP1_ASSET_BASES = MAP_REGISTRY[MAP1_ID]["asset_bases"]
 ENABLE_SD_MOUNT = True
-PLAYER_SHEET_NAME = "player_sheet.rgb565"
-PLAYER_SHEET_FALLBACK_PATHS = (
-    "/player_sheet.rgb565",
-)
+PLAYER_SHEET_NAME = config.PLAYER_SHEET_NAME
+PLAYER_SHEET_PATH = config.PLAYER_SHEET_PATH
 ENABLE_SPAWN_OVERLAY = False
-SPAWN_OVERLAY_PATH = "/main character close eyes.orig.png"
+SPAWN_OVERLAY_PATH = config.ui_path("main character close eyes.orig.png")
 ENABLE_SPAWN_INTRO = True
 SPAWN_SPOTLIGHT_RADIUS = 56
 SPAWN_OVERLAY_PATHS = (
-    "/workspace/main character close eyes.clean.png",
-    "/main character close eyes.clean.png",
-    "/workspace/main character close eyes.orig.png",
-    "/main character close eyes.orig.png",
+    config.ui_path("main character close eyes.clean.png"),
+    config.ui_path("main character close eyes.orig.png"),
 )
 FORCE_SIMPLE_PLAYER = False
 USE_TILE_RENDER_PLAYER_COMPOSE = True
@@ -465,6 +448,7 @@ DEADZONE_DIV = 7
 ENTER_DIV = 4
 EXIT_DIV = 6
 ADC_SAMPLES = 4
+BINARY_EDGE_DEBOUNCE_MS = 45
 MOVE_STEP = 2
 WOOD_ROOM_MOVE_STEP = 1.4
 MOVE_DT_MAX_SCALE = 4
@@ -496,16 +480,14 @@ MODE_EXPLORE_INVENTORY = 3
 MODE_BATTLE_ATTACK = 4
 MODE_TITLE_MENU = 5
 TITLE_COVER_PATHS = (
-    "/front_cover_320x240.png",
-    "/workspace/front_cover_320x240.png",
-    "/workspace/front cover.png",
-    "/front cover.png",
+    config.ui_path("front_cover_320x240.png"),
 )
 TITLE_NOTICE_MS = 1200
 TITLE_NAV_SWITCH_COOLDOWN_MS = 140
 TITLE_MENU_CONTINUE = "CONTINUE"
 TITLE_MENU_NEW_GAME = "NEW GAME"
-TITLE_NOTICE_CONTINUE_TEXT = "Not available yet"
+TITLE_NOTICE_CONTINUE_TEXT = "Continue unavailable"
+TITLE_NOTICE_NO_SAVE_TEXT = "No save found"
 TITLE_UI_START_PATHS = _ui_asset_paths("title_ui_start_112x54.png")
 TITLE_UI_CONTINUE_PATHS = _ui_asset_paths("title_ui_continue_112x54.png")
 TITLE_UI_X = 8
@@ -518,12 +500,12 @@ BOOT_COMIC_TIME_LABELS = ("21:00", "23:00", "1:00", "00:00", "00:00", "00:00")
 BOOT_TIME_CARD_MS = 3000
 BOOT_COMIC_FRAME_MS = 5000
 BOOT_COMIC_PATHS = (
-    "/comic_01_320x240.png",
-    "/comic_02_320x240.png",
-    "/comic_03_320x240.png",
-    "/comic_04_320x240.png",
-    "/comic_05_320x240.png",
-    "/comic_06_320x240.png",
+    config.ui_path("comic_01_320x240.png"),
+    config.ui_path("comic_02_320x240.png"),
+    config.ui_path("comic_03_320x240.png"),
+    config.ui_path("comic_04_320x240.png"),
+    config.ui_path("comic_05_320x240.png"),
+    config.ui_path("comic_06_320x240.png"),
 )
 ENCOUNTER_COOLDOWN_FRAMES = 120
 BATTLE_FRAME_W = 240
@@ -538,8 +520,8 @@ BATTLE_COLOR_WHITE = 0xFFFF
 BATTLE_CMD_COLOR = 0xFC60  # #FF8C00 in RGB565
 BATTLE_COLOR_RED = 0xF800
 BATTLE_HEART_R = 5
-BATTLE_HEART_SPRITE_PATH = "/heart_clean_18.png"
-BATTLE_HEART_SPRITE_FALLBACK_PATH = "/heart.png"
+BATTLE_HEART_SPRITE_PATH = config.ui_path("heart_clean_18.png")
+BATTLE_HEART_SPRITE_FALLBACK_PATH = config.ui_path("heart.png")
 BATTLE_HEART_SPRITE_W = 18
 BATTLE_HEART_SPRITE_H = 18
 BATTLE_HEART_HIT_R = 9
@@ -547,32 +529,25 @@ BATTLE_HEART_ERASE_R = BATTLE_HEART_HIT_R + 1
 BATTLE_HEART_FAST_R = 7
 BATTLE_HEART_STEP = 2
 BATTLE_HEART_USE_PNG_ON_MOVE = False
-ENEMY_SPRITE_PATH = _resolve_first_existing_path(_ui_asset_paths("enemy.png")) or "/enemy.png"
+ENEMY_SPRITE_PATH = config.ui_path("enemy.png")
 ENEMY_SPRITE_W = 72
 ENEMY_SPRITE_H = 72
-ACT_DIALOG_TEXT_PATH = _resolve_first_existing_path(_ui_asset_paths("act_dialog_text.png")) or "/act_dialog_text.png"
-MERCY_DIALOG_TEXT_PATH = _resolve_first_existing_path(_ui_asset_paths("mercy_dialog_text.png")) or "/mercy_dialog_text.png"
-LAMP_DIALOG_TEXT_PATH = _resolve_first_existing_path(_ui_asset_paths("lamp_dialog_text.png")) or "/lamp_dialog_text.png"
-ACT_OPT1_PNG = _resolve_first_existing_path(_ui_asset_paths("act_opt1_text.png")) or "/act_opt1_text.png"
-ACT_OPT2_PNG = _resolve_first_existing_path(_ui_asset_paths("act_opt2_text.png")) or "/act_opt2_text.png"
-ACT_OPT3_PNG = _resolve_first_existing_path(_ui_asset_paths("act_opt3_text.png")) or "/act_opt3_text.png"
-ACT_REPLY1_PNG = _resolve_first_existing_path(_ui_asset_paths("act_reply1_text.png")) or "/act_reply1_text.png"
-ACT_REPLY2_PNG = _resolve_first_existing_path(_ui_asset_paths("act_reply2_text.png")) or "/act_reply2_text.png"
-ACT_REPLY3_PNG = _resolve_first_existing_path(_ui_asset_paths("act_reply3_text.png")) or "/act_reply3_text.png"
-MERCY_LOCKED_PNG = _resolve_first_existing_path(_ui_asset_paths("mercy_locked_text.png")) or "/mercy_locked_text.png"
+ACT_DIALOG_TEXT_PATH = config.ui_path("act_dialog_text.png")
+MERCY_DIALOG_TEXT_PATH = config.ui_path("mercy_dialog_text.png")
+LAMP_DIALOG_TEXT_PATH = config.ui_path("lamp_dialog_text.png")
+ACT_OPT1_PNG = config.ui_path("act_opt1_text.png")
+ACT_OPT2_PNG = config.ui_path("act_opt2_text.png")
+ACT_OPT3_PNG = config.ui_path("act_opt3_text.png")
+ACT_REPLY1_PNG = config.ui_path("act_reply1_text.png")
+ACT_REPLY2_PNG = config.ui_path("act_reply2_text.png")
+ACT_REPLY3_PNG = config.ui_path("act_reply3_text.png")
+MERCY_LOCKED_PNG = config.ui_path("mercy_locked_text.png")
 CMD_ICON_SRC_W = 32
 CMD_ICON_SRC_H = 32
 STAR_ICON_SRC_W = 24
 STAR_ICON_SRC_H = 24
-STAR_ICON_PATHS = ("/workspace/star_icon_24.png", "/star_icon_24.png", "/workspace/STAR .png", "/STAR .png")
-INVENTORY_PORTRAIT_PATHS = (
-    "/sd/ui/inventory_portrait.png",
-    "/inventory_portrait.png",
-    "/workspace/inventory_portrait.png",
-    "/sd/ui/image.png",
-    "/image.png",
-    "/workspace/image.png",
-)
+STAR_ICON_PATHS = (config.ui_path("star_icon_24.png"),)
+INVENTORY_PORTRAIT_PATHS = (config.ui_path("inventory_portrait.png"),)
 INVENTORY_PORTRAIT_SRC_W = 255
 INVENTORY_PORTRAIT_SRC_H = 221
 FIGHT_ICON_PATHS = _ui_asset_paths("fight_icon.png")
@@ -608,68 +583,10 @@ LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
 MAP1_OPENING_BATTLE_DELAY_MS = 5000
 # Expand to cover the full triple-lamp poles and nearby interaction area.
 LAMP_INTERACT_RECT_PX = (160, 624, 128, 192)
-MAP1_ID = 1
-MAP2_ID = 2
-MAP3_ID = 3
-WOOD_MAIN_ID = 4
-WOOD_UP_ID = 5
-WOOD_RIGHT_ID = 6
-WOOD_LEFT_ID = 7
-MAP4_ID = 8
 # Apply slow movement only in the main wood room.
 WOOD_SLOW_MAP_IDS = (WOOD_MAIN_ID,)
 MAP1_SPAWN_OFFSET_X = 0
 MAP1_SPAWN_OFFSET_Y = -63
-MAP2_LOCAL_ASSET_BASE = "/out_map2"
-MAP2_ASSET_BASE = "/sd/out_map2"
-MAP2_REMOTE_ASSET_BASE = "/remote/assets/out_map2"
-MAP2_ASSET_BASES = (MAP2_LOCAL_ASSET_BASE, MAP2_ASSET_BASE, MAP2_REMOTE_ASSET_BASE)
-MAP3_LOCAL_ASSET_BASE = "/out_map3"
-MAP3_ASSET_BASE = "/sd/out_map3"
-MAP3_REMOTE_ASSET_BASE = "/remote/assets/out_map3"
-MAP3_ASSET_BASES = (MAP3_LOCAL_ASSET_BASE, MAP3_ASSET_BASE, MAP3_REMOTE_ASSET_BASE)
-MAP4_LOCAL_ASSET_BASE = "/out_map4"
-MAP4_ASSET_BASE = "/sd/out_map4"
-MAP4_REMOTE_ASSET_BASE = "/remote/assets/out_map4"
-MAP4_ASSET_BASES = (MAP4_LOCAL_ASSET_BASE, MAP4_ASSET_BASE, MAP4_REMOTE_ASSET_BASE)
-WOOD_MAIN_LOCAL_ASSET_BASE = "/out_wood_main"
-WOOD_MAIN_ASSET_BASE = "/sd/out_wood_main"
-WOOD_MAIN_REMOTE_ASSET_BASE = "/remote/assets/out_wood_main"
-WOOD_MAIN_ASSET_BASES = (WOOD_MAIN_LOCAL_ASSET_BASE, WOOD_MAIN_ASSET_BASE, WOOD_MAIN_REMOTE_ASSET_BASE)
-WOOD_UP_LOCAL_ASSET_BASE = "/out_wood_up"
-WOOD_UP_ASSET_BASE = "/sd/out_wood_up"
-WOOD_UP_REMOTE_ASSET_BASE = "/remote/assets/out_wood_up"
-WOOD_UP_ASSET_BASES = (WOOD_UP_LOCAL_ASSET_BASE, WOOD_UP_ASSET_BASE, WOOD_UP_REMOTE_ASSET_BASE)
-WOOD_RIGHT_LOCAL_ASSET_BASE = "/out_wood_right"
-WOOD_RIGHT_ASSET_BASE = "/sd/out_wood_right"
-WOOD_RIGHT_REMOTE_ASSET_BASE = "/remote/assets/out_wood_right"
-WOOD_RIGHT_ASSET_BASES = (WOOD_RIGHT_LOCAL_ASSET_BASE, WOOD_RIGHT_ASSET_BASE, WOOD_RIGHT_REMOTE_ASSET_BASE)
-WOOD_LEFT_LOCAL_ASSET_BASE = "/out_wood_left"
-WOOD_LEFT_ASSET_BASE = "/sd/out_wood_left"
-WOOD_LEFT_REMOTE_ASSET_BASE = "/remote/assets/out_wood_left"
-WOOD_LEFT_ASSET_BASES = (WOOD_LEFT_LOCAL_ASSET_BASE, WOOD_LEFT_ASSET_BASE, WOOD_LEFT_REMOTE_ASSET_BASE)
-MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
-# Restrict transfer to the dark arch entrance (not the outer corridor).
-MAP2_PORTAL_TO_MAP1_RECT_PX = (54, 156, 22, 64)
-MAP2_PORTAL_TO_WOOD_MAIN_RECT_PX = (842, 176, 30, 84)
-MAP1_TO_MAP2_SPAWN = (152, 228)
-MAP2_TO_MAP1_SPAWN = (320, 272)
-# Keep transition at stair edges only.
-MAP2_PORTAL_TO_MAP3_RECT_PX = (448, 584, 64, 6)
-MAP3_PORTAL_TO_MAP2_RECT_PX = (448, 0, 64, 8)
-MAP3_PORTAL_TO_MAP4_RECT_PX = (448, 300, 64, 96)
-MAP4_PORTAL_TO_MAP3_RECT_PX = (72, 56, 64, 112)
-MAP2_FROM_MAP3_SPAWN_X = 480
-MAP2_FROM_MAP3_SPAWN_Y = 590
-MAP4_FROM_MAP3_SPAWN = (112, 172)
-MAP3_FROM_MAP4_SPAWN = (480, 430)
-WOOD_MAIN_PORTAL_TO_UP_RECT_PX = (144, 0, 32, 24)
-WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX = (296, 106, 24, 36)
-WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX = (0, 106, 24, 36)
-WOOD_MAIN_PORTAL_TO_MAP2_RECT_PX = (144, 216, 32, 24)
-WOOD_UP_PORTAL_TO_MAIN_RECT_PX = (136, 216, 48, 24)
-WOOD_RIGHT_PORTAL_TO_MAIN_RECT_PX = (0, 120, 24, 80)
-WOOD_LEFT_PORTAL_TO_MAIN_RECT_PX = (296, 120, 24, 80)
 PRELOAD_PORTAL_PAD_PX = 32
 PRELOAD_DEBOUNCE_PX = 8
 PRELOAD_DWELL_MS = 220
@@ -700,8 +617,8 @@ MAP1_STORY_STAGE_PHASE2 = 4
 MAP1_ENEMY_ANCHOR_CENTER = 0
 MAP1_ENEMY_ANCHOR_SLIDING_LEFT = 1
 MAP1_ENEMY_ANCHOR_LEFT = 2
-MAP1_FLOWEY_SPRITE_PATHS = ("/sd/FLOWEY_96.png",) + _ui_asset_paths("FLOWEY.png")
-MAP1_ANGRY_FLOWEY_SPRITE_PATHS = ("/sd/ANGRY_FLOWEY_96.png",) + _ui_asset_paths("ANGRY FLOWEY.png")
+MAP1_FLOWEY_SPRITE_PATHS = _ui_asset_paths("FLOWEY.png")
+MAP1_ANGRY_FLOWEY_SPRITE_PATHS = _ui_asset_paths("ANGRY FLOWEY.png")
 MAP1_STORY_LINE_PNG_PATHS = (
     _ui_asset_paths("map1_story_line_01.png"),
     _ui_asset_paths("map1_story_line_02.png"),
@@ -778,147 +695,6 @@ ENEMY_HP_BAR_EMPTY_COLOR = 0xF800  # red
 BUILD_TAG = "game_mvp_tune36_revert_tune33_heart_20260519"
 
 print("build:", BUILD_TAG)
-
-MAP_REGISTRY = {
-    MAP1_ID: {
-        "asset_bases": ASSET_BASES,
-        "prefer_stream": True,
-        "portals": (
-            {"rect": MAP1_PORTAL_TO_MAP2_RECT_PX, "target_map_id": MAP2_ID, "target_spawn": MAP1_TO_MAP2_SPAWN},
-        ),
-    },
-    MAP2_ID: {
-        "asset_bases": MAP2_ASSET_BASES,
-        "prefer_stream": True,
-        "portals": (
-            {
-                "rect": MAP2_PORTAL_TO_MAP1_RECT_PX,
-                "target_map_id": MAP1_ID,
-                "target_spawn": MAP2_TO_MAP1_SPAWN,
-                "preload_pad_px": 96,
-                "entry_move_x_sign": -1,
-            },
-            {
-                "rect": MAP2_PORTAL_TO_MAP3_RECT_PX,
-                "target_map_id": MAP3_ID,
-                "target_spawn": (480, 116),
-                "entry_move_y_sign": 1,
-            },
-            {
-                "rect": MAP2_PORTAL_TO_WOOD_MAIN_RECT_PX,
-                "target_map_id": WOOD_MAIN_ID,
-                "target_spawn": (160, 206),
-                "entry_move_x_sign": 1,
-                "preload_pad_px": 96,
-            },
-        ),
-    },
-    MAP3_ID: {
-        "asset_bases": MAP3_ASSET_BASES,
-        "prefer_stream": True,
-        "portals": (
-            {
-                "rect": MAP3_PORTAL_TO_MAP2_RECT_PX,
-                "target_map_id": MAP2_ID,
-                "target_spawn": (MAP2_FROM_MAP3_SPAWN_X, MAP2_FROM_MAP3_SPAWN_Y),
-                "entry_move_y_sign": -1,
-            },
-            {
-                "rect": MAP3_PORTAL_TO_MAP4_RECT_PX,
-                "target_map_id": MAP4_ID,
-                "target_spawn": MAP4_FROM_MAP3_SPAWN,
-                "preload_pad_px": 96,
-            },
-        ),
-    },
-    MAP4_ID: {
-        "asset_bases": MAP4_ASSET_BASES,
-        "prefer_stream": True,
-        "fallback_all_walkable": False,
-        "portals": (
-            {
-                "rect": MAP4_PORTAL_TO_MAP3_RECT_PX,
-                "target_map_id": MAP3_ID,
-                "target_spawn": MAP3_FROM_MAP4_SPAWN,
-                "entry_move_y_sign": -1,
-                "preload_pad_px": 96,
-            },
-        ),
-    },
-    WOOD_MAIN_ID: {
-        "asset_bases": WOOD_MAIN_ASSET_BASES,
-        "prefer_stream": True,
-        "portals": (
-            {
-                "rect": WOOD_MAIN_PORTAL_TO_UP_RECT_PX,
-                "target_map_id": WOOD_UP_ID,
-                "target_spawn": (160, 206),
-                "entry_move_y_sign": -1,
-                "preload_pad_px": 40,
-            },
-            {
-                "rect": WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX,
-                "target_map_id": WOOD_RIGHT_ID,
-                "target_spawn": (36, 160),
-                "entry_move_x_sign": 1,
-                "preload_pad_px": 40,
-            },
-            {
-                "rect": WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX,
-                "target_map_id": WOOD_LEFT_ID,
-                "target_spawn": (284, 160),
-                "entry_move_x_sign": -1,
-                "preload_pad_px": 40,
-            },
-            {
-                "rect": WOOD_MAIN_PORTAL_TO_MAP2_RECT_PX,
-                "target_map_id": MAP2_ID,
-                "target_spawn": (824, 248),
-                "entry_move_y_sign": 1,
-                "preload_pad_px": 48,
-            },
-        ),
-    },
-    WOOD_UP_ID: {
-        "asset_bases": WOOD_UP_ASSET_BASES,
-        "prefer_stream": True,
-        "portals": (
-            {
-                "rect": WOOD_UP_PORTAL_TO_MAIN_RECT_PX,
-                "target_map_id": WOOD_MAIN_ID,
-                "target_spawn": (160, 34),
-                "entry_move_y_sign": 1,
-                "preload_pad_px": 36,
-            },
-        ),
-    },
-    WOOD_RIGHT_ID: {
-        "asset_bases": WOOD_RIGHT_ASSET_BASES,
-        "prefer_stream": True,
-        "portals": (
-            {
-                "rect": WOOD_RIGHT_PORTAL_TO_MAIN_RECT_PX,
-                "target_map_id": WOOD_MAIN_ID,
-                "target_spawn": (286, 124),
-                "entry_move_x_sign": -1,
-                "preload_pad_px": 36,
-            },
-        ),
-    },
-    WOOD_LEFT_ID: {
-        "asset_bases": WOOD_LEFT_ASSET_BASES,
-        "prefer_stream": True,
-        "portals": (
-            {
-                "rect": WOOD_LEFT_PORTAL_TO_MAIN_RECT_PX,
-                "target_map_id": WOOD_MAIN_ID,
-                "target_spawn": (34, 124),
-                "entry_move_x_sign": 1,
-                "preload_pad_px": 36,
-            },
-        ),
-    },
-}
 
 MAP_ENCOUNTER_PORTAL_SAFE_PAD_PX = 32
 MAP_ENCOUNTER_ENTRY_MIN_TRAVEL_PX = 0
@@ -1374,15 +1150,38 @@ def _apply_spawn_offset_for_map(map_id, sx, sy):
         return sx + MAP1_SPAWN_OFFSET_X, sy + MAP1_SPAWN_OFFSET_Y
     return sx, sy
 
-if not DISPLAY_INIT_DONE:
-    lgfx.init()
-    DISPLAY_INIT_DONE = True
-lgfx.set_rotation(ROTATION)
-if hasattr(lgfx, "tile_loader_mode"):
-    try:
-        print("tile_loader_mode:", lgfx.tile_loader_mode())
-    except Exception as err:
-        print("tile_loader_mode_error:", err)
+def _init_display():
+    global DISPLAY_INIT_DONE
+    global battle_frame_x, battle_frame_y, battle_frame_x_max, battle_frame_y_max
+    global battle_heart_init_x, battle_heart_init_y
+    global battle_heart_min_x, battle_heart_max_x, battle_heart_min_y, battle_heart_max_y
+    global battle_cmd_x0, battle_cmd_y, battle_cmd_w
+
+    if not DISPLAY_INIT_DONE:
+        lgfx.init()
+        DISPLAY_INIT_DONE = True
+    lgfx.set_rotation(ROTATION)
+    if hasattr(lgfx, "tile_loader_mode"):
+        try:
+            print("tile_loader_mode:", lgfx.tile_loader_mode())
+        except Exception as err:
+            print("tile_loader_mode_error:", err)
+
+    (
+        battle_frame_x,
+        battle_frame_y,
+        battle_frame_x_max,
+        battle_frame_y_max,
+        battle_heart_init_x,
+        battle_heart_init_y,
+        battle_heart_min_x,
+        battle_heart_max_x,
+        battle_heart_min_y,
+        battle_heart_max_y,
+        battle_cmd_x0,
+        battle_cmd_y,
+        battle_cmd_w,
+    ) = _update_battle_layout()
 
 asset_base = None
 meta = None
@@ -1506,21 +1305,19 @@ def _update_battle_layout():
     )
 
 
-(
-    battle_frame_x,
-    battle_frame_y,
-    battle_frame_x_max,
-    battle_frame_y_max,
-    battle_heart_init_x,
-    battle_heart_init_y,
-    battle_heart_min_x,
-    battle_heart_max_x,
-    battle_heart_min_y,
-    battle_heart_max_y,
-    battle_cmd_x0,
-    battle_cmd_y,
-    battle_cmd_w,
-) = _update_battle_layout()
+battle_frame_x = 0
+battle_frame_y = 0
+battle_frame_x_max = 0
+battle_frame_y_max = 0
+battle_heart_init_x = 0
+battle_heart_init_y = 0
+battle_heart_min_x = 0
+battle_heart_max_x = 0
+battle_heart_min_y = 0
+battle_heart_max_y = 0
+battle_cmd_x0 = 0
+battle_cmd_y = 0
+battle_cmd_w = 0
 
 def _collides(nx, ny, r):
     if collision is None:
@@ -1680,7 +1477,6 @@ def _boot_phase_sd_ready():
     global SD_READY
     if ENABLE_SD_MOUNT:
         _try_mount_sd()
-        _sync_sd_assets_from_remote_if_needed()
     else:
         SD_READY = False
         print("sd_mounted:", SD_READY, "(disabled)")
@@ -1690,9 +1486,9 @@ def _boot_phase_meta_spawn():
     global asset_base, meta, tile, map_w, map_h, world_w, world_h
     global player_x, player_y
 
-    asset_base, meta = _find_asset_base(ASSET_BASES)
+    asset_base, meta = _find_asset_base(MAP1_ASSET_BASES)
     print("asset:", asset_base)
-    if asset_base == SD_ASSET_BASE:
+    if asset_base == MAP_REGISTRY[MAP1_ID]["asset_base"]:
         _print_asset_files(asset_base, meta)
     if hasattr(lgfx, "set_swap_bytes"):
         lgfx.set_swap_bytes(meta.get("endian", "little") == "little")
@@ -2100,9 +1896,6 @@ def _play_boot_comic_intro():
         while time.ticks_diff(last_deadline, time.ticks_ms()) > 0:
             time.sleep_ms(10)
 
-
-_play_boot_comic_intro()
-
 def _load_map_context(base, fallback_all_walkable=False, prefer_stream=False, preloaded_meta=None, preloaded_collision=None):
     global asset_base, meta, tile, map_w, map_h, world_w, world_h, runtime_endian, collision
 
@@ -2416,15 +2209,209 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     return True
 
 
-adc_x = ADC(Pin(JOY_X_PIN))
-adc_y = ADC(Pin(JOY_Y_PIN))
-adc_x.atten(ADC.ATTN_11DB)
-adc_y.atten(ADC.ATTN_11DB)
-interact_sw = Pin(ENCOUNTER_SW_PIN, Pin.IN, Pin.PULL_UP)
-btn_fight = Pin(BTN_FIGHT_PIN, Pin.IN, Pin.PULL_UP)
-btn_act = Pin(BTN_ACT_PIN, Pin.IN, Pin.PULL_UP)
-btn_item = Pin(BTN_ITEM_PIN, Pin.IN, Pin.PULL_UP)
-btn_mercy = Pin(BTN_MERCY_PIN, Pin.IN, Pin.PULL_UP)
+adc_x = None
+adc_y = None
+interact_sw = None
+btn_fight = None
+btn_act = None
+btn_item = None
+btn_mercy = None
+button_last_edge_ms = {}
+
+
+def _init_runtime_state():
+    global adc_x, adc_y, interact_sw, btn_fight, btn_act, btn_item, btn_mercy, cx
+    global cy, axis_max, frame, t0, scroll_x, scroll_y, cam_margin_x, cam_margin_y
+    global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y, x_dir, y_dir_raw, anim_row, anim_col
+    global anim_last_ms, face_right, move_carry_x, move_carry_y, prev_input_x, prev_input_y, prev_loop_ms, last_input_active_ms
+    global anim_x_dir, anim_y_dir, explore_moved, explore_scrolled, explore_anim_changed, explore_force_full_redraw, mode, title_menu_index
+    global title_nav_prev_dir, title_nav_next_ms, title_notice_until_ms, title_notice_text, title_dirty, title_full_redraw, title_cover_drew_png, encounter_cooldown_frames
+    global act_dialog_until_ms, fight_heart_x, fight_heart_y, battle_prev_heart_x, battle_prev_heart_y, battle_menu_dirty, battle_fight_dirty, battle_dialog_visible
+    global battle_dialog_mode, battle_dialog_started_ms, battle_dialog_png_info, battle_dialog_text, act_menu_active, act_choice_index, act_sequence_step, act_nav_prev_dir
+    global act_menu_slot_cache, act_prev_selected_index, act_selection_dirty, item_menu_active, item_choice_index, item_nav_prev_dir, item_menu_slot_cache, item_prev_selected_index
+    global item_selection_dirty, item_view_offset, menu_frame_x_used, menu_frame_w_used, menu_cmd_y_used, battle_heart_needs_sprite_refresh, fight_return_deadline_ms, player_hp
+    global enemy_hp, bullets, next_bullet_spawn_ms, damage_invuln_until_ms, battle_bullets_dirty, battle_prev_bullet_positions, battle_status_dirty, attack_started_ms
+    global attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty, attack_prev_cursor_draw_x, mercy_exit_pending, battle_menu_full_clear_pending, battle_menu_static_ready
+    global battle_menu_static_frame_x, battle_menu_static_frame_y, battle_menu_static_frame_w, battle_menu_enemy_bottom_used, battle_menu_enemy_x, battle_menu_enemy_y, battle_menu_enemy_w, battle_menu_enemy_h
+    global battle_menu_prev_dialog_active, battle_menu_prev_dialog_x, battle_menu_prev_dialog_y, battle_menu_prev_dialog_w, battle_menu_prev_dialog_h, map1_story_active, map1_story_stage, map1_story_line_index
+    global map1_story_next_ms, map1_story_enemy_angry, map1_enemy_anchor_mode, map1_enemy_slide_start_ms, map1_story_phase2_center_x, map1_story_phase2_center_y, _rng_state, interact_sw_prev
+    global btn_fight_prev, btn_act_prev, btn_item_prev, btn_mercy_prev, leaf_zone_prev_inside, map1_opening_battle_timer_started, map1_opening_battle_due_ms, map1_opening_battle_done
+    global lamp_dialog_until_ms, explore_overlay_dirty, current_map_id, teleport_cooldown_frames, inv_choice_index, inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index
+    global inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty, INV_TAB_ITEM, INV_TAB_STAT, INV_FOCUS_LEFT, INV_FOCUS_RIGHT, inv_tab_index
+    global inv_tab_active, inv_tab_nav_prev_dir, inv_focus_side, inv_focus_nav_prev_dir, weapon_pickup_dialog_active, weapon_pickup_choice_index, weapon_pickup_nav_prev_dir, weapon_pickup_target
+    global weapon_pickup_dialog_dirty, spawn_intro_cleared_once, spawn_intro_active, spawn_intro_overlay_path, spawn_intro_needs_redraw, inventory_portrait_path, title_cover_path, title_ui_start_path
+    global title_ui_continue_path, button_last_edge_ms
+    adc_x = ADC(Pin(JOY_X_PIN))
+    adc_y = ADC(Pin(JOY_Y_PIN))
+    adc_x.atten(ADC.ATTN_11DB)
+    adc_y.atten(ADC.ATTN_11DB)
+    interact_sw = Pin(ENCOUNTER_SW_PIN, Pin.IN, Pin.PULL_UP)
+    btn_fight = Pin(BTN_FIGHT_PIN, Pin.IN, Pin.PULL_UP)
+    btn_act = Pin(BTN_ACT_PIN, Pin.IN, Pin.PULL_UP)
+    btn_item = Pin(BTN_ITEM_PIN, Pin.IN, Pin.PULL_UP)
+    btn_mercy = Pin(BTN_MERCY_PIN, Pin.IN, Pin.PULL_UP)
+    button_last_edge_ms = {}
+    cx, cy, axis_max = _calibrate_center()
+    print("joystick center:", cx, cy, "max:", axis_max)
+    print("controls: move joystick, Ctrl-C to stop")
+
+    frame = 0
+    t0 = time.ticks_ms()
+
+    scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
+    scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
+    cam_margin_x = ACTIVE_VIEW_W // 4
+    cam_margin_y = ACTIVE_VIEW_H // 4
+    prev_scroll_x = scroll_x
+    prev_scroll_y = scroll_y
+    prev_player_x = player_x
+    prev_player_y = player_y
+    x_dir = 0
+    y_dir_raw = 0
+    anim_row = 0
+    anim_col = 1
+    anim_last_ms = time.ticks_ms()
+    face_right = False
+    move_carry_x = 0
+    move_carry_y = 0
+    prev_input_x = 0
+    prev_input_y = 0
+    prev_loop_ms = time.ticks_ms()
+    last_input_active_ms = prev_loop_ms
+    anim_x_dir = 0
+    anim_y_dir = 0
+    explore_moved = False
+    explore_scrolled = False
+    explore_anim_changed = False
+    explore_force_full_redraw = False
+    mode = MODE_TITLE_MENU
+    title_menu_index = 0
+    title_nav_prev_dir = 0
+    title_nav_next_ms = 0
+    title_notice_until_ms = 0
+    title_notice_text = None
+    title_dirty = True
+    title_full_redraw = True
+    title_cover_drew_png = False
+    encounter_cooldown_frames = 0
+    act_dialog_until_ms = 0
+    fight_heart_x = battle_heart_init_x
+    fight_heart_y = battle_heart_init_y
+    battle_prev_heart_x = fight_heart_x
+    battle_prev_heart_y = fight_heart_y
+    battle_menu_dirty = True
+    battle_fight_dirty = True
+    battle_dialog_visible = False
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    battle_dialog_started_ms = 0
+    battle_dialog_png_info = None
+    battle_dialog_text = None
+    act_menu_active = False
+    act_choice_index = 0
+    act_sequence_step = 0
+    act_nav_prev_dir = 0
+    act_menu_slot_cache = None
+    act_prev_selected_index = -1
+    act_selection_dirty = False
+    item_menu_active = False
+    item_choice_index = 0
+    item_nav_prev_dir = 0
+    item_menu_slot_cache = None
+    item_prev_selected_index = -1
+    item_selection_dirty = False
+    item_view_offset = 0
+    menu_frame_x_used = battle_frame_x
+    menu_frame_w_used = BATTLE_FRAME_W
+    menu_cmd_y_used = battle_cmd_y
+    battle_heart_needs_sprite_refresh = False
+    fight_return_deadline_ms = 0
+    player_hp = PLAYER_HP_MAX
+    enemy_hp = ENEMY_HP_MAX
+    bullets = []
+    next_bullet_spawn_ms = 0
+    damage_invuln_until_ms = 0
+    battle_bullets_dirty = False
+    battle_prev_bullet_positions = []
+    battle_status_dirty = True
+    attack_started_ms = 0
+    attack_cursor_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+    attack_cursor_dir = 1
+    attack_locked = False
+    battle_attack_dirty = True
+    attack_prev_cursor_draw_x = -9999
+    mercy_exit_pending = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_static_frame_x = battle_frame_x
+    battle_menu_static_frame_y = battle_frame_y
+    battle_menu_static_frame_w = BATTLE_FRAME_W
+    battle_menu_enemy_bottom_used = battle_frame_y + 88
+    battle_menu_enemy_x = battle_frame_x + ((BATTLE_FRAME_W - ENEMY_SPRITE_W) // 2)
+    battle_menu_enemy_y = battle_frame_y + 16
+    battle_menu_enemy_w = ENEMY_SPRITE_W
+    battle_menu_enemy_h = ENEMY_SPRITE_H
+    battle_menu_prev_dialog_active = False
+    battle_menu_prev_dialog_x = 0
+    battle_menu_prev_dialog_y = 0
+    battle_menu_prev_dialog_w = 0
+    battle_menu_prev_dialog_h = 0
+    map1_story_active = False
+    map1_story_stage = MAP1_STORY_STAGE_NONE
+    map1_story_line_index = -1
+    map1_story_next_ms = 0
+    map1_story_enemy_angry = False
+    map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_CENTER
+    map1_enemy_slide_start_ms = 0
+    map1_story_phase2_center_x = 0
+    map1_story_phase2_center_y = 0
+    _rng_state = (time.ticks_ms() | 1) & 0x7FFFFFFF
+    interact_sw_prev = interact_sw.value()
+    btn_fight_prev = btn_fight.value()
+    btn_act_prev = btn_act.value()
+    btn_item_prev = btn_item.value()
+    btn_mercy_prev = btn_mercy.value()
+    leaf_zone_prev_inside = False
+    map1_opening_battle_timer_started = False
+    map1_opening_battle_due_ms = 0
+    map1_opening_battle_done = False
+    lamp_dialog_until_ms = 0
+    explore_overlay_dirty = False
+    current_map_id = MAP1_ID
+    teleport_cooldown_frames = 0
+    inv_choice_index = 0
+    inv_nav_prev_dir = 0
+    inv_drop_active = False
+    inv_drop_choice_index = 0
+    inv_drop_choice_count = 2
+    inv_drop_nav_prev_dir = 0
+    inv_screen_dirty = True
+    INV_TAB_ITEM = 0
+    INV_TAB_STAT = 1
+    INV_FOCUS_LEFT = 0
+    INV_FOCUS_RIGHT = 1
+    inv_tab_index = INV_TAB_ITEM
+    inv_tab_active = INV_TAB_ITEM
+    inv_tab_nav_prev_dir = 0
+    inv_focus_side = INV_FOCUS_LEFT
+    inv_focus_nav_prev_dir = 0
+    weapon_pickup_dialog_active = False
+    weapon_pickup_choice_index = 0
+    weapon_pickup_nav_prev_dir = 0
+    weapon_pickup_target = None
+    weapon_pickup_dialog_dirty = False
+    spawn_intro_cleared_once = False
+    spawn_intro_active = bool(ENABLE_SPAWN_INTRO and (current_map_id == MAP1_ID))
+    spawn_intro_overlay_path = _resolve_first_existing_path(SPAWN_OVERLAY_PATHS) if spawn_intro_active else None
+    spawn_intro_needs_redraw = spawn_intro_active
+    inventory_portrait_path = _resolve_first_existing_path(INVENTORY_PORTRAIT_PATHS)
+    title_cover_path = _resolve_first_existing_path(TITLE_COVER_PATHS)
+    title_ui_start_path = _resolve_first_existing_path(TITLE_UI_START_PATHS)
+    title_ui_continue_path = _resolve_first_existing_path(TITLE_UI_CONTINUE_PATHS)
+
+    if player_sheet_enabled:
+        lgfx.player_frame_set(anim_row * 3 + anim_col)
+        if hasattr(lgfx, "player_flip_x_set"):
+            lgfx.player_flip_x_set(face_right)
 
 
 def _adc_read(adc):
@@ -2470,7 +2457,15 @@ def _adc_read_avg(adc, samples):
 
 def _read_falling_edge(pin, prev_state):
     state = pin.value()
-    return state, (prev_state == 1 and state == 0)
+    pressed = False
+    if prev_state == 1 and state == 0:
+        key = id(pin)
+        now = time.ticks_ms()
+        last_ms = button_last_edge_ms.get(key, None)
+        if last_ms is None or time.ticks_diff(now, last_ms) >= BINARY_EDGE_DEBOUNCE_MS:
+            pressed = True
+            button_last_edge_ms[key] = now
+    return state, pressed
 
 
 def _in_rect(px, py, rect):
@@ -2823,168 +2818,6 @@ def _calibrate_center(samples=24):
     return sx // samples, sy // samples, axis_max
 
 
-cx, cy, axis_max = _calibrate_center()
-print("joystick center:", cx, cy, "max:", axis_max)
-print("controls: move joystick, Ctrl-C to stop")
-
-frame = 0
-t0 = time.ticks_ms()
-
-scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
-scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
-cam_margin_x = ACTIVE_VIEW_W // 4
-cam_margin_y = ACTIVE_VIEW_H // 4
-prev_scroll_x = scroll_x
-prev_scroll_y = scroll_y
-prev_player_x = player_x
-prev_player_y = player_y
-x_dir = 0
-y_dir_raw = 0
-anim_row = 0
-anim_col = 1
-anim_last_ms = time.ticks_ms()
-face_right = False
-move_carry_x = 0
-move_carry_y = 0
-prev_input_x = 0
-prev_input_y = 0
-prev_loop_ms = time.ticks_ms()
-last_input_active_ms = prev_loop_ms
-anim_x_dir = 0
-anim_y_dir = 0
-explore_moved = False
-explore_scrolled = False
-explore_anim_changed = False
-explore_force_full_redraw = False
-mode = MODE_TITLE_MENU
-title_menu_index = 0
-title_nav_prev_dir = 0
-title_nav_next_ms = 0
-title_notice_until_ms = 0
-title_notice_text = None
-title_dirty = True
-title_full_redraw = True
-title_cover_drew_png = False
-encounter_cooldown_frames = 0
-act_dialog_until_ms = 0
-fight_heart_x = battle_heart_init_x
-fight_heart_y = battle_heart_init_y
-battle_prev_heart_x = fight_heart_x
-battle_prev_heart_y = fight_heart_y
-battle_menu_dirty = True
-battle_fight_dirty = True
-battle_dialog_visible = False
-battle_dialog_mode = BATTLE_DIALOG_NONE
-battle_dialog_started_ms = 0
-battle_dialog_png_info = None
-battle_dialog_text = None
-act_menu_active = False
-act_choice_index = 0
-act_sequence_step = 0
-act_nav_prev_dir = 0
-act_menu_slot_cache = None
-act_prev_selected_index = -1
-act_selection_dirty = False
-item_menu_active = False
-item_choice_index = 0
-item_nav_prev_dir = 0
-item_menu_slot_cache = None
-item_prev_selected_index = -1
-item_selection_dirty = False
-item_view_offset = 0
-menu_frame_x_used = battle_frame_x
-menu_frame_w_used = BATTLE_FRAME_W
-menu_cmd_y_used = battle_cmd_y
-battle_heart_needs_sprite_refresh = False
-fight_return_deadline_ms = 0
-player_hp = PLAYER_HP_MAX
-enemy_hp = ENEMY_HP_MAX
-bullets = []
-next_bullet_spawn_ms = 0
-damage_invuln_until_ms = 0
-battle_bullets_dirty = False
-battle_prev_bullet_positions = []
-battle_status_dirty = True
-attack_started_ms = 0
-attack_cursor_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
-attack_cursor_dir = 1
-attack_locked = False
-battle_attack_dirty = True
-attack_prev_cursor_draw_x = -9999
-mercy_exit_pending = False
-battle_menu_full_clear_pending = True
-battle_menu_static_ready = False
-battle_menu_static_frame_x = battle_frame_x
-battle_menu_static_frame_y = battle_frame_y
-battle_menu_static_frame_w = BATTLE_FRAME_W
-battle_menu_enemy_bottom_used = battle_frame_y + 88
-battle_menu_enemy_x = battle_frame_x + ((BATTLE_FRAME_W - ENEMY_SPRITE_W) // 2)
-battle_menu_enemy_y = battle_frame_y + 16
-battle_menu_enemy_w = ENEMY_SPRITE_W
-battle_menu_enemy_h = ENEMY_SPRITE_H
-battle_menu_prev_dialog_active = False
-battle_menu_prev_dialog_x = 0
-battle_menu_prev_dialog_y = 0
-battle_menu_prev_dialog_w = 0
-battle_menu_prev_dialog_h = 0
-map1_story_active = False
-map1_story_stage = MAP1_STORY_STAGE_NONE
-map1_story_line_index = -1
-map1_story_next_ms = 0
-map1_story_enemy_angry = False
-map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_CENTER
-map1_enemy_slide_start_ms = 0
-map1_story_phase2_center_x = 0
-map1_story_phase2_center_y = 0
-_rng_state = (time.ticks_ms() | 1) & 0x7FFFFFFF
-interact_sw_prev = interact_sw.value()
-btn_fight_prev = btn_fight.value()
-btn_act_prev = btn_act.value()
-btn_item_prev = btn_item.value()
-btn_mercy_prev = btn_mercy.value()
-leaf_zone_prev_inside = False
-map1_opening_battle_timer_started = False
-map1_opening_battle_due_ms = 0
-map1_opening_battle_done = False
-lamp_dialog_until_ms = 0
-explore_overlay_dirty = False
-current_map_id = MAP1_ID
-teleport_cooldown_frames = 0
-inv_choice_index = 0
-inv_nav_prev_dir = 0
-inv_drop_active = False
-inv_drop_choice_index = 0
-inv_drop_choice_count = 2
-inv_drop_nav_prev_dir = 0
-inv_screen_dirty = True
-INV_TAB_ITEM = 0
-INV_TAB_STAT = 1
-INV_FOCUS_LEFT = 0
-INV_FOCUS_RIGHT = 1
-inv_tab_index = INV_TAB_ITEM
-inv_tab_active = INV_TAB_ITEM
-inv_tab_nav_prev_dir = 0
-inv_focus_side = INV_FOCUS_LEFT
-inv_focus_nav_prev_dir = 0
-weapon_pickup_dialog_active = False
-weapon_pickup_choice_index = 0
-weapon_pickup_nav_prev_dir = 0
-weapon_pickup_target = None
-weapon_pickup_dialog_dirty = False
-spawn_intro_cleared_once = False
-spawn_intro_active = bool(ENABLE_SPAWN_INTRO and (current_map_id == MAP1_ID))
-spawn_intro_overlay_path = _resolve_first_existing_path(SPAWN_OVERLAY_PATHS) if spawn_intro_active else None
-spawn_intro_needs_redraw = spawn_intro_active
-inventory_portrait_path = _resolve_first_existing_path(INVENTORY_PORTRAIT_PATHS)
-title_cover_path = _resolve_first_existing_path(TITLE_COVER_PATHS)
-title_ui_start_path = _resolve_first_existing_path(TITLE_UI_START_PATHS)
-title_ui_continue_path = _resolve_first_existing_path(TITLE_UI_CONTINUE_PATHS)
-
-if player_sheet_enabled:
-    lgfx.player_frame_set(anim_row * 3 + anim_col)
-    if hasattr(lgfx, "player_flip_x_set"):
-        lgfx.player_flip_x_set(face_right)
-
 def update_player(loop_start, frame_dt):
     global player_x, player_y, scroll_x, scroll_y
     global prev_input_x, prev_input_y, move_carry_x, move_carry_y
@@ -3279,7 +3112,10 @@ def update_title_menu(loop_start, interact_pressed):
         return
 
     if title_menu_index == 1:
-        title_notice_text = TITLE_NOTICE_CONTINUE_TEXT
+        if _path_exists(config.SAVE1_PATH):
+            title_notice_text = TITLE_NOTICE_CONTINUE_TEXT
+        else:
+            title_notice_text = TITLE_NOTICE_NO_SAVE_TEXT
         title_notice_until_ms = time.ticks_add(loop_start, TITLE_NOTICE_MS)
         title_dirty = True
         title_full_redraw = True
@@ -4717,6 +4553,10 @@ def _enemy_entry_png_info(entry):
     path = entry.get("png")
     if not path:
         return None
+    resolved = _resolve_runtime_png_path(path)
+    if resolved and resolved != path:
+        entry["png"] = resolved
+        path = resolved
     src_w = int(entry.get("png_w", 0))
     src_h = int(entry.get("png_h", 0))
     if src_w < 1:
@@ -4738,6 +4578,10 @@ def _enemy_entry_text(entry, fallback_text=""):
 def _battle_enemy_sprite_info():
     profile = _battle_enemy_profile()
     path = profile.get("sprite_path", ENEMY_SPRITE_PATH)
+    resolved = _resolve_runtime_png_path(path)
+    if resolved and resolved != path:
+        profile["sprite_path"] = resolved
+        path = resolved
     draw_w = int(profile.get("sprite_w", ENEMY_SPRITE_W))
     draw_h = int(profile.get("sprite_h", ENEMY_SPRITE_H))
     if draw_w < 1:
@@ -6504,184 +6348,198 @@ def draw_all(loop_start):
     battle_bullets_dirty = False
     battle_fight_dirty = False
 
+def _run_main_loop():
+    global loop_start, frame_dt, prev_loop_ms, frame, encounter_cooldown_frames, teleport_cooldown_frames, rx, ry
+    global neutral, dx_center, dx_mid, cx, dy_center, dy_mid, cy, x_dir
+    global y_dir_raw, intro_neutral, spawn_intro_active, spawn_intro_cleared_once, explore_force_full_redraw, interact_sw_prev, interact_pressed, btn_fight_prev
+    global fight_pressed, btn_act_prev, act_pressed, btn_item_prev, item_pressed, btn_mercy_prev, mercy_pressed, explore_moved
+    global explore_scrolled, explore_anim_changed, move_dx, move_dy, active_portal, target_spawn, moved_since_last_map1, map1_opening_battle_timer_started
+    global map1_opening_battle_due_ms, map1_opening_battle_done, move_dx_for_encounter, move_dy_for_encounter, move_dist_for_encounter, moved_since_last, encounter_enemy_id, lamp_dialog_until_ms
+    global explore_overlay_dirty, dt, fps, avg_preload_ms, total_preload_attempts, avg_gc_ms, frame_used
+    while True:
+        loop_start = time.ticks_ms()
+        frame_dt = time.ticks_diff(loop_start, prev_loop_ms)
+        if frame_dt <= 0:
+            frame_dt = TARGET_FRAME_MS if TARGET_FRAME_MS > 0 else 20
+        prev_loop_ms = loop_start
 
-while True:
-    loop_start = time.ticks_ms()
-    frame_dt = time.ticks_diff(loop_start, prev_loop_ms)
-    if frame_dt <= 0:
-        frame_dt = TARGET_FRAME_MS if TARGET_FRAME_MS > 0 else 20
-    prev_loop_ms = loop_start
+        frame += 1
+        if encounter_cooldown_frames > 0:
+            encounter_cooldown_frames -= 1
+        if teleport_cooldown_frames > 0:
+            teleport_cooldown_frames -= 1
 
-    frame += 1
-    if encounter_cooldown_frames > 0:
-        encounter_cooldown_frames -= 1
-    if teleport_cooldown_frames > 0:
-        teleport_cooldown_frames -= 1
+        rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
+        ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
+        # Slowly retune center while stick is neutral to avoid long-term drift/sticky axis.
+        neutral = axis_max // DEADZONE_DIV
+        if x_dir == 0:
+            dx_center = rx - cx
+            dx_mid = rx - (axis_max // 2)
+            if (-neutral <= dx_center <= neutral) or (-neutral <= dx_mid <= neutral):
+                cx = ((cx * 15) + rx) // 16
+        if y_dir_raw == 0:
+            dy_center = ry - cy
+            dy_mid = ry - (axis_max // 2)
+            if (-neutral <= dy_center <= neutral) or (-neutral <= dy_mid <= neutral):
+                cy = ((cy * 15) + ry) // 16
 
-    rx, _ = _adc_read_avg(adc_x, ADC_SAMPLES)
-    ry, _ = _adc_read_avg(adc_y, ADC_SAMPLES)
-    # Slowly retune center while stick is neutral to avoid long-term drift/sticky axis.
-    neutral = axis_max // DEADZONE_DIV
-    if x_dir == 0:
-        dx_center = rx - cx
-        dx_mid = rx - (axis_max // 2)
-        if (-neutral <= dx_center <= neutral) or (-neutral <= dx_mid <= neutral):
-            cx = ((cx * 15) + rx) // 16
-    if y_dir_raw == 0:
-        dy_center = ry - cy
-        dy_mid = ry - (axis_max // 2)
-        if (-neutral <= dy_center <= neutral) or (-neutral <= dy_mid <= neutral):
-            cy = ((cy * 15) + ry) // 16
+        x_dir = _axis_dir(rx, cx, axis_max, x_dir)
+        y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
 
-    x_dir = _axis_dir(rx, cx, axis_max, x_dir)
-    y_dir_raw = _axis_dir(ry, cy, axis_max, y_dir_raw)
+        # Robust intro-exit gate: clear on stick deflection even before axis dir hysteresis engages.
+        if mode == MODE_EXPLORE and spawn_intro_active:
+            intro_neutral = axis_max // DEADZONE_DIV
+            if (rx - cx) > intro_neutral or (rx - cx) < -intro_neutral or (ry - cy) > intro_neutral or (ry - cy) < -intro_neutral:
+                spawn_intro_active = False
+                spawn_intro_cleared_once = True
+                explore_force_full_redraw = True
 
-    # Robust intro-exit gate: clear on stick deflection even before axis dir hysteresis engages.
-    if mode == MODE_EXPLORE and spawn_intro_active:
-        intro_neutral = axis_max // DEADZONE_DIV
-        if (rx - cx) > intro_neutral or (rx - cx) < -intro_neutral or (ry - cy) > intro_neutral or (ry - cy) < -intro_neutral:
-            spawn_intro_active = False
-            spawn_intro_cleared_once = True
-            explore_force_full_redraw = True
+        interact_sw_prev, interact_pressed = _read_falling_edge(interact_sw, interact_sw_prev)
+        btn_fight_prev, fight_pressed = _read_falling_edge(btn_fight, btn_fight_prev)
+        btn_act_prev, act_pressed = _read_falling_edge(btn_act, btn_act_prev)
+        btn_item_prev, item_pressed = _read_falling_edge(btn_item, btn_item_prev)
+        btn_mercy_prev, mercy_pressed = _read_falling_edge(btn_mercy, btn_mercy_prev)
+        if _map1_story_is_active():
+            fight_pressed = False
+            act_pressed = False
+            item_pressed = False
+            mercy_pressed = False
 
-    interact_sw_prev, interact_pressed = _read_falling_edge(interact_sw, interact_sw_prev)
-    btn_fight_prev, fight_pressed = _read_falling_edge(btn_fight, btn_fight_prev)
-    btn_act_prev, act_pressed = _read_falling_edge(btn_act, btn_act_prev)
-    btn_item_prev, item_pressed = _read_falling_edge(btn_item, btn_item_prev)
-    btn_mercy_prev, mercy_pressed = _read_falling_edge(btn_mercy, btn_mercy_prev)
-    if _map1_story_is_active():
-        fight_pressed = False
-        act_pressed = False
-        item_pressed = False
-        mercy_pressed = False
-
-    if mode == MODE_TITLE_MENU:
-        explore_moved = False
-        explore_scrolled = False
-        explore_anim_changed = False
-        update_title_menu(loop_start, interact_pressed)
-    elif mode == MODE_EXPLORE:
-        if weapon_pickup_dialog_active:
+        if mode == MODE_TITLE_MENU:
             explore_moved = False
             explore_scrolled = False
             explore_anim_changed = False
-            update_weapon_pickup_dialog(interact_pressed)
-        else:
-            update_player(loop_start, frame_dt)
+            update_title_menu(loop_start, interact_pressed)
+        elif mode == MODE_EXPLORE:
+            if weapon_pickup_dialog_active:
+                explore_moved = False
+                explore_scrolled = False
+                explore_anim_changed = False
+                update_weapon_pickup_dialog(interact_pressed)
+            else:
+                update_player(loop_start, frame_dt)
 
-            if mode == MODE_EXPLORE and item_pressed:
-                _open_explore_inventory()
-
-            if mode == MODE_EXPLORE:
-                _update_preload_for_player(player_x, player_y)
-
-                if teleport_cooldown_frames == 0:
-                    move_dx = player_x - prev_player_x
-                    move_dy = player_y - prev_player_y
-                    active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
-                    if active_portal:
-                        target_spawn = active_portal.get("target_spawn")
-                        if target_spawn and len(target_spawn) >= 2:
-                            switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
-                        else:
-                            switch_map(active_portal["target_map_id"])
-
-                if mode == MODE_EXPLORE and current_map_id == MAP1_ID and (not map1_opening_battle_done):
-                    moved_since_last_map1 = (player_x != prev_player_x) or (player_y != prev_player_y)
-                    if moved_since_last_map1 and (not map1_opening_battle_timer_started):
-                        map1_opening_battle_timer_started = True
-                        map1_opening_battle_due_ms = time.ticks_add(loop_start, MAP1_OPENING_BATTLE_DELAY_MS)
-                    if (
-                        map1_opening_battle_timer_started
-                        and encounter_cooldown_frames == 0
-                        and teleport_cooldown_frames == 0
-                        and time.ticks_diff(loop_start, map1_opening_battle_due_ms) >= 0
-                    ):
-                        _start_battle_from_explore()
-                        map1_opening_battle_done = True
-                        map1_opening_battle_timer_started = False
+                if mode == MODE_EXPLORE and item_pressed:
+                    _open_explore_inventory()
 
                 if mode == MODE_EXPLORE:
-                    move_dx_for_encounter = player_x - prev_player_x
-                    move_dy_for_encounter = player_y - prev_player_y
-                    move_dist_for_encounter = abs(move_dx_for_encounter) + abs(move_dy_for_encounter)
-                    _encounter_note_travel(current_map_id, move_dist_for_encounter)
+                    _update_preload_for_player(player_x, player_y)
 
-                if mode == MODE_EXPLORE and encounter_cooldown_frames == 0 and teleport_cooldown_frames == 0:
-                    moved_since_last = (player_x != prev_player_x) or (player_y != prev_player_y)
-                    if moved_since_last:
-                        encounter_enemy_id = _encounter_try_start(current_map_id, player_x, player_y)
-                        if encounter_enemy_id:
-                            _start_battle_from_explore(enemy_id=encounter_enemy_id)
+                    if teleport_cooldown_frames == 0:
+                        move_dx = player_x - prev_player_x
+                        move_dy = player_y - prev_player_y
+                        active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
+                        if active_portal:
+                            target_spawn = active_portal.get("target_spawn")
+                            if target_spawn and len(target_spawn) >= 2:
+                                switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
+                            else:
+                                switch_map(active_portal["target_map_id"])
 
-                if mode == MODE_EXPLORE and interact_pressed:
-                    if _try_open_weapon_pickup_dialog():
-                        pass
-                    elif current_map_id == MAP1_ID and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
-                        lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)
-                        # Mark as not drawn yet so the dialog appears immediately this frame.
-                        explore_overlay_dirty = False
-    elif mode == MODE_EXPLORE_INVENTORY:
-        explore_moved = False
-        explore_scrolled = False
-        explore_anim_changed = False
-        update_explore_inventory(loop_start, item_pressed, interact_pressed)
-    elif mode == MODE_BATTLE_MENU:
-        explore_moved = False
-        explore_scrolled = False
-        explore_anim_changed = False
-        update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mercy_pressed)
-    elif mode == MODE_BATTLE_ATTACK:
-        explore_moved = False
-        explore_scrolled = False
-        explore_anim_changed = False
-        update_battle_attack(loop_start, fight_pressed)
-    else:
-        explore_moved = False
-        explore_scrolled = False
-        explore_anim_changed = False
-        update_battle_fight(loop_start)
+                    if mode == MODE_EXPLORE and current_map_id == MAP1_ID and (not map1_opening_battle_done):
+                        moved_since_last_map1 = (player_x != prev_player_x) or (player_y != prev_player_y)
+                        if moved_since_last_map1 and (not map1_opening_battle_timer_started):
+                            map1_opening_battle_timer_started = True
+                            map1_opening_battle_due_ms = time.ticks_add(loop_start, MAP1_OPENING_BATTLE_DELAY_MS)
+                        if (
+                            map1_opening_battle_timer_started
+                            and encounter_cooldown_frames == 0
+                            and teleport_cooldown_frames == 0
+                            and time.ticks_diff(loop_start, map1_opening_battle_due_ms) >= 0
+                        ):
+                            _start_battle_from_explore()
+                            map1_opening_battle_done = True
+                            map1_opening_battle_timer_started = False
 
-    draw_all(loop_start)
-    _resident_pump_preload()
-    _maybe_run_deferred_gc(loop_start, explore_moved, explore_scrolled)
+                    if mode == MODE_EXPLORE:
+                        move_dx_for_encounter = player_x - prev_player_x
+                        move_dy_for_encounter = player_y - prev_player_y
+                        move_dist_for_encounter = abs(move_dx_for_encounter) + abs(move_dy_for_encounter)
+                        _encounter_note_travel(current_map_id, move_dist_for_encounter)
 
-    if frame % 120 == 0:
-        dt = time.ticks_diff(time.ticks_ms(), t0)
-        fps = (frame * 1000 / dt) if dt else 0
-        print("frame", frame, "fps", fps, "mode", mode, "cooldown", encounter_cooldown_frames, "stats", lgfx.stats(), "mem_free", gc.mem_free())
-        if DEBUG_PERF:
-            avg_preload_ms = 0
-            total_preload_attempts = perf_preload_build_count + perf_preload_build_fail_count
-            if total_preload_attempts > 0:
-                avg_preload_ms = perf_preload_build_ms_total // total_preload_attempts
-            avg_gc_ms = 0
-            if perf_gc_run_count > 0:
-                avg_gc_ms = perf_gc_run_ms_total // perf_gc_run_count
-            print(
-                "perf_preload",
-                "build_ok", perf_preload_build_count,
-                "build_fail", perf_preload_build_fail_count,
-                "release", perf_preload_release_count,
-                "skip_cached", perf_preload_skip_cached,
-                "skip_cooldown", perf_preload_skip_cooldown,
-                "skip_debounce", perf_preload_skip_debounce,
-                "skip_dwell", perf_preload_skip_dwell,
-                "skip_same_zone", perf_preload_skip_same_zone,
-                "skip_motion", perf_preload_skip_motion,
-                "skip_post_switch", perf_preload_skip_post_switch,
-                "avg_ms", avg_preload_ms,
-            )
-            print(
-                "perf_gc",
-                "run", perf_gc_run_count,
-                "avg_ms", avg_gc_ms,
-                "pending", gc_pending,
-            )
+                    if mode == MODE_EXPLORE and encounter_cooldown_frames == 0 and teleport_cooldown_frames == 0:
+                        moved_since_last = (player_x != prev_player_x) or (player_y != prev_player_y)
+                        if moved_since_last:
+                            encounter_enemy_id = _encounter_try_start(current_map_id, player_x, player_y)
+                            if encounter_enemy_id:
+                                _start_battle_from_explore(enemy_id=encounter_enemy_id)
 
-    if mode == MODE_EXPLORE and not explore_moved and not explore_scrolled:
-        time.sleep_ms(1)
-    if TARGET_FRAME_MS > 0:
-        frame_used = time.ticks_diff(time.ticks_ms(), loop_start)
-        if frame_used < TARGET_FRAME_MS:
-            time.sleep_ms(TARGET_FRAME_MS - frame_used)
+                    if mode == MODE_EXPLORE and interact_pressed:
+                        if _try_open_weapon_pickup_dialog():
+                            pass
+                        elif current_map_id == MAP1_ID and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
+                            lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)
+                            # Mark as not drawn yet so the dialog appears immediately this frame.
+                            explore_overlay_dirty = False
+        elif mode == MODE_EXPLORE_INVENTORY:
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+            update_explore_inventory(loop_start, item_pressed, interact_pressed)
+        elif mode == MODE_BATTLE_MENU:
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+            update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mercy_pressed)
+        elif mode == MODE_BATTLE_ATTACK:
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+            update_battle_attack(loop_start, fight_pressed)
+        else:
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+            update_battle_fight(loop_start)
+
+        draw_all(loop_start)
+        _resident_pump_preload()
+        _maybe_run_deferred_gc(loop_start, explore_moved, explore_scrolled)
+
+        if frame % 120 == 0:
+            dt = time.ticks_diff(time.ticks_ms(), t0)
+            fps = (frame * 1000 / dt) if dt else 0
+            print("frame", frame, "fps", fps, "mode", mode, "cooldown", encounter_cooldown_frames, "stats", lgfx.stats(), "mem_free", gc.mem_free())
+            if DEBUG_PERF:
+                avg_preload_ms = 0
+                total_preload_attempts = perf_preload_build_count + perf_preload_build_fail_count
+                if total_preload_attempts > 0:
+                    avg_preload_ms = perf_preload_build_ms_total // total_preload_attempts
+                avg_gc_ms = 0
+                if perf_gc_run_count > 0:
+                    avg_gc_ms = perf_gc_run_ms_total // perf_gc_run_count
+                print(
+                    "perf_preload",
+                    "build_ok", perf_preload_build_count,
+                    "build_fail", perf_preload_build_fail_count,
+                    "release", perf_preload_release_count,
+                    "skip_cached", perf_preload_skip_cached,
+                    "skip_cooldown", perf_preload_skip_cooldown,
+                    "skip_debounce", perf_preload_skip_debounce,
+                    "skip_dwell", perf_preload_skip_dwell,
+                    "skip_same_zone", perf_preload_skip_same_zone,
+                    "skip_motion", perf_preload_skip_motion,
+                    "skip_post_switch", perf_preload_skip_post_switch,
+                    "avg_ms", avg_preload_ms,
+                )
+                print(
+                    "perf_gc",
+                    "run", perf_gc_run_count,
+                    "avg_ms", avg_gc_ms,
+                    "pending", gc_pending,
+                )
+
+        if mode == MODE_EXPLORE and not explore_moved and not explore_scrolled:
+            time.sleep_ms(1)
+        if TARGET_FRAME_MS > 0:
+            frame_used = time.ticks_diff(time.ticks_ms(), loop_start)
+            if frame_used < TARGET_FRAME_MS:
+                time.sleep_ms(TARGET_FRAME_MS - frame_used)
+
+
+def main():
+    _init_display()
+    _play_boot_comic_intro()
+    _init_runtime_state()
+    _run_main_loop()
