@@ -31,6 +31,10 @@ MAP_DIRS=(
   "out_map2"
   "out_map3"
   "out_map4"
+  "out_map5"
+  "out_map6"
+  "out_map7"
+  "out_map8"
   "out_wood_main"
   "out_wood_up"
   "out_wood_right"
@@ -131,6 +135,24 @@ verify_required_sources() {
   done
 }
 
+check_sd_capacity_32gb() {
+  local py
+  py=$(cat <<'PY'
+from sd_host import ensure_sd_32gb, mount_sd, sd_capacity_bytes
+
+if not mount_sd("/sd", return_ok=True):
+    raise RuntimeError("SD_MOUNT_FAILED")
+
+cap, source = ensure_sd_32gb("/sd")
+print("sd_capacity_ok:", cap, "source:", source)
+probe_cap, probe_source = sd_capacity_bytes("/sd")
+print("sd_capacity_probe:", probe_cap, "source:", probe_source)
+PY
+)
+  run_mpremote connect "$PORT" exec "$py"
+  sleep 0.5
+}
+
 copy_flash_files() {
   local spec src dst
   for spec in "${FLASH_FILES[@]}"; do
@@ -144,7 +166,7 @@ prepare_device() {
   local py stale_py
   py=$(cat <<'PY'
 import os
-from sd_host import mount_sd
+from sd_host import ensure_sd_32gb, mount_sd
 
 STALE_FLASH_FILES = (
     "/game_mvp.py",
@@ -224,6 +246,7 @@ def ensure_dir(path):
 
 if not mount_sd("/sd", return_ok=True):
     raise RuntimeError("SD_MOUNT_FAILED")
+ensure_sd_32gb("/sd")
 
 for path in (
     "/sd/game",
@@ -232,6 +255,9 @@ for path in (
     "/sd/game/assets/out_map2",
     "/sd/game/assets/out_map3",
     "/sd/game/assets/out_map4",
+    "/sd/game/assets/out_map5",
+    "/sd/game/assets/out_map6",
+    "/sd/game/assets/out_map7",
     "/sd/game/assets/out_wood_main",
     "/sd/game/assets/out_wood_up",
     "/sd/game/assets/out_wood_right",
@@ -289,6 +315,7 @@ run_game() {
 
 verify_required_sources
 copy_flash_files
+check_sd_capacity_32gb
 prepare_device
 copy_game_files
 run_game

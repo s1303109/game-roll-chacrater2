@@ -9,6 +9,10 @@ WOOD_UP_ID = 5
 WOOD_RIGHT_ID = 6
 WOOD_LEFT_ID = 7
 MAP4_ID = 8
+MAP5_ID = 9
+MAP6_ID = 10
+MAP7_ID = 11
+MAP8_ID = 12
 
 
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
@@ -20,10 +24,26 @@ MAP2_PORTAL_TO_MAP3_RECT_PX = (448, 584, 64, 6)
 MAP3_PORTAL_TO_MAP2_RECT_PX = (448, 0, 64, 8)
 MAP3_PORTAL_TO_MAP4_RECT_PX = (448, 300, 64, 96)
 MAP4_PORTAL_TO_MAP3_RECT_PX = (72, 56, 64, 112)
+MAP4_PORTAL_TO_MAP5_RECT_PX = (768, 56, 64, 112)
+MAP5_PORTAL_TO_MAP4_RECT_PX = (72, 56, 64, 112)
+MAP5_PORTAL_TO_MAP6_RECT_PX = (688, 32, 16, 80)
+MAP5_PORTAL_TO_MAP7_RECT_PX = (455, 40, 57, 72)
+MAP6_PORTAL_TO_MAP5_RECT_PX = (72, 56, 64, 112)
+MAP7_PORTAL_TO_MAP5_RECT_PX = (288, 872, 64, 32)
+MAP7_PORTAL_TO_MAP8_RECT_PX = (254, 202, 80, 80)
+MAP8_PORTAL_TO_MAP7_RECT_PX = (592, 828, 254, 194)
 MAP2_FROM_MAP3_SPAWN_X = 480
 MAP2_FROM_MAP3_SPAWN_Y = 590
 MAP4_FROM_MAP3_SPAWN = (112, 172)
 MAP3_FROM_MAP4_SPAWN = (480, 430)
+MAP5_FROM_MAP4_SPAWN = (96, 172)
+MAP4_FROM_MAP5_SPAWN = (800, 172)
+MAP6_FROM_MAP5_SPAWN = (96, 172)
+MAP5_FROM_MAP6_SPAWN = (696, 96)
+MAP7_FROM_MAP5_SPAWN = (320, 888)
+MAP5_FROM_MAP7_SPAWN = (480, 172)
+MAP8_FROM_MAP7_SPAWN = (722, 945)
+MAP7_FROM_MAP8_SPAWN = (294, 320)
 WOOD_MAIN_PORTAL_TO_UP_RECT_PX = (144, 0, 32, 24)
 WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX = (296, 106, 24, 36)
 WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX = (0, 106, 24, 36)
@@ -116,7 +136,90 @@ MAP_REGISTRY = {
                 "entry_move_y_sign": -1,
                 "preload_pad_px": 96,
             },
+            {
+                "rect": MAP4_PORTAL_TO_MAP5_RECT_PX,
+                "target_map_id": MAP5_ID,
+                "target_spawn": MAP5_FROM_MAP4_SPAWN,
+                "entry_move_y_sign": -1,
+                "preload_pad_px": 96,
+            },
         ),
+    ),
+    MAP5_ID: _map_entry(
+        "out_map5",
+        "map5_tileset",
+        (
+            {
+                "rect": MAP5_PORTAL_TO_MAP4_RECT_PX,
+                "target_map_id": MAP4_ID,
+                "target_spawn": MAP4_FROM_MAP5_SPAWN,
+                "entry_move_y_sign": -1,
+                "preload_pad_px": 96,
+            },
+            {
+                "rect": MAP5_PORTAL_TO_MAP6_RECT_PX,
+                "target_map_id": MAP6_ID,
+                "target_spawn": MAP6_FROM_MAP5_SPAWN,
+                "entry_move_y_sign": -1,
+                "preload_pad_px": 96,
+            },
+            {
+                "rect": MAP5_PORTAL_TO_MAP7_RECT_PX,
+                "target_map_id": MAP7_ID,
+                "target_spawn": MAP7_FROM_MAP5_SPAWN,
+                "entry_move_y_sign": -1,
+                "preload_pad_px": 96,
+            },
+        ),
+    ),
+    MAP6_ID: _map_entry(
+        "out_map6",
+        "map6_tileset",
+        (
+            {
+                "rect": MAP6_PORTAL_TO_MAP5_RECT_PX,
+                "target_map_id": MAP5_ID,
+                "target_spawn": MAP5_FROM_MAP6_SPAWN,
+                "entry_move_y_sign": -1,
+                "preload_pad_px": 96,
+            },
+        ),
+    ),
+    MAP7_ID: _map_entry(
+        "out_map7",
+        "map7_tileset",
+        (
+            {
+                "rect": MAP7_PORTAL_TO_MAP5_RECT_PX,
+                "target_map_id": MAP5_ID,
+                "target_spawn": MAP5_FROM_MAP7_SPAWN,
+                "entry_move_y_sign": 1,
+                "preload_pad_px": 96,
+            },
+            {
+                "rect": MAP7_PORTAL_TO_MAP8_RECT_PX,
+                "target_map_id": MAP8_ID,
+                "target_spawn": MAP8_FROM_MAP7_SPAWN,
+                "preload_pad_px": 128,
+                "trigger_center_px": (294, 242),
+                "trigger_radius_px": 12,
+            },
+        ),
+    ),
+    MAP8_ID: _map_entry(
+        "out_map8",
+        "map8_tileset",
+        (
+            {
+                "rect": MAP8_PORTAL_TO_MAP7_RECT_PX,
+                "target_map_id": MAP7_ID,
+                "target_spawn": MAP7_FROM_MAP8_SPAWN,
+                "preload_pad_px": 128,
+                "trigger_center_px": (722, 945),
+                "trigger_radius_px": 18,
+            },
+        ),
+        fallback_all_walkable=True,
     ),
     WOOD_MAIN_ID: _map_entry(
         "out_wood_main",

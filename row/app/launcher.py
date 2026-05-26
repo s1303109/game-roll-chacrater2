@@ -2,7 +2,7 @@ import gc
 import os
 import sys
 
-from sd_host import mount_sd
+from sd_host import ensure_sd_32gb, mount_sd, sd_capacity_bytes
 
 
 GAME_ROOT = "/sd/game"
@@ -96,8 +96,13 @@ def main():
     try:
         if not mount_sd("/sd", return_ok=True):
             raise RuntimeError("SD_MOUNT_FAILED")
+        sd_capacity, sd_source = ensure_sd_32gb("/sd")
+        print("[launcher] sd_capacity_ok:", sd_capacity, "source:", sd_source)
     except Exception as err:
-        print("[launcher] SD mount failed:", err)
+        cap, source = sd_capacity_bytes("/sd")
+        if cap is not None:
+            print("[launcher] sd_capacity_detected:", cap, "source:", source)
+        print("[launcher] SD mount/capacity failed:", err)
         raise
 
     if not _path_exists(GAME_ROOT):

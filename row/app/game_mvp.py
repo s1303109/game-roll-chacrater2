@@ -10,6 +10,7 @@ from map_registry import (
     MAP2_ID,
     MAP3_ID,
     MAP4_ID,
+    MAP5_ID,
     WOOD_MAIN_ID,
     WOOD_UP_ID,
     WOOD_RIGHT_ID,
@@ -2549,13 +2550,24 @@ def _portal_direction_ok(portal, move_dx, move_dy):
     return True
 
 
+def _portal_trigger_hit(portal, px, py):
+    center = portal.get("trigger_center_px")
+    radius = portal.get("trigger_radius_px")
+    if center is not None and radius is not None:
+        if len(center) >= 2 and radius > 0:
+            dx = px - center[0]
+            dy = py - center[1]
+            return (dx * dx) + (dy * dy) <= (radius * radius)
+    return _in_rect(px, py, portal["rect"])
+
+
 def _get_current_portal(px, py, move_dx=0, move_dy=0):
     config = MAP_REGISTRY.get(current_map_id)
     if not config:
         return None
     portals = config.get("portals", ())
     for portal in portals:
-        if _in_rect(px, py, portal["rect"]) and _portal_direction_ok(portal, move_dx, move_dy):
+        if _portal_trigger_hit(portal, px, py) and _portal_direction_ok(portal, move_dx, move_dy):
             return portal
     return None
 
