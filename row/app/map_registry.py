@@ -42,7 +42,7 @@ MAP6_FROM_MAP5_SPAWN = (96, 172)
 MAP5_FROM_MAP6_SPAWN = (696, 96)
 MAP7_FROM_MAP5_SPAWN = (320, 888)
 MAP5_FROM_MAP7_SPAWN = (480, 172)
-MAP8_FROM_MAP7_SPAWN = (722, 945)
+MAP8_FROM_MAP7_SPAWN = (722, 900)
 MAP7_FROM_MAP8_SPAWN = (294, 320)
 WOOD_MAIN_PORTAL_TO_UP_RECT_PX = (144, 0, 32, 24)
 WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX = (296, 106, 24, 36)
@@ -201,8 +201,11 @@ MAP_REGISTRY = {
                 "target_map_id": MAP8_ID,
                 "target_spawn": MAP8_FROM_MAP7_SPAWN,
                 "preload_pad_px": 128,
-                "trigger_center_px": (294, 242),
-                "trigger_radius_px": 12,
+                "trigger_center_px": (295, 241),
+                "trigger_radius_px": 20,
+                "transition_effect": "spotlight_shrink",
+                "transition_shrink_ms": 4000,
+                "transition_black_ms": 1000,
             },
         ),
     ),
@@ -217,6 +220,9 @@ MAP_REGISTRY = {
                 "preload_pad_px": 128,
                 "trigger_center_px": (722, 945),
                 "trigger_radius_px": 18,
+                "transition_effect": "spotlight_shrink",
+                "transition_shrink_ms": 4000,
+                "transition_black_ms": 1000,
             },
         ),
         fallback_all_walkable=True,

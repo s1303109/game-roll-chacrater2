@@ -426,6 +426,9 @@ SPAWN_OVERLAY_PATHS = (
     config.ui_path("main character close eyes.clean.png"),
     config.ui_path("main character close eyes.orig.png"),
 )
+PORTAL_TRANSITION_EFFECT_SPOTLIGHT = "spotlight_shrink"
+PORTAL_TRANSITION_DEFAULT_SHRINK_MS = 4000
+PORTAL_TRANSITION_DEFAULT_BLACK_MS = 1000
 FORCE_SIMPLE_PLAYER = False
 USE_TILE_RENDER_PLAYER_COMPOSE = True
 ROTATION = 1
@@ -880,6 +883,17 @@ preload_last_build_ms = 0
 preload_last_release_ms = 0
 preload_release_due_ms = 0
 preload_suspend_until_ms = 0
+portal_transition_active = False
+portal_transition_started_ms = 0
+portal_transition_stage = "none"
+portal_transition_source_map_id = 0
+portal_transition_target_map_id = 0
+portal_transition_target_spawn = None
+portal_transition_center_screen_x = 0
+portal_transition_center_screen_y = 0
+portal_transition_shrink_ms = PORTAL_TRANSITION_DEFAULT_SHRINK_MS
+portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
+portal_transition_portal_ref = None
 gc_pending = False
 gc_last_run_ms = 0
 gc_suspend_until_ms = 0
@@ -2242,6 +2256,10 @@ def _init_runtime_state():
     global inv_tab_active, inv_tab_nav_prev_dir, inv_focus_side, inv_focus_nav_prev_dir, weapon_pickup_dialog_active, weapon_pickup_choice_index, weapon_pickup_nav_prev_dir, weapon_pickup_target
     global weapon_pickup_dialog_dirty, spawn_intro_cleared_once, spawn_intro_active, spawn_intro_overlay_path, spawn_intro_needs_redraw, inventory_portrait_path, title_cover_path, title_ui_start_path
     global title_ui_continue_path, button_last_edge_ms
+    global portal_transition_active, portal_transition_started_ms, portal_transition_stage
+    global portal_transition_source_map_id, portal_transition_target_map_id, portal_transition_target_spawn
+    global portal_transition_center_screen_x, portal_transition_center_screen_y
+    global portal_transition_shrink_ms, portal_transition_black_ms, portal_transition_portal_ref
     adc_x = ADC(Pin(JOY_X_PIN))
     adc_y = ADC(Pin(JOY_Y_PIN))
     adc_x.atten(ADC.ATTN_11DB)
@@ -2404,6 +2422,17 @@ def _init_runtime_state():
     spawn_intro_active = bool(ENABLE_SPAWN_INTRO and (current_map_id == MAP1_ID))
     spawn_intro_overlay_path = _resolve_first_existing_path(SPAWN_OVERLAY_PATHS) if spawn_intro_active else None
     spawn_intro_needs_redraw = spawn_intro_active
+    portal_transition_active = False
+    portal_transition_started_ms = 0
+    portal_transition_stage = "none"
+    portal_transition_source_map_id = 0
+    portal_transition_target_map_id = 0
+    portal_transition_target_spawn = None
+    portal_transition_center_screen_x = 0
+    portal_transition_center_screen_y = 0
+    portal_transition_shrink_ms = PORTAL_TRANSITION_DEFAULT_SHRINK_MS
+    portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
+    portal_transition_portal_ref = None
     inventory_portrait_path = _resolve_first_existing_path(INVENTORY_PORTRAIT_PATHS)
     title_cover_path = _resolve_first_existing_path(TITLE_COVER_PATHS)
     title_ui_start_path = _resolve_first_existing_path(TITLE_UI_START_PATHS)
@@ -2572,6 +2601,83 @@ def _get_current_portal(px, py, move_dx=0, move_dy=0):
     return None
 
 
+def _portal_transition_clear():
+    global portal_transition_active, portal_transition_started_ms, portal_transition_stage
+    global portal_transition_source_map_id, portal_transition_target_map_id
+    global portal_transition_target_spawn
+    global portal_transition_center_screen_x, portal_transition_center_screen_y
+    global portal_transition_shrink_ms, portal_transition_black_ms
+    global portal_transition_portal_ref
+    portal_transition_active = False
+    portal_transition_started_ms = 0
+    portal_transition_stage = "none"
+    portal_transition_source_map_id = 0
+    portal_transition_target_map_id = 0
+    portal_transition_target_spawn = None
+    portal_transition_center_screen_x = 0
+    portal_transition_center_screen_y = 0
+    portal_transition_shrink_ms = PORTAL_TRANSITION_DEFAULT_SHRINK_MS
+    portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
+    portal_transition_portal_ref = None
+
+
+def _portal_transition_start(portal):
+    global portal_transition_active, portal_transition_started_ms, portal_transition_stage
+    global portal_transition_source_map_id, portal_transition_target_map_id
+    global portal_transition_target_spawn
+    global portal_transition_center_screen_x, portal_transition_center_screen_y
+    global portal_transition_shrink_ms, portal_transition_black_ms
+    global portal_transition_portal_ref, explore_force_full_redraw
+    portal_transition_active = True
+    portal_transition_started_ms = time.ticks_ms()
+    portal_transition_stage = "shrink"
+    portal_transition_source_map_id = current_map_id
+    portal_transition_target_map_id = portal.get("target_map_id", 0)
+    portal_transition_target_spawn = portal.get("target_spawn")
+    portal_transition_center_screen_x = player_x - scroll_x
+    portal_transition_center_screen_y = player_y - scroll_y
+    portal_transition_shrink_ms = int(portal.get("transition_shrink_ms", PORTAL_TRANSITION_DEFAULT_SHRINK_MS))
+    portal_transition_black_ms = int(portal.get("transition_black_ms", PORTAL_TRANSITION_DEFAULT_BLACK_MS))
+    if portal_transition_shrink_ms <= 0:
+        portal_transition_shrink_ms = PORTAL_TRANSITION_DEFAULT_SHRINK_MS
+    if portal_transition_black_ms < 0:
+        portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
+    portal_transition_portal_ref = portal
+    explore_force_full_redraw = True
+
+
+def _portal_transition_update(loop_start):
+    global portal_transition_stage
+    if not portal_transition_active:
+        return
+    if mode != MODE_EXPLORE:
+        _portal_transition_clear()
+        return
+    if current_map_id != portal_transition_source_map_id:
+        _portal_transition_clear()
+        return
+
+    elapsed = time.ticks_diff(loop_start, portal_transition_started_ms)
+    if elapsed < 0:
+        elapsed = 0
+
+    total = portal_transition_shrink_ms + portal_transition_black_ms
+    if elapsed < portal_transition_shrink_ms:
+        portal_transition_stage = "shrink"
+        return
+    if elapsed < total:
+        portal_transition_stage = "black"
+        return
+
+    target_map_id = portal_transition_target_map_id
+    target_spawn = portal_transition_target_spawn
+    _portal_transition_clear()
+    if target_spawn and len(target_spawn) >= 2:
+        switch_map(target_map_id, target_spawn[0], target_spawn[1])
+    else:
+        switch_map(target_map_id)
+
+
 def _update_preload_for_player(px, py):
     global preload_zone_target_map_id, preload_zone_enter_ms
     global preload_last_build_ms, preload_release_due_ms, preload_suspend_until_ms
@@ -2597,6 +2703,10 @@ def _update_preload_for_player(px, py):
     preload_portal = None
     preload_zone_rect = None
     for portal in portals:
+        # Keep Map7<->Map8 cinematic portals out of preload to avoid first-time
+        # transition hitching and visual instability.
+        if portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
+            continue
         preload_pad_px = portal.get("preload_pad_px", PRELOAD_PORTAL_PAD_PX)
         zone_rect = _expand_rect(portal["rect"], preload_pad_px)
         if _in_rect(px, py, zone_rect):
@@ -3413,12 +3523,7 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
         inv_nav_prev_dir = 0
 
 
-def _draw_spawn_intro_overlay():
-    cx = player_x - scroll_x
-    cy = player_y - scroll_y
-    view_w = ACTIVE_VIEW_W
-    view_h = ACTIVE_VIEW_H
-    r = SPAWN_SPOTLIGHT_RADIUS
+def _draw_spotlight_mask(cx, cy, r, view_w, view_h):
     if r < 1:
         r = 1
     rr = r * r
@@ -3449,6 +3554,14 @@ def _draw_spawn_intro_overlay():
             lgfx.draw_rect(x2, yy, view_w - x2, 1, 0x0000)
         yy += 1
 
+
+def _draw_spawn_intro_overlay():
+    cx = player_x - scroll_x
+    cy = player_y - scroll_y
+    view_w = ACTIVE_VIEW_W
+    view_h = ACTIVE_VIEW_H
+    _draw_spotlight_mask(cx, cy, SPAWN_SPOTLIGHT_RADIUS, view_w, view_h)
+
     if spawn_intro_overlay_path and hasattr(lgfx, "draw_png_file"):
         lgfx.draw_png_file(
             spawn_intro_overlay_path,
@@ -3457,6 +3570,37 @@ def _draw_spawn_intro_overlay():
             PLAYER_FRAME_W,
             PLAYER_FRAME_H,
         )
+
+
+def _draw_portal_transition_overlay(loop_start):
+    if not portal_transition_active:
+        return
+    elapsed = time.ticks_diff(loop_start, portal_transition_started_ms)
+    if elapsed < 0:
+        elapsed = 0
+    if elapsed >= portal_transition_shrink_ms:
+        _fill_rect_solid(0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H, 0x0000)
+        return
+
+    cx = portal_transition_center_screen_x
+    cy = portal_transition_center_screen_y
+    if cx < 0:
+        cx = 0
+    elif cx >= ACTIVE_VIEW_W:
+        cx = ACTIVE_VIEW_W - 1
+    if cy < 0:
+        cy = 0
+    elif cy >= ACTIVE_VIEW_H:
+        cy = ACTIVE_VIEW_H - 1
+
+    dx = cx if cx > (ACTIVE_VIEW_W - 1 - cx) else (ACTIVE_VIEW_W - 1 - cx)
+    dy = cy if cy > (ACTIVE_VIEW_H - 1 - cy) else (ACTIVE_VIEW_H - 1 - cy)
+    max_r = _isqrt((dx * dx) + (dy * dy)) + 2
+    remain = portal_transition_shrink_ms - elapsed
+    if remain < 0:
+        remain = 0
+    r = (max_r * remain) // portal_transition_shrink_ms
+    _draw_spotlight_mask(cx, cy, r, ACTIVE_VIEW_W, ACTIVE_VIEW_H)
 
 
 def _lamp_dialog_rect():
@@ -6284,6 +6428,8 @@ def draw_all(loop_start):
             if weapon_pickup_dialog_dirty or scene_redrawn or player_redrawn:
                 _draw_weapon_pickup_dialog()
                 weapon_pickup_dialog_dirty = False
+        if portal_transition_active:
+            _draw_portal_transition_overlay(loop_start)
         prev_player_x = player_x
         prev_player_y = player_y
         prev_scroll_x = scroll_x
@@ -6424,7 +6570,12 @@ def _run_main_loop():
             explore_anim_changed = False
             update_title_menu(loop_start, interact_pressed)
         elif mode == MODE_EXPLORE:
-            if weapon_pickup_dialog_active:
+            if portal_transition_active:
+                explore_moved = False
+                explore_scrolled = False
+                explore_anim_changed = False
+                _portal_transition_update(loop_start)
+            elif weapon_pickup_dialog_active:
                 explore_moved = False
                 explore_scrolled = False
                 explore_anim_changed = False
@@ -6443,11 +6594,14 @@ def _run_main_loop():
                         move_dy = player_y - prev_player_y
                         active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
                         if active_portal:
-                            target_spawn = active_portal.get("target_spawn")
-                            if target_spawn and len(target_spawn) >= 2:
-                                switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
+                            if active_portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
+                                _portal_transition_start(active_portal)
                             else:
-                                switch_map(active_portal["target_map_id"])
+                                target_spawn = active_portal.get("target_spawn")
+                                if target_spawn and len(target_spawn) >= 2:
+                                    switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
+                                else:
+                                    switch_map(active_portal["target_map_id"])
 
                     if mode == MODE_EXPLORE and current_map_id == MAP1_ID and (not map1_opening_battle_done):
                         moved_since_last_map1 = (player_x != prev_player_x) or (player_y != prev_player_y)
