@@ -41,6 +41,10 @@ bool lgfx_player_sheet_load_file_impl(const char *sheet_path, int sheet_w, int s
 void lgfx_player_frame_set_impl(int frame_index);
 void lgfx_player_flip_x_set_impl(bool flip_x);
 void lgfx_player_sheet_clear_impl(void);
+bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h);
+void lgfx_enemy_frame_set_impl(int frame_index);
+void lgfx_enemy_sheet_clear_impl(void);
+void lgfx_enemy_draw_impl(int x, int y);
 bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h);
 void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles);
 #ifdef __cplusplus
@@ -406,6 +410,38 @@ static mp_obj_t lgfx_player_sheet_clear(void) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_player_sheet_clear_obj, lgfx_player_sheet_clear);
 
+static mp_obj_t lgfx_enemy_sheet_load_file(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    const char *sheet_path = mp_obj_str_get_str(args[0]);
+    int sheet_w = mp_obj_get_int(args[1]);
+    int sheet_h = mp_obj_get_int(args[2]);
+    int frame_w = mp_obj_get_int(args[3]);
+    int frame_h = mp_obj_get_int(args[4]);
+    bool ok = lgfx_enemy_sheet_load_file_impl(sheet_path, sheet_w, sheet_h, frame_w, frame_h);
+    return mp_obj_new_bool(ok);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_enemy_sheet_load_file_obj, 5, lgfx_enemy_sheet_load_file);
+
+static mp_obj_t lgfx_enemy_frame_set(mp_obj_t frame_index_obj) {
+    lgfx_enemy_frame_set_impl(mp_obj_get_int(frame_index_obj));
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(lgfx_enemy_frame_set_obj, lgfx_enemy_frame_set);
+
+static mp_obj_t lgfx_enemy_sheet_clear(void) {
+    lgfx_enemy_sheet_clear_impl();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_enemy_sheet_clear_obj, lgfx_enemy_sheet_clear);
+
+static mp_obj_t lgfx_enemy_draw(mp_obj_t x_obj, mp_obj_t y_obj) {
+    int x = mp_obj_get_int(x_obj);
+    int y = mp_obj_get_int(y_obj);
+    lgfx_enemy_draw_impl(x, y);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(lgfx_enemy_draw_obj, lgfx_enemy_draw);
+
 static mp_obj_t lgfx_draw_png_file(size_t n_args, const mp_obj_t *args) {
     (void)n_args;
     const char *path = mp_obj_str_get_str(args[0]);
@@ -470,6 +506,10 @@ static const mp_rom_map_elem_t lgfx_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_player_frame_set), MP_ROM_PTR(&lgfx_player_frame_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_player_flip_x_set), MP_ROM_PTR(&lgfx_player_flip_x_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_player_sheet_clear), MP_ROM_PTR(&lgfx_player_sheet_clear_obj) },
+    { MP_ROM_QSTR(MP_QSTR_enemy_sheet_load_file), MP_ROM_PTR(&lgfx_enemy_sheet_load_file_obj) },
+    { MP_ROM_QSTR(MP_QSTR_enemy_frame_set), MP_ROM_PTR(&lgfx_enemy_frame_set_obj) },
+    { MP_ROM_QSTR(MP_QSTR_enemy_sheet_clear), MP_ROM_PTR(&lgfx_enemy_sheet_clear_obj) },
+    { MP_ROM_QSTR(MP_QSTR_enemy_draw), MP_ROM_PTR(&lgfx_enemy_draw_obj) },
     { MP_ROM_QSTR(MP_QSTR_draw_png_file), MP_ROM_PTR(&lgfx_draw_png_file_obj) },
     { MP_ROM_QSTR(MP_QSTR_stats), MP_ROM_PTR(&lgfx_stats_obj) },
 };

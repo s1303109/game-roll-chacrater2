@@ -82,6 +82,7 @@ UI_FILE_MAP=(
   "act_reply2_text.png|act_reply2_text.png"
   "act_reply3_text.png|act_reply3_text.png"
   "mercy_locked_text.png|mercy_locked_text.png"
+  "map6_boss_battle.png|map6_boss_battle.png"
   "main character close eyes.clean.png|main character close eyes.clean.png"
   "main character close eyes.orig.png|main character close eyes.orig.png"
 )
@@ -122,6 +123,7 @@ verify_required_sources() {
   done
 
   [[ -f "${ASSET_ROOT}/out/player_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/player_sheet.rgb565"
+  [[ -f "${ASSET_ROOT}/out/map6_boss_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/map6_boss_sheet.rgb565"
 
   for dir in "${MAP_DIRS[@]}"; do
     for name in map.json tilemap.bin tileset.bin collision.bin; do
@@ -133,6 +135,25 @@ verify_required_sources() {
     src="${spec%%|*}"
     [[ -f "${UI_SRC_DIR}/${src}" ]] || fail "Missing UI asset: ${UI_SRC_DIR}/${src}"
   done
+}
+
+check_psram_firmware() {
+  local py
+  py=$(cat <<'PY'
+import gc
+import sys
+
+build = getattr(sys.implementation, "_build", "")
+mem_free = gc.mem_free()
+print("fw_build:", build)
+print("fw_mem_free:", mem_free)
+
+if ("SPIRAM_OCT" not in build) or (mem_free < 1000000):
+    raise RuntimeError("PSRAM_FIRMWARE_REQUIRED")
+PY
+)
+  run_mpremote connect "$PORT" exec "$py"
+  sleep 0.5
 }
 
 check_sd_capacity_32gb() {
@@ -258,6 +279,7 @@ for path in (
     "/sd/game/assets/out_map5",
     "/sd/game/assets/out_map6",
     "/sd/game/assets/out_map7",
+    "/sd/game/assets/out_map8",
     "/sd/game/assets/out_wood_main",
     "/sd/game/assets/out_wood_up",
     "/sd/game/assets/out_wood_right",
@@ -293,6 +315,7 @@ copy_game_files() {
   done
 
   copy_one "${ASSET_ROOT}/out/player_sheet.rgb565" "/sd/game/sprites/player_sheet.rgb565" "/sd/game/sprites/player_sheet.rgb565"
+  copy_one "${ASSET_ROOT}/out/map6_boss_sheet.rgb565" "/sd/game/sprites/map6_boss_sheet.rgb565" "/sd/game/sprites/map6_boss_sheet.rgb565"
 
   for dir in "${MAP_DIRS[@]}"; do
     for name in map.json tilemap.bin tileset.bin collision.bin; do
@@ -315,6 +338,7 @@ run_game() {
 
 verify_required_sources
 copy_flash_files
+check_psram_firmware
 check_sd_capacity_32gb
 prepare_device
 copy_game_files

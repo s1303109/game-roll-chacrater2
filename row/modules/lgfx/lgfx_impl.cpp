@@ -202,6 +202,22 @@ extern "C" void lgfx_player_flip_x_set_impl(bool flip_x) {
   (void)flip_x;
 }
 extern "C" void lgfx_player_sheet_clear_impl(void) {}
+extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+  (void)sheet_path;
+  (void)sheet_w;
+  (void)sheet_h;
+  (void)frame_w;
+  (void)frame_h;
+  return false;
+}
+extern "C" void lgfx_enemy_frame_set_impl(int frame_index) {
+  (void)frame_index;
+}
+extern "C" void lgfx_enemy_sheet_clear_impl(void) {}
+extern "C" void lgfx_enemy_draw_impl(int x, int y) {
+  (void)x;
+  (void)y;
+}
 extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
   (void)path;
   (void)x;
@@ -452,6 +468,19 @@ struct PlayerOverlayState {
   uint32_t scene_epoch = 0;
 } player_overlay;
 
+struct EnemyOverlayState {
+  bool valid = false;
+  int x = 0;
+  int y = 0;
+  int w = 0;
+  int h = 0;
+  int center_x = 0;
+  int center_y = 0;
+  bool used_sprite = false;
+  int frame_index = 0;
+  uint32_t scene_epoch = 0;
+} enemy_overlay;
+
 static uint32_t scene_epoch = 0;
 
 static bool render_compose_player = false;
@@ -475,6 +504,20 @@ struct PlayerSpriteState {
   bool flip_x = false;
   bool enabled = false;
 } player_sprite;
+
+struct EnemySpriteState {
+  uint16_t *pixels = nullptr;
+  size_t pixels_len = 0;
+  uint8_t *bg_mask = nullptr;
+  size_t bg_mask_len = 0;
+  int sheet_w = 0;
+  int sheet_h = 0;
+  int frame_w = 0;
+  int frame_h = 0;
+  int frame_count = 0;
+  int current_frame = 0;
+  bool enabled = false;
+} enemy_sprite;
 
 static bool tile_fail(int code) {
   tile_state.last_error = code;
@@ -723,6 +766,7 @@ static bool resident_activate_slot(int slot_id, bool force_full_redraw) {
   tile_state.active_slot_id = slot_id;
   tile_state.has_prev_scroll = false;
   player_overlay.valid = false;
+  enemy_overlay.valid = false;
   slot->invalid_tile_logged = false;
   return true;
 }
@@ -1226,6 +1270,7 @@ static void tile_free_buffers(void) {
   tile_state.has_prev_scroll = false;
   tile_state.active_slot_id = -1;
   player_overlay.valid = false;
+  enemy_overlay.valid = false;
 }
 
 static bool ensure_sprite_size(int w, int h, bool use_psram) {
@@ -1607,6 +1652,150 @@ static void player_sheet_release(void) {
   player_sprite.enabled = false;
 }
 
+static void enemy_sheet_release(void) {
+  if (enemy_sprite.pixels) {
+    heap_caps_free(enemy_sprite.pixels);
+    enemy_sprite.pixels = nullptr;
+  }
+  if (enemy_sprite.bg_mask) {
+    heap_caps_free(enemy_sprite.bg_mask);
+    enemy_sprite.bg_mask = nullptr;
+  }
+  enemy_sprite.pixels_len = 0;
+  enemy_sprite.bg_mask_len = 0;
+  enemy_sprite.sheet_w = 0;
+  enemy_sprite.sheet_h = 0;
+  enemy_sprite.frame_w = 0;
+  enemy_sprite.frame_h = 0;
+  enemy_sprite.frame_count = 0;
+  enemy_sprite.current_frame = 0;
+  enemy_sprite.enabled = false;
+  enemy_overlay.valid = false;
+}
+
+static bool enemy_draw_sheet_frame(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h, bool has_active_write) {
+  if (!enemy_sprite.enabled || !enemy_sprite.pixels || enemy_sprite.frame_count <= 0) {
+    return false;
+  }
+
+  int frame_w = enemy_sprite.frame_w;
+  int frame_h = enemy_sprite.frame_h;
+  if (frame_w <= 0 || frame_h <= 0 || enemy_sprite.sheet_w <= 0 || enemy_sprite.sheet_h <= 0) {
+    return false;
+  }
+
+  int frames_per_row = enemy_sprite.sheet_w / frame_w;
+  if (frames_per_row <= 0) {
+    return false;
+  }
+
+  int frame_index = enemy_sprite.current_frame;
+  if (frame_index < 0 || frame_index >= enemy_sprite.frame_count) {
+    frame_index %= enemy_sprite.frame_count;
+    if (frame_index < 0) {
+      frame_index += enemy_sprite.frame_count;
+    }
+  }
+
+  int src_col = frame_index % frames_per_row;
+  int src_row = frame_index / frames_per_row;
+  int src_x = src_col * frame_w;
+  int src_y = src_row * frame_h;
+  if (src_x < 0 || src_y < 0 || src_x + frame_w > enemy_sprite.sheet_w || src_y + frame_h > enemy_sprite.sheet_h) {
+    return false;
+  }
+
+  int dst_x = center_x - frame_w / 2;
+  int dst_y = center_y - frame_h / 2;
+  int clip_x0 = dst_x < 0 ? 0 : dst_x;
+  int clip_y0 = dst_y < 0 ? 0 : dst_y;
+  int clip_x1 = dst_x + frame_w;
+  int clip_y1 = dst_y + frame_h;
+  if (clip_x1 > tile_state.view_w) {
+    clip_x1 = tile_state.view_w;
+  }
+  if (clip_y1 > tile_state.view_h) {
+    clip_y1 = tile_state.view_h;
+  }
+  if (clip_x0 >= clip_x1 || clip_y0 >= clip_y1) {
+    if (out_x) {
+      *out_x = dst_x;
+    }
+    if (out_y) {
+      *out_y = dst_y;
+    }
+    if (out_w) {
+      *out_w = frame_w;
+    }
+    if (out_h) {
+      *out_h = frame_h;
+    }
+    return true;
+  }
+
+  int src_clip_x = clip_x0 - dst_x;
+  int src_clip_y = clip_y0 - dst_y;
+  int draw_w = clip_x1 - clip_x0;
+  int draw_h = clip_y1 - clip_y0;
+  const uint16_t *base = enemy_sprite.pixels + (size_t)src_y * (size_t)enemy_sprite.sheet_w + (size_t)src_x;
+
+  bool opened_write = false;
+  if (!has_active_write) {
+    lcd.startWrite();
+    opened_write = true;
+  }
+  size_t frame_pixels = (size_t)frame_w * (size_t)frame_h;
+  size_t frame_offset = (size_t)frame_index * frame_pixels;
+  for (int yy = 0; yy < draw_h; ++yy) {
+    const uint16_t *row_base = base + (size_t)(src_clip_y + yy) * (size_t)enemy_sprite.sheet_w;
+    const uint16_t *line = row_base + (size_t)src_clip_x;
+    int run_start = -1;
+    for (int xx = 0; xx < draw_w; ++xx) {
+      size_t local_x = (size_t)(src_clip_x + xx);
+      bool transparent = false;
+      if (enemy_sprite.bg_mask && enemy_sprite.bg_mask_len > 0) {
+        size_t local_y = (size_t)(src_clip_y + yy);
+        size_t mask_idx = frame_offset + local_y * (size_t)frame_w + local_x;
+        if (mask_idx < frame_pixels * (size_t)enemy_sprite.frame_count) {
+          transparent = mask_bit_get(enemy_sprite.bg_mask, mask_idx);
+        }
+      } else {
+        transparent = player_pixel_is_transparent(row_base[local_x]);
+      }
+      if (!transparent) {
+        if (run_start < 0) {
+          run_start = xx;
+        }
+      } else if (run_start >= 0) {
+        int run_len = xx - run_start;
+        lcd.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, line + run_start);
+        run_start = -1;
+      }
+    }
+    if (run_start >= 0) {
+      int run_len = draw_w - run_start;
+      lcd.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, line + run_start);
+    }
+  }
+  if (opened_write) {
+    lcd.endWrite();
+  }
+
+  if (out_x) {
+    *out_x = dst_x;
+  }
+  if (out_y) {
+    *out_y = dst_y;
+  }
+  if (out_w) {
+    *out_w = frame_w;
+  }
+  if (out_h) {
+    *out_h = frame_h;
+  }
+  return true;
+}
+
 static bool player_draw_sheet_frame(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h, bool has_active_write) {
   if (!player_sprite.enabled || !player_sprite.pixels || player_sprite.frame_count <= 0) {
     return false;
@@ -1977,6 +2166,7 @@ extern "C" void lgfx_init_impl(void) {
   sprite.setSwapBytes(lcd.getSwapBytes());
   lcd.setBrightness(255);
   player_overlay.valid = false;
+  enemy_overlay.valid = false;
   scene_epoch = 0;
 }
 
@@ -2489,6 +2679,86 @@ extern "C" void lgfx_player_sheet_clear_impl(void) {
   player_sheet_release();
 }
 
+extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+  if (!sheet_path) {
+    return false;
+  }
+
+  size_t expected_len = (size_t)sheet_w * (size_t)sheet_h * sizeof(uint16_t);
+  int frame_count = 0;
+  if (!player_sheet_validate(expected_len, sheet_w, sheet_h, frame_w, frame_h, &frame_count)) {
+    return false;
+  }
+
+  mp_obj_t file = vfs_open_rb(sheet_path);
+  if (file == MP_OBJ_NULL) {
+    return false;
+  }
+
+  int errcode = 0;
+  mp_off_t file_size = mp_stream_seek(file, 0, MP_SEEK_END, &errcode);
+  if (file_size < 0 || errcode != 0 || (size_t)file_size != expected_len) {
+    vfs_close_quiet(file);
+    return false;
+  }
+  mp_off_t seek0 = mp_stream_seek(file, 0, MP_SEEK_SET, &errcode);
+  if (seek0 < 0 || errcode != 0) {
+    vfs_close_quiet(file);
+    return false;
+  }
+
+  uint16_t *new_pixels = player_alloc_pixels(expected_len);
+  if (!new_pixels) {
+    vfs_close_quiet(file);
+    return false;
+  }
+  bool read_ok = vfs_read_exact(file, new_pixels, expected_len);
+  vfs_close_quiet(file);
+  if (!read_ok) {
+    heap_caps_free(new_pixels);
+    return false;
+  }
+
+  uint8_t *new_mask = nullptr;
+  size_t new_mask_len = 0;
+  player_build_bg_mask(new_pixels, sheet_w, sheet_h, frame_w, frame_h, frame_count, &new_mask, &new_mask_len);
+
+  if (enemy_sprite.pixels) {
+    heap_caps_free(enemy_sprite.pixels);
+  }
+  if (enemy_sprite.bg_mask) {
+    heap_caps_free(enemy_sprite.bg_mask);
+  }
+  enemy_sprite.pixels = new_pixels;
+  enemy_sprite.pixels_len = expected_len;
+  enemy_sprite.bg_mask = new_mask;
+  enemy_sprite.bg_mask_len = new_mask_len;
+  enemy_sprite.sheet_w = sheet_w;
+  enemy_sprite.sheet_h = sheet_h;
+  enemy_sprite.frame_w = frame_w;
+  enemy_sprite.frame_h = frame_h;
+  enemy_sprite.frame_count = frame_count;
+  enemy_sprite.current_frame = 0;
+  enemy_sprite.enabled = true;
+  enemy_overlay.valid = false;
+  return true;
+}
+
+extern "C" void lgfx_enemy_frame_set_impl(int frame_index) {
+  if (!enemy_sprite.enabled || enemy_sprite.frame_count <= 0) {
+    return;
+  }
+  int norm = frame_index % enemy_sprite.frame_count;
+  if (norm < 0) {
+    norm += enemy_sprite.frame_count;
+  }
+  enemy_sprite.current_frame = norm;
+}
+
+extern "C" void lgfx_enemy_sheet_clear_impl(void) {
+  enemy_sheet_release();
+}
+
 extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
   if (!path || w <= 0 || h <= 0) {
     return false;
@@ -2591,12 +2861,19 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
     memset(tile_state.dirty, 0, map_cells);
     render_stats.full_frames += 1;
     player_overlay.valid = false;
+    enemy_overlay.valid = false;
   } else if (try_scroll_opt && iabs(dx_scroll) < tile_state.view_w && iabs(dy_scroll) < tile_state.view_h) {
     // Scroll current sprite contents, then redraw only newly exposed strips + dirty tiles.
+    if (enemy_overlay.valid) {
+      redraw_map_rect_to_sprite(enemy_overlay.x, enemy_overlay.y, enemy_overlay.w, enemy_overlay.h, stream_file,
+                                tile_state.prev_scroll_x, tile_state.prev_scroll_y);
+      enemy_overlay.valid = false;
+    }
     if (player_overlay.valid) {
       redraw_map_rect_to_sprite(player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h, stream_file,
                                 tile_state.prev_scroll_x, tile_state.prev_scroll_y);
       player_overlay.valid = false;
+      enemy_overlay.valid = false;
     }
     sprite.scroll(-dx_scroll, -dy_scroll);
 
@@ -2655,6 +2932,7 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
     scene_epoch += 1;
     render_stats.full_frames += 1;
     player_overlay.valid = false;
+    enemy_overlay.valid = false;
   } else {
     int min_x = tile_state.view_w;
     int min_y = tile_state.view_h;
@@ -2795,6 +3073,52 @@ extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) 
   player_overlay.frame_index = frame_index;
   player_overlay.flip_x = flip_x;
   player_overlay.scene_epoch = scene_epoch;
+}
+
+extern "C" void lgfx_enemy_draw_impl(int x, int y) {
+  bool can_use_sprite = enemy_sprite.enabled && enemy_sprite.pixels && enemy_sprite.frame_count > 0;
+  int frame_index = enemy_sprite.current_frame;
+  if (enemy_overlay.valid &&
+      enemy_overlay.center_x == x &&
+      enemy_overlay.center_y == y &&
+      enemy_overlay.used_sprite == can_use_sprite &&
+      enemy_overlay.scene_epoch == scene_epoch) {
+    bool same_frame = !can_use_sprite || (enemy_overlay.frame_index == frame_index);
+    if (same_frame) {
+      return;
+    }
+  }
+  if (!sprite_ready || !can_use_sprite) {
+    return;
+  }
+
+  lcd.startWrite();
+  if (enemy_overlay.valid) {
+    push_rect_from_sprite_to_lcd_locked(enemy_overlay.x, enemy_overlay.y, enemy_overlay.w, enemy_overlay.h);
+  }
+
+  int new_x = 0;
+  int new_y = 0;
+  int new_w = 0;
+  int new_h = 0;
+  bool drew_sprite = enemy_draw_sheet_frame(x, y, &new_x, &new_y, &new_w, &new_h, true);
+  if (!drew_sprite) {
+    lcd.endWrite();
+    enemy_overlay.valid = false;
+    return;
+  }
+  lcd.endWrite();
+
+  enemy_overlay.valid = true;
+  enemy_overlay.x = new_x;
+  enemy_overlay.y = new_y;
+  enemy_overlay.w = new_w;
+  enemy_overlay.h = new_h;
+  enemy_overlay.center_x = x;
+  enemy_overlay.center_y = y;
+  enemy_overlay.used_sprite = can_use_sprite;
+  enemy_overlay.frame_index = frame_index;
+  enemy_overlay.scene_epoch = scene_epoch;
 }
 
 extern "C" void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
