@@ -147,9 +147,14 @@ build = getattr(sys.implementation, "_build", "")
 mem_free = gc.mem_free()
 print("fw_build:", build)
 print("fw_mem_free:", mem_free)
-
-if ("SPIRAM_OCT" not in build) or (mem_free < 1000000):
-    raise RuntimeError("PSRAM_FIRMWARE_REQUIRED")
+if "SPIRAM_OCT" not in build:
+    print("[ERROR] PSRAM_BUILD_MISMATCH: firmware is not SPIRAM_OCT.")
+    print("[ERROR] build =", build)
+    raise RuntimeError("PSRAM_BUILD_MISMATCH")
+if mem_free < 4_000_000:
+    print("[ERROR] PSRAM_MEM_TOO_LOW: gc.mem_free() is below 4000000, this is likely not 8MB PSRAM firmware.")
+    print("[ERROR] mem_free =", mem_free)
+    raise RuntimeError("PSRAM_MEM_TOO_LOW")
 PY
 )
   run_mpremote connect "$PORT" exec "$py"

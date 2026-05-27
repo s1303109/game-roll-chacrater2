@@ -571,15 +571,15 @@ ENEMY_SPRITE_W = 72
 ENEMY_SPRITE_H = 72
 MAP6_BOSS_BATTLE_SPRITE_PATH = config.ui_path("map6_boss_battle.png")
 MAP6_BOSS_SHEET_PATH = config.sprite_path("map6_boss_sheet.rgb565")
-MAP6_BOSS_SHEET_W = 288
-MAP6_BOSS_SHEET_H = 192
-MAP6_BOSS_FRAME_W = 96
-MAP6_BOSS_FRAME_H = 96
-MAP6_BOSS_CENTER_X = 538
-MAP6_BOSS_CENTER_Y = 304
+MAP6_BOSS_SHEET_W = 576
+MAP6_BOSS_SHEET_H = 576
+MAP6_BOSS_FRAME_W = 192
+MAP6_BOSS_FRAME_H = 192
+MAP6_BOSS_CENTER_X = 548
+MAP6_BOSS_CENTER_Y = 246
 MAP6_BOSS_TRIGGER_RADIUS_PX = 54
-MAP6_BOSS_ANIM_FRAME_MS = 140
-MAP6_BOSS_ANIM_SEQUENCE = (0, 1, 2, 3, 4, 5, 4, 3, 2, 1)
+MAP6_BOSS_ANIM_FRAME_MS = 300
+MAP6_BOSS_ANIM_SEQUENCE = (0, 1, 2, 3, 4, 5, 6, 7, 8)
 ACT_DIALOG_TEXT_PATH = config.ui_path("act_dialog_text.png")
 MERCY_DIALOG_TEXT_PATH = config.ui_path("mercy_dialog_text.png")
 LAMP_DIALOG_TEXT_PATH = config.ui_path("lamp_dialog_text.png")
@@ -944,6 +944,9 @@ map6_boss_defeated = False
 map6_boss_battle_active = False
 map6_boss_anim_seq_index = 0
 map6_boss_anim_last_ms = 0
+map6_boss_last_draw_frame = -1
+map6_boss_last_draw_sx = -99999
+map6_boss_last_draw_sy = -99999
 
 preload_zone_target_map_id = None
 preload_zone_enter_ms = 0
@@ -3864,6 +3867,32 @@ def _map6_boss_should_draw():
     return True
 
 
+def _map6_boss_draw_rect():
+    half_w = MAP6_BOSS_FRAME_W // 2
+    half_h = MAP6_BOSS_FRAME_H // 2
+    return (
+        MAP6_BOSS_CENTER_X - half_w - scroll_x,
+        MAP6_BOSS_CENTER_Y - half_h - scroll_y,
+        MAP6_BOSS_FRAME_W,
+        MAP6_BOSS_FRAME_H,
+    )
+
+
+def _map6_boss_player_overlap():
+    bx, by, bw, bh = _map6_boss_draw_rect()
+    if player_sheet_enabled:
+        half_w = PLAYER_FRAME_W // 2
+        half_h = PLAYER_FRAME_H // 2
+    else:
+        half_w = PLAYER_R
+        half_h = PLAYER_R
+    px = player_x - scroll_x - half_w
+    py = player_y - scroll_y - half_h
+    pw = half_w * 2 + 1
+    ph = half_h * 2 + 1
+    return _rects_intersect(px, py, pw, ph, bx, by, bw, bh)
+
+
 def _map6_boss_update_anim(loop_start):
     global map6_boss_anim_seq_index, map6_boss_anim_last_ms
     if map6_boss_anim_last_ms == 0:
@@ -3875,13 +3904,25 @@ def _map6_boss_update_anim(loop_start):
             map6_boss_anim_seq_index = 0
 
 
-def _draw_map6_boss(loop_start):
+def _draw_map6_boss(loop_start, scene_redrawn=False, player_redrawn=False):
+    global map6_boss_last_draw_frame, map6_boss_last_draw_sx, map6_boss_last_draw_sy
     if not _map6_boss_should_draw():
+        map6_boss_last_draw_frame = -1
         return
     _map6_boss_update_anim(loop_start)
     frame_index = MAP6_BOSS_ANIM_SEQUENCE[map6_boss_anim_seq_index]
+    sx = MAP6_BOSS_CENTER_X - scroll_x
+    sy = MAP6_BOSS_CENTER_Y - scroll_y
+    need_draw = scene_redrawn or (frame_index != map6_boss_last_draw_frame) or (sx != map6_boss_last_draw_sx) or (sy != map6_boss_last_draw_sy)
+    if (not need_draw) and player_redrawn:
+        need_draw = _map6_boss_player_overlap()
+    if not need_draw:
+        return
     lgfx.enemy_frame_set(frame_index)
-    lgfx.enemy_draw(MAP6_BOSS_CENTER_X - scroll_x, MAP6_BOSS_CENTER_Y - scroll_y)
+    lgfx.enemy_draw(sx, sy)
+    map6_boss_last_draw_frame = frame_index
+    map6_boss_last_draw_sx = sx
+    map6_boss_last_draw_sy = sy
 
 
 def _map6_boss_trigger_hit(px, py):
@@ -3894,9 +3935,10 @@ def _map6_boss_trigger_hit(px, py):
 
 
 def _map6_boss_mark_defeated():
-    global map6_boss_defeated, map6_boss_battle_active
+    global map6_boss_defeated, map6_boss_battle_active, map6_boss_last_draw_frame
     map6_boss_defeated = True
     map6_boss_battle_active = False
+    map6_boss_last_draw_frame = -1
 
 
 def _draw_weapon_pickup_dialog():
@@ -6551,7 +6593,7 @@ def draw_all(loop_start):
                 _draw_spawn_intro_overlay()
                 spawn_intro_needs_redraw = False
         _draw_ground_weapon_drops()
-        _draw_map6_boss(loop_start)
+        _draw_map6_boss(loop_start, scene_redrawn, player_redrawn)
         if weapon_pickup_dialog_active:
             if weapon_pickup_dialog_dirty or scene_redrawn or player_redrawn:
                 _draw_weapon_pickup_dialog()

@@ -1,6 +1,7 @@
 import gc
 import os
 import sys
+import time
 
 from sd_host import ensure_sd_32gb, mount_sd, sd_capacity_bytes
 
@@ -92,10 +93,43 @@ def _report_stale_flash_files():
         print("[launcher] stale flash file ignored:", path)
 
 
+def _mount_sd_with_retry():
+    # Some boards/cards need one extra attempt right after reset.
+    freqs = (8_000_000, 4_000_000, 12_000_000, 20_000_000)
+    for attempt in range(2):
+        for freq in freqs:
+            try:
+                if mount_sd("/sd", freq=freq, return_ok=True):
+                    print("[launcher] sd_mounted: True freq:", freq, "attempt:", attempt + 1)
+                    return
+            except Exception as err:
+                print("[launcher] sd_mount_retry_fail:", freq, "attempt:", attempt + 1, "err:", err)
+            time.sleep_ms(30)
+    raise RuntimeError("SD_MOUNT_FAILED")
+
+
+def guard_psram_required():
+    build = getattr(sys.implementation, "_build", "")
+    if "SPIRAM_OCT" not in build:
+        print("[ERROR] PSRAM_BUILD_MISMATCH: firmware is not SPIRAM_OCT.")
+        print("[ERROR] build =", build)
+        raise SystemExit("PSRAM_BUILD_MISMATCH")
+
+    mem_free = gc.mem_free()
+    if mem_free < 4_000_000:
+        print("[ERROR] PSRAM_MEM_TOO_LOW: gc.mem_free() is below 4000000, this is likely not 8MB PSRAM firmware.")
+        print("[ERROR] mem_free =", mem_free)
+        raise SystemExit("PSRAM_MEM_TOO_LOW")
+
+    print("[OK] PSRAM guard passed.")
+    print("[OK] build =", build)
+    print("[OK] mem_free =", mem_free)
+
+
 def main():
+    guard_psram_required()
     try:
-        if not mount_sd("/sd", return_ok=True):
-            raise RuntimeError("SD_MOUNT_FAILED")
+        _mount_sd_with_retry()
         sd_capacity, sd_source = ensure_sd_32gb("/sd")
         print("[launcher] sd_capacity_ok:", sd_capacity, "source:", sd_source)
     except Exception as err:

@@ -225,7 +225,6 @@ MAP_REGISTRY = {
                 "transition_black_ms": 1000,
             },
         ),
-        fallback_all_walkable=True,
     ),
     WOOD_MAIN_ID: _map_entry(
         "out_wood_main",
