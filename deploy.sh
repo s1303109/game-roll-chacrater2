@@ -36,6 +36,7 @@ MAP_DIRS=(
   "out_map7"
   "out_map8"
   "out_map9"
+  "out_map10"
   "out_wood_main"
   "out_wood_up"
   "out_wood_right"
@@ -101,18 +102,62 @@ fail() {
   exit 1
 }
 
+copy_with_fallback() {
+  local src="$1"
+  local remote="$2"
+  local label="${3:-$2}"
+
+  if [[ "$remote" == /sd/* ]]; then
+    if run_mpremote_with_sd fs cp "$src" ":$remote"; then
+      sleep 0.5
+      return 0
+    fi
+  else
+    if run_mpremote connect "$PORT" fs cp "$src" ":$remote"; then
+      sleep 0.5
+      return 0
+    fi
+  fi
+
+  echo "fs cp failed for ${label}; fallback to SerialTransport.fs_writefile chunked..."
+  python - "$PORT" "$src" "$remote" <<'PY'
+import os
+import sys
+
+port, src, remote = sys.argv[1], sys.argv[2], sys.argv[3]
+repo_mpremote = "/workspace/micropython/tools/mpremote"
+if repo_mpremote not in sys.path:
+    sys.path.insert(0, repo_mpremote)
+
+from mpremote.transport_serial import SerialTransport
+
+t = SerialTransport(port, baudrate=115200)
+try:
+    t.enter_raw_repl(soft_reset=False)
+    if remote.startswith("/sd/"):
+        t.exec("from sd_host import mount_sd\nmount_sd('/sd', return_ok=True)")
+    with open(src, "rb") as f:
+        data = f.read()
+    t.fs_writefile(remote, data, chunk_size=1024)
+finally:
+    try:
+        if t.in_raw_repl:
+            t.exit_raw_repl()
+    finally:
+        t.close()
+
+print("fallback_chunk_write_ok:", remote, "bytes:", os.path.getsize(src))
+PY
+  sleep 0.5
+}
+
 copy_one() {
   local src="$1"
   local remote="$2"
   local label="${3:-$2}"
   [[ -f "$src" ]] || fail "Local file not found: $src"
   echo "Copying ${label} -> ${remote}"
-  if [[ "$remote" == /sd/* ]]; then
-    run_mpremote_with_sd fs cp "$src" ":$remote"
-  else
-    run_mpremote connect "$PORT" fs cp "$src" ":$remote"
-  fi
-  sleep 0.5
+  copy_with_fallback "$src" "$remote" "$label"
 }
 
 verify_required_sources() {
@@ -287,6 +332,7 @@ for path in (
     "/sd/game/assets/out_map7",
     "/sd/game/assets/out_map8",
     "/sd/game/assets/out_map9",
+    "/sd/game/assets/out_map10",
     "/sd/game/assets/out_wood_main",
     "/sd/game/assets/out_wood_up",
     "/sd/game/assets/out_wood_right",

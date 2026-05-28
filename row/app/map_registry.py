@@ -14,6 +14,7 @@ MAP6_ID = 10
 MAP7_ID = 11
 MAP8_ID = 12
 MAP9_ID = 13
+MAP10_ID = 14
 
 
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
@@ -34,7 +35,9 @@ MAP7_PORTAL_TO_MAP5_RECT_PX = (288, 872, 64, 32)
 MAP7_PORTAL_TO_MAP8_RECT_PX = (254, 202, 80, 80)
 MAP8_PORTAL_TO_MAP7_RECT_PX = (592, 828, 254, 194)
 MAP8_PORTAL_TO_MAP9_RECT_PX = (1128, 350, 80, 80)
+MAP8_PORTAL_TO_MAP10_RECT_PX = (247, 348, 80, 80)
 MAP9_PORTAL_TO_MAP8_RECT_PX = (440, 464, 80, 80)
+MAP10_PORTAL_TO_MAP8_RECT_PX = (437, 431, 80, 80)
 MAP2_FROM_MAP3_SPAWN_X = 480
 MAP2_FROM_MAP3_SPAWN_Y = 590
 MAP4_FROM_MAP3_SPAWN = (112, 172)
@@ -49,6 +52,8 @@ MAP8_FROM_MAP7_SPAWN = (722, 900)
 MAP7_FROM_MAP8_SPAWN = (294, 320)
 MAP9_FROM_MAP8_SPAWN = (480, 472)
 MAP8_FROM_MAP9_SPAWN = (1167, 436)
+MAP10_FROM_MAP8_SPAWN = (477, 423)
+MAP8_FROM_MAP10_SPAWN = (287, 436)
 WOOD_MAIN_PORTAL_TO_UP_RECT_PX = (144, 0, 32, 24)
 WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX = (296, 106, 24, 36)
 WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX = (0, 106, 24, 36)
@@ -241,6 +246,18 @@ MAP_REGISTRY = {
                 "transition_shrink_ms": 4000,
                 "transition_black_ms": 1000,
             },
+            {
+                "rect": MAP8_PORTAL_TO_MAP10_RECT_PX,
+                "target_map_id": MAP10_ID,
+                "target_spawn": MAP10_FROM_MAP8_SPAWN,
+                "preload_pad_px": 128,
+                "preload_allow_spotlight": True,
+                "trigger_center_px": (287, 388),
+                "trigger_radius_px": 20,
+                "transition_effect": "spotlight_shrink",
+                "transition_shrink_ms": 4000,
+                "transition_black_ms": 1000,
+            },
         ),
     ),
     MAP9_ID: _map_entry(
@@ -255,6 +272,24 @@ MAP_REGISTRY = {
                 "preload_allow_spotlight": True,
                 "trigger_center_px": (479, 502),
                 "trigger_radius_px": 22,
+                "transition_effect": "spotlight_shrink",
+                "transition_shrink_ms": 4000,
+                "transition_black_ms": 1000,
+            },
+        ),
+    ),
+    MAP10_ID: _map_entry(
+        "out_map10",
+        "map10_tileset",
+        (
+            {
+                "rect": MAP10_PORTAL_TO_MAP8_RECT_PX,
+                "target_map_id": MAP8_ID,
+                "target_spawn": MAP8_FROM_MAP10_SPAWN,
+                "preload_pad_px": 128,
+                "preload_allow_spotlight": True,
+                "trigger_center_px": (477, 471),
+                "trigger_radius_px": 20,
                 "transition_effect": "spotlight_shrink",
                 "transition_shrink_ms": 4000,
                 "transition_black_ms": 1000,
