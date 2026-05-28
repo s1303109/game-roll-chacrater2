@@ -2781,9 +2781,12 @@ def _update_preload_for_player(px, py):
     preload_portal = None
     preload_zone_rect = None
     for portal in portals:
-        # Keep Map7<->Map8 cinematic portals out of preload to avoid first-time
-        # transition hitching and visual instability.
-        if portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
+        # Keep cinematic spotlight portals out of preload by default unless a
+        # portal explicitly opts in.
+        if (
+            portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT
+            and not portal.get("preload_allow_spotlight", False)
+        ):
             continue
         preload_pad_px = portal.get("preload_pad_px", PRELOAD_PORTAL_PAD_PX)
         zone_rect = _expand_rect(portal["rect"], preload_pad_px)

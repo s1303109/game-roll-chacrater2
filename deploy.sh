@@ -35,6 +35,7 @@ MAP_DIRS=(
   "out_map6"
   "out_map7"
   "out_map8"
+  "out_map9"
   "out_wood_main"
   "out_wood_up"
   "out_wood_right"
@@ -285,6 +286,7 @@ for path in (
     "/sd/game/assets/out_map6",
     "/sd/game/assets/out_map7",
     "/sd/game/assets/out_map8",
+    "/sd/game/assets/out_map9",
     "/sd/game/assets/out_wood_main",
     "/sd/game/assets/out_wood_up",
     "/sd/game/assets/out_wood_right",

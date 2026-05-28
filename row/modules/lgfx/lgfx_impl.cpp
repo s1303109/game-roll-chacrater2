@@ -7,26 +7,6 @@ extern "C" void lgfx_init_impl(void) {}
 extern "C" void lgfx_fill_impl(uint16_t color) {
   (void)color;
 }
-extern "C" void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
-  (void)x;
-  (void)y;
-  (void)text;
-  (void)color;
-}
-extern "C" void lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
-  (void)x;
-  (void)y;
-  (void)w;
-  (void)h;
-  (void)color;
-}
-extern "C" void lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
-  (void)x;
-  (void)y;
-  (void)r;
-  (void)color;
-}
-extern "C" void lgfx_clear_impl(void) {}
 extern "C" void lgfx_set_rotation_impl(int rotation) {
   (void)rotation;
 }
@@ -78,90 +58,6 @@ extern "C" bool lgfx_tile_load_files_impl(const char *tileset_path, const char *
 extern "C" int lgfx_tile_loader_mode_impl(void) {
   return 0;
 }
-extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
-  (void)slot_id;
-  (void)map_token;
-  (void)tileset_token;
-  (void)tileset_path;
-  (void)tilemap_path;
-  (void)tile_size;
-  (void)map_w;
-  (void)map_h;
-  return false;
-}
-extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
-  (void)slot_id;
-  (void)map_token;
-  (void)tileset_token;
-  (void)tileset_path;
-  (void)tilemap_path;
-  (void)tile_size;
-  (void)map_w;
-  (void)map_h;
-  return false;
-}
-extern "C" int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
-  (void)slot_id;
-  (void)max_bytes;
-  return 0;
-}
-extern "C" bool lgfx_slot_cancel_load_impl(int slot_id) {
-  (void)slot_id;
-  return false;
-}
-extern "C" bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
-  (void)slot_id;
-  (void)force_full_redraw;
-  return false;
-}
-extern "C" bool lgfx_slot_release_impl(int slot_id) {
-  (void)slot_id;
-  return false;
-}
-extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
-  (void)slot_id;
-  (void)map_token;
-  return false;
-}
-extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
-  (void)slot_id;
-  if (role) {
-    *role = 0;
-  }
-  if (state) {
-    *state = 0;
-  }
-  if (map_token) {
-    *map_token = 0;
-  }
-  if (tileset_token) {
-    *tileset_token = 0;
-  }
-  if (load_stage) {
-    *load_stage = 0;
-  }
-  if (loaded_bytes) {
-    *loaded_bytes = 0;
-  }
-  if (total_bytes) {
-    *total_bytes = 0;
-  }
-  if (ref_count) {
-    *ref_count = 0;
-  }
-  if (waiter_count) {
-    *waiter_count = 0;
-  }
-  if (is_active) {
-    *is_active = false;
-  }
-  return false;
-}
-extern "C" void lgfx_slot_set_role_impl(int slot_id, int role) {
-  (void)slot_id;
-  (void)role;
-}
-extern "C" void lgfx_display_wait_idle_impl(void) {}
 extern "C" int lgfx_tile_last_error_impl(void) {
   return -1;
 }
@@ -171,7 +67,6 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
   (void)force_full;
   return 0;
 }
-// tile_render_player_impl is defined later in the file with full implementation
 extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) {
   (void)x;
   (void)y;
@@ -202,30 +97,6 @@ extern "C" void lgfx_player_flip_x_set_impl(bool flip_x) {
   (void)flip_x;
 }
 extern "C" void lgfx_player_sheet_clear_impl(void) {}
-extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
-  (void)sheet_path;
-  (void)sheet_w;
-  (void)sheet_h;
-  (void)frame_w;
-  (void)frame_h;
-  return false;
-}
-extern "C" void lgfx_enemy_frame_set_impl(int frame_index) {
-  (void)frame_index;
-}
-extern "C" void lgfx_enemy_sheet_clear_impl(void) {}
-extern "C" void lgfx_enemy_draw_impl(int x, int y) {
-  (void)x;
-  (void)y;
-}
-extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
-  (void)path;
-  (void)x;
-  (void)y;
-  (void)w;
-  (void)h;
-  return false;
-}
 extern "C" void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
   if (full_frames) {
     *full_frames = 0;
@@ -260,10 +131,6 @@ extern "C" {
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
-
-// Forward declarations for functions called before definition
-extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius);
-extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h);
 
 class LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9341 _panel;
@@ -337,7 +204,6 @@ struct TileState {
 
   uint16_t *tilemap = nullptr;
   uint8_t *dirty = nullptr;
-  size_t dirty_len = 0;
 
   bool tileset_stream = false;
   char tileset_path[160] = {0};
@@ -352,7 +218,6 @@ struct TileState {
   bool has_prev_scroll = false;
   int prev_scroll_x = 0;
   int prev_scroll_y = 0;
-  int active_slot_id = -1;
 } tile_state;
 
 struct RenderStats {
@@ -361,96 +226,6 @@ struct RenderStats {
   uint32_t last_us = 0;
   uint32_t last_tiles = 0;
 } render_stats;
-
-enum TileLoadError {
-  TILE_LOAD_OK = 0,
-  TILE_LOAD_ERR_ARGS = 1,
-  TILE_LOAD_ERR_MAP_OPEN = 2,
-  TILE_LOAD_ERR_MAP_READ = 3,
-  TILE_LOAD_ERR_TILESET_OPEN = 4,
-  TILE_LOAD_ERR_TILESET_SEEK = 5,
-  TILE_LOAD_ERR_TILESET_SIZE = 6,
-  TILE_LOAD_ERR_TILESET_FORMAT = 7,
-  TILE_LOAD_ERR_CACHE_ALLOC = 8,
-  TILE_LOAD_ERR_SLOT_RANGE = 9,
-  TILE_LOAD_ERR_SLOT_ACTIVE = 10,
-  TILE_LOAD_ERR_SLOT_STATE = 11,
-  TILE_LOAD_ERR_TILESET_REF = 12,
-};
-
-enum ResidentSlotState {
-  SLOT_STATE_EMPTY = 0,
-  SLOT_STATE_LOADING = 1,
-  SLOT_STATE_READY = 2,
-  SLOT_STATE_FAILED = 3,
-};
-
-enum ResidentSlotRole {
-  SLOT_ROLE_NONE = 0,
-  SLOT_ROLE_BACK = 1,
-  SLOT_ROLE_ACTIVE = 2,
-  SLOT_ROLE_AHEAD = 3,
-};
-
-enum ResidentLoadStage {
-  SLOT_STAGE_NONE = 0,
-  SLOT_STAGE_VALIDATE = 1,
-  SLOT_STAGE_ACQUIRE_TILESET = 2,
-  SLOT_STAGE_WAIT_TILESET = 3,
-  SLOT_STAGE_LOAD_TILESET = 4,
-  SLOT_STAGE_LOAD_TILEMAP = 5,
-  SLOT_STAGE_READY = 6,
-};
-
-enum TilesetCacheState {
-  CACHE_STATE_EMPTY = 0,
-  CACHE_STATE_LOADING = 1,
-  CACHE_STATE_READY = 2,
-  CACHE_STATE_FAILED = 3,
-};
-
-constexpr int RESIDENT_SLOT_COUNT = 3;
-constexpr int TILESET_CACHE_COUNT = 6;
-constexpr size_t RESIDENT_PATH_LEN = 192;
-
-struct TilesetCacheEntry {
-  uint32_t tileset_token = 0;
-  uint16_t *ptr = nullptr;
-  size_t total_bytes = 0;
-  size_t load_offset = 0;
-  size_t tile_count = 0;
-  size_t tile_bytes = 0;
-  int ref_count = 0;
-  int waiter_count = 0;
-  int state = CACHE_STATE_EMPTY;
-  bool use_psram = true;
-  char tileset_path[RESIDENT_PATH_LEN] = {0};
-};
-
-struct ResidentSlot {
-  int role = SLOT_ROLE_NONE;
-  int state = SLOT_STATE_EMPTY;
-  int load_stage = SLOT_STAGE_NONE;
-  uint32_t map_token = 0;
-  uint32_t tileset_token = 0;
-  int tile_size = 0;
-  int map_w = 0;
-  int map_h = 0;
-  uint16_t *tilemap_ptr = nullptr;
-  size_t tilemap_bytes = 0;
-  size_t tilemap_offset = 0;
-  size_t loaded_bytes = 0;
-  size_t total_bytes = 0;
-  int cache_index = -1;
-  bool cache_waiting = false;
-  bool use_psram = true;
-  bool invalid_tile_logged = false;
-  char tileset_path[RESIDENT_PATH_LEN] = {0};
-  char tilemap_path[RESIDENT_PATH_LEN] = {0};
-};
-
-static ResidentSlot resident_slots[RESIDENT_SLOT_COUNT];
-static TilesetCacheEntry tileset_cache[TILESET_CACHE_COUNT];
 
 struct PlayerOverlayState {
   bool valid = false;
@@ -468,27 +243,7 @@ struct PlayerOverlayState {
   uint32_t scene_epoch = 0;
 } player_overlay;
 
-struct EnemyOverlayState {
-  bool valid = false;
-  int x = 0;
-  int y = 0;
-  int w = 0;
-  int h = 0;
-  int center_x = 0;
-  int center_y = 0;
-  bool used_sprite = false;
-  int frame_index = 0;
-  uint32_t scene_epoch = 0;
-} enemy_overlay;
-
 static uint32_t scene_epoch = 0;
-
-static bool render_compose_player = false;
-static bool render_compose_applied = false;
-static int render_compose_player_x = 0;
-static int render_compose_player_y = 0;
-static uint16_t render_compose_player_color = 0xF800;
-static int render_compose_player_radius = 3;
 
 struct PlayerSpriteState {
   uint16_t *pixels = nullptr;
@@ -505,28 +260,22 @@ struct PlayerSpriteState {
   bool enabled = false;
 } player_sprite;
 
-struct EnemySpriteState {
-  uint16_t *pixels = nullptr;
-  size_t pixels_len = 0;
-  uint8_t *bg_mask = nullptr;
-  size_t bg_mask_len = 0;
-  int sheet_w = 0;
-  int sheet_h = 0;
-  int frame_w = 0;
-  int frame_h = 0;
-  int frame_count = 0;
-  int current_frame = 0;
-  bool enabled = false;
-} enemy_sprite;
+enum TileLoadError {
+  TILE_LOAD_OK = 0,
+  TILE_LOAD_ERR_ARGS = 1,
+  TILE_LOAD_ERR_MAP_OPEN = 2,
+  TILE_LOAD_ERR_MAP_READ = 3,
+  TILE_LOAD_ERR_TILESET_OPEN = 4,
+  TILE_LOAD_ERR_TILESET_SEEK = 5,
+  TILE_LOAD_ERR_TILESET_SIZE = 6,
+  TILE_LOAD_ERR_TILESET_FORMAT = 7,
+  TILE_LOAD_ERR_CACHE_ALLOC = 8,
+};
 
 static bool tile_fail(int code) {
   tile_state.last_error = code;
   return false;
 }
-
-static mp_obj_t vfs_open_rb(const char *path);
-static void vfs_close_quiet(mp_obj_t file);
-static bool vfs_read_exact(mp_obj_t file, void *dst, size_t len);
 
 static void *lgfx_alloc(size_t size, bool use_psram) {
   if (size == 0) {
@@ -539,282 +288,6 @@ static void *lgfx_alloc(size_t size, bool use_psram) {
     }
   }
   return heap_caps_malloc(size, MALLOC_CAP_8BIT);
-}
-
-static bool copy_cstr(char *dst, size_t dst_len, const char *src) {
-  if (!dst || dst_len == 0 || !src) {
-    return false;
-  }
-  size_t len = strlen(src);
-  if (len >= dst_len) {
-    return false;
-  }
-  memcpy(dst, src, len + 1);
-  return true;
-}
-
-static bool slot_id_valid(int slot_id) {
-  return slot_id >= 0 && slot_id < RESIDENT_SLOT_COUNT;
-}
-
-static void tileset_cache_reset(TilesetCacheEntry *cache) {
-  if (!cache) {
-    return;
-  }
-  if (cache->ptr) {
-    heap_caps_free(cache->ptr);
-    cache->ptr = nullptr;
-  }
-  cache->tileset_token = 0;
-  cache->total_bytes = 0;
-  cache->load_offset = 0;
-  cache->tile_count = 0;
-  cache->tile_bytes = 0;
-  cache->ref_count = 0;
-  cache->waiter_count = 0;
-  cache->state = CACHE_STATE_EMPTY;
-  cache->use_psram = true;
-  cache->tileset_path[0] = '\0';
-}
-
-static void resident_slot_reset(ResidentSlot *slot, bool preserve_role = true) {
-  if (!slot) {
-    return;
-  }
-  int role = preserve_role ? slot->role : SLOT_ROLE_NONE;
-  memset(slot, 0, sizeof(*slot));
-  slot->role = role;
-  slot->state = SLOT_STATE_EMPTY;
-  slot->load_stage = SLOT_STAGE_NONE;
-  slot->cache_index = -1;
-  slot->use_psram = true;
-}
-
-static void resident_slot_free_tilemap(ResidentSlot *slot) {
-  if (slot && slot->tilemap_ptr) {
-    heap_caps_free(slot->tilemap_ptr);
-    slot->tilemap_ptr = nullptr;
-  }
-}
-
-static void tileset_cache_maybe_release(int cache_index) {
-  if (cache_index < 0 || cache_index >= TILESET_CACHE_COUNT) {
-    return;
-  }
-  TilesetCacheEntry *cache = &tileset_cache[cache_index];
-  if (cache->ref_count <= 0 && cache->waiter_count <= 0) {
-    tileset_cache_reset(cache);
-  }
-}
-
-static void resident_slot_detach_cache(ResidentSlot *slot) {
-  if (!slot || slot->cache_index < 0 || slot->cache_index >= TILESET_CACHE_COUNT) {
-    slot->cache_index = -1;
-    slot->cache_waiting = false;
-    return;
-  }
-  TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
-  if (slot->cache_waiting) {
-    if (cache->waiter_count > 0) {
-      cache->waiter_count -= 1;
-    }
-    slot->cache_waiting = false;
-  } else if (cache->ref_count > 0) {
-    cache->ref_count -= 1;
-  }
-  int cache_index = slot->cache_index;
-  slot->cache_index = -1;
-  tileset_cache_maybe_release(cache_index);
-}
-
-static void resident_slot_release_resources(ResidentSlot *slot, bool preserve_role = true) {
-  if (!slot) {
-    return;
-  }
-  resident_slot_detach_cache(slot);
-  resident_slot_free_tilemap(slot);
-  resident_slot_reset(slot, preserve_role);
-}
-
-static int tileset_cache_find(uint32_t tileset_token) {
-  for (int i = 0; i < TILESET_CACHE_COUNT; ++i) {
-    if (tileset_cache[i].state != CACHE_STATE_EMPTY && tileset_cache[i].tileset_token == tileset_token) {
-      return i;
-    }
-  }
-  return -1;
-}
-
-static int tileset_cache_find_free(void) {
-  for (int i = 0; i < TILESET_CACHE_COUNT; ++i) {
-    if (tileset_cache[i].state == CACHE_STATE_EMPTY) {
-      return i;
-    }
-  }
-  for (int i = 0; i < TILESET_CACHE_COUNT; ++i) {
-    if (tileset_cache[i].ref_count <= 0 && tileset_cache[i].waiter_count <= 0) {
-      tileset_cache_reset(&tileset_cache[i]);
-      return i;
-    }
-  }
-  return -1;
-}
-
-static bool ensure_dirty_buffer(size_t map_cells, bool use_psram) {
-  if (map_cells == 0) {
-    return false;
-  }
-  if (tile_state.dirty && tile_state.dirty_len == map_cells) {
-    memset(tile_state.dirty, 1, map_cells);
-    return true;
-  }
-  if (tile_state.dirty) {
-    heap_caps_free(tile_state.dirty);
-    tile_state.dirty = nullptr;
-    tile_state.dirty_len = 0;
-  }
-  tile_state.dirty = static_cast<uint8_t *>(lgfx_alloc(map_cells, use_psram));
-  if (!tile_state.dirty) {
-    return false;
-  }
-  tile_state.dirty_len = map_cells;
-  memset(tile_state.dirty, 1, map_cells);
-  return true;
-}
-
-static bool vfs_file_size(const char *path, size_t *size_out) {
-  if (!path || !size_out) {
-    return false;
-  }
-  mp_obj_t file = vfs_open_rb(path);
-  if (file == MP_OBJ_NULL) {
-    return false;
-  }
-  int errcode = 0;
-  mp_off_t size = mp_stream_seek(file, 0, MP_SEEK_END, &errcode);
-  vfs_close_quiet(file);
-  if (size < 0 || errcode != 0) {
-    return false;
-  }
-  *size_out = (size_t)size;
-  return true;
-}
-
-static bool resident_read_chunk(const char *path, size_t offset, void *dst, size_t len, int open_err, int seek_err, int read_err) {
-  if (!path || !dst || len == 0) {
-    return tile_fail(TILE_LOAD_ERR_ARGS);
-  }
-  mp_obj_t file = vfs_open_rb(path);
-  if (file == MP_OBJ_NULL) {
-    return tile_fail(open_err);
-  }
-  int errcode = 0;
-  mp_off_t seek_res = mp_stream_seek(file, (mp_off_t)offset, MP_SEEK_SET, &errcode);
-  if (seek_res < 0 || errcode != 0) {
-    vfs_close_quiet(file);
-    return tile_fail(seek_err);
-  }
-  bool ok = vfs_read_exact(file, dst, len);
-  vfs_close_quiet(file);
-  if (!ok) {
-    return tile_fail(read_err);
-  }
-  return true;
-}
-
-static bool resident_validate_tilemap_ids(const ResidentSlot *slot, const TilesetCacheEntry *cache) {
-  if (!slot || !cache || !slot->tilemap_ptr || cache->tile_count == 0) {
-    return tile_fail(TILE_LOAD_ERR_TILESET_REF);
-  }
-  size_t cells = (size_t)slot->map_w * (size_t)slot->map_h;
-  for (size_t i = 0; i < cells; ++i) {
-    if ((size_t)slot->tilemap_ptr[i] >= cache->tile_count) {
-      return tile_fail(TILE_LOAD_ERR_TILESET_REF);
-    }
-  }
-  return true;
-}
-
-static bool resident_activate_slot(int slot_id, bool force_full_redraw) {
-  if (!slot_id_valid(slot_id)) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-  }
-  ResidentSlot *slot = &resident_slots[slot_id];
-  if (slot->state != SLOT_STATE_READY || slot->cache_index < 0 || slot->cache_index >= TILESET_CACHE_COUNT) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_STATE);
-  }
-  TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
-  if (cache->state != CACHE_STATE_READY || !cache->ptr || !slot->tilemap_ptr) {
-    return tile_fail(TILE_LOAD_ERR_TILESET_REF);
-  }
-  size_t map_cells = (size_t)slot->map_w * (size_t)slot->map_h;
-  if (!ensure_dirty_buffer(map_cells, tile_state.use_psram)) {
-    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
-  }
-  tile_state.tile_size = slot->tile_size;
-  tile_state.map_w = slot->map_w;
-  tile_state.map_h = slot->map_h;
-  tile_state.tileset = cache->ptr;
-  tile_state.tileset_len = cache->total_bytes;
-  tile_state.tile_count = cache->tile_count;
-  tile_state.tile_bytes = cache->tile_bytes;
-  tile_state.tilemap = slot->tilemap_ptr;
-  tile_state.tileset_stream = false;
-  tile_state.tileset_path[0] = '\0';
-  tile_state.loaded = true;
-  tile_state.last_error = TILE_LOAD_OK;
-  tile_state.active_slot_id = slot_id;
-  tile_state.has_prev_scroll = false;
-  player_overlay.valid = false;
-  enemy_overlay.valid = false;
-  slot->invalid_tile_logged = false;
-  return true;
-}
-
-static int tileset_cache_attach(uint32_t tileset_token, const char *tileset_path, size_t tileset_bytes, size_t tile_bytes, bool use_psram, ResidentSlot *slot) {
-  int cache_index = tileset_cache_find(tileset_token);
-  if (cache_index >= 0) {
-    TilesetCacheEntry *cache = &tileset_cache[cache_index];
-    if (cache->tile_bytes != tile_bytes || cache->total_bytes != tileset_bytes) {
-      return -1;
-    }
-    if (cache->state == CACHE_STATE_READY) {
-      cache->ref_count += 1;
-      slot->cache_waiting = false;
-    } else {
-      cache->waiter_count += 1;
-      slot->cache_waiting = true;
-    }
-    slot->cache_index = cache_index;
-    return cache_index;
-  }
-
-  cache_index = tileset_cache_find_free();
-  if (cache_index < 0) {
-    return -1;
-  }
-  TilesetCacheEntry *cache = &tileset_cache[cache_index];
-  cache->ptr = static_cast<uint16_t *>(lgfx_alloc(tileset_bytes, use_psram));
-  if (!cache->ptr) {
-    tileset_cache_reset(cache);
-    return -1;
-  }
-  if (!copy_cstr(cache->tileset_path, sizeof(cache->tileset_path), tileset_path)) {
-    tileset_cache_reset(cache);
-    return -1;
-  }
-  cache->tileset_token = tileset_token;
-  cache->total_bytes = tileset_bytes;
-  cache->load_offset = 0;
-  cache->tile_bytes = tile_bytes;
-  cache->tile_count = tileset_bytes / tile_bytes;
-  cache->ref_count = 0;
-  cache->waiter_count = 1;
-  cache->state = CACHE_STATE_LOADING;
-  cache->use_psram = use_psram;
-  slot->cache_index = cache_index;
-  slot->cache_waiting = true;
-  return cache_index;
 }
 
 static void tile_close_stream(void) {
@@ -845,8 +318,7 @@ static bool tile_alloc_cache(size_t tile_bytes, bool use_psram) {
     return false;
   }
 
-  // Keep cache budget tighter so 320x240 view can fit on low-memory boards.
-  constexpr size_t kCacheBudgetBytes = 96 * 1024;
+  constexpr size_t kCacheBudgetBytes = 256 * 1024;
   size_t slots = kCacheBudgetBytes / tile_bytes;
   if (slots > 128) {
     slots = 128;
@@ -912,253 +384,6 @@ static bool vfs_read_exact(mp_obj_t file, void *dst, size_t len) {
   int errcode = 0;
   mp_uint_t got = mp_stream_rw(file, dst, len, &errcode, MP_STREAM_RW_READ);
   return errcode == 0 && got == len;
-}
-
-static bool resident_slot_prepare_load(ResidentSlot *slot, uint32_t map_token, uint32_t tileset_token,
-                                       const char *tileset_path, const char *tilemap_path,
-                                       int tile_size, int map_w, int map_h) {
-  if (!slot || !tileset_path || !tilemap_path || tile_size <= 0 || map_w <= 0 || map_h <= 0) {
-    return tile_fail(TILE_LOAD_ERR_ARGS);
-  }
-
-  size_t map_cells = (size_t)map_w * (size_t)map_h;
-  size_t expected_tilemap_len = map_cells * sizeof(uint16_t);
-  size_t tilemap_bytes = 0;
-  size_t tileset_bytes = 0;
-  if (!vfs_file_size(tilemap_path, &tilemap_bytes)) {
-    return tile_fail(TILE_LOAD_ERR_MAP_OPEN);
-  }
-  if (tilemap_bytes != expected_tilemap_len) {
-    return tile_fail(TILE_LOAD_ERR_MAP_READ);
-  }
-  if (!vfs_file_size(tileset_path, &tileset_bytes)) {
-    return tile_fail(TILE_LOAD_ERR_TILESET_OPEN);
-  }
-  size_t tile_pixels = (size_t)tile_size * (size_t)tile_size;
-  size_t tile_bytes = tile_pixels * sizeof(uint16_t);
-  if (tile_bytes == 0 || (tileset_bytes % tile_bytes) != 0) {
-    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
-  }
-  size_t tile_count = tileset_bytes / tile_bytes;
-  if (tile_count == 0) {
-    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
-  }
-
-  resident_slot_release_resources(slot);
-  slot->state = SLOT_STATE_LOADING;
-  slot->load_stage = SLOT_STAGE_VALIDATE;
-  slot->map_token = map_token;
-  slot->tileset_token = tileset_token;
-  slot->tile_size = tile_size;
-  slot->map_w = map_w;
-  slot->map_h = map_h;
-  slot->tilemap_bytes = tilemap_bytes;
-  slot->tilemap_offset = 0;
-  slot->loaded_bytes = 0;
-  slot->total_bytes = tilemap_bytes + tileset_bytes;
-  slot->use_psram = true;
-  slot->invalid_tile_logged = false;
-  if (!copy_cstr(slot->tileset_path, sizeof(slot->tileset_path), tileset_path) ||
-      !copy_cstr(slot->tilemap_path, sizeof(slot->tilemap_path), tilemap_path)) {
-    resident_slot_release_resources(slot);
-    return tile_fail(TILE_LOAD_ERR_ARGS);
-  }
-
-  slot->tilemap_ptr = static_cast<uint16_t *>(lgfx_alloc(tilemap_bytes, slot->use_psram));
-  if (!slot->tilemap_ptr) {
-    resident_slot_release_resources(slot);
-    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
-  }
-  memset(slot->tilemap_ptr, 0, tilemap_bytes);
-  slot->load_stage = SLOT_STAGE_ACQUIRE_TILESET;
-
-  int cache_index = tileset_cache_attach(tileset_token, tileset_path, tileset_bytes, tile_bytes, true, slot);
-  if (cache_index < 0) {
-    resident_slot_release_resources(slot);
-    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
-  }
-
-  TilesetCacheEntry *cache = &tileset_cache[cache_index];
-  if (cache->state == CACHE_STATE_READY) {
-    slot->load_stage = SLOT_STAGE_LOAD_TILEMAP;
-  } else if (cache->load_offset == 0) {
-    slot->load_stage = SLOT_STAGE_LOAD_TILESET;
-  } else {
-    slot->load_stage = SLOT_STAGE_WAIT_TILESET;
-  }
-  return true;
-}
-
-static int tileset_cache_pump(TilesetCacheEntry *cache, size_t max_bytes) {
-  if (!cache || cache->state != CACHE_STATE_LOADING || !cache->ptr) {
-    return 0;
-  }
-  size_t remain = cache->total_bytes - cache->load_offset;
-  if (remain == 0) {
-    cache->state = CACHE_STATE_READY;
-    return 0;
-  }
-  size_t budget = max_bytes == 0 ? remain : max_bytes;
-  if (budget > remain) {
-    budget = remain;
-  }
-  if (!resident_read_chunk(cache->tileset_path, cache->load_offset,
-                           reinterpret_cast<uint8_t *>(cache->ptr) + cache->load_offset,
-                           budget,
-                           TILE_LOAD_ERR_TILESET_OPEN,
-                           TILE_LOAD_ERR_TILESET_SEEK,
-                           TILE_LOAD_ERR_TILESET_SIZE)) {
-    cache->state = CACHE_STATE_FAILED;
-    return -1;
-  }
-  cache->load_offset += budget;
-  if (cache->load_offset >= cache->total_bytes) {
-    cache->load_offset = cache->total_bytes;
-    cache->state = CACHE_STATE_READY;
-  }
-  return (int)budget;
-}
-
-static bool resident_slot_promote_tileset_ready(ResidentSlot *slot) {
-  if (!slot || slot->cache_index < 0 || slot->cache_index >= TILESET_CACHE_COUNT) {
-    return tile_fail(TILE_LOAD_ERR_TILESET_REF);
-  }
-  TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
-  if (cache->state == CACHE_STATE_FAILED) {
-    resident_slot_release_resources(slot);
-    slot->state = SLOT_STATE_FAILED;
-    slot->load_stage = SLOT_STAGE_NONE;
-    return tile_fail(TILE_LOAD_ERR_TILESET_SIZE);
-  }
-  if (cache->state != CACHE_STATE_READY) {
-    return false;
-  }
-  if (slot->cache_waiting) {
-    if (cache->waiter_count > 0) {
-      cache->waiter_count -= 1;
-    }
-    cache->ref_count += 1;
-    slot->cache_waiting = false;
-  }
-  slot->load_stage = SLOT_STAGE_LOAD_TILEMAP;
-  return true;
-}
-
-static int resident_slot_pump(ResidentSlot *slot, size_t max_bytes, bool sync_complete) {
-  if (!slot || slot->state != SLOT_STATE_LOADING) {
-    return 0;
-  }
-  size_t budget = max_bytes;
-  int pumped_total = 0;
-
-  while (slot->state == SLOT_STATE_LOADING) {
-    if (slot->load_stage == SLOT_STAGE_WAIT_TILESET) {
-      if (resident_slot_promote_tileset_ready(slot)) {
-        continue;
-      }
-      if (!sync_complete) {
-        break;
-      }
-      TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
-      int pumped = tileset_cache_pump(cache, 0);
-      if (pumped < 0) {
-        resident_slot_release_resources(slot);
-        slot->state = SLOT_STATE_FAILED;
-        slot->load_stage = SLOT_STAGE_NONE;
-        return -1;
-      }
-      pumped_total += pumped;
-      if (!resident_slot_promote_tileset_ready(slot)) {
-        break;
-      }
-      continue;
-    }
-
-    if (slot->load_stage == SLOT_STAGE_LOAD_TILESET) {
-      TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
-      size_t cache_budget = budget == 0 ? 0 : budget;
-      int pumped = tileset_cache_pump(cache, cache_budget);
-      if (pumped < 0) {
-        resident_slot_release_resources(slot);
-        slot->state = SLOT_STATE_FAILED;
-        slot->load_stage = SLOT_STAGE_NONE;
-        return -1;
-      }
-      pumped_total += pumped;
-      slot->loaded_bytes = slot->tilemap_offset + cache->load_offset;
-      if (budget > 0) {
-        if ((size_t)pumped >= budget) {
-          budget = 0;
-        } else {
-          budget -= (size_t)pumped;
-        }
-      }
-      if (!resident_slot_promote_tileset_ready(slot)) {
-        if (!sync_complete || budget == 0) {
-          break;
-        }
-        continue;
-      }
-      if (!sync_complete && budget == 0) {
-        break;
-      }
-      continue;
-    }
-
-    if (slot->load_stage == SLOT_STAGE_LOAD_TILEMAP) {
-      size_t remain = slot->tilemap_bytes - slot->tilemap_offset;
-      size_t want = budget == 0 ? remain : budget;
-      if (want > remain) {
-        want = remain;
-      }
-      if (want == 0 && !sync_complete) {
-        break;
-      }
-      if (want == 0) {
-        want = remain;
-      }
-      if (!resident_read_chunk(slot->tilemap_path, slot->tilemap_offset,
-                               reinterpret_cast<uint8_t *>(slot->tilemap_ptr) + slot->tilemap_offset,
-                               want,
-                               TILE_LOAD_ERR_MAP_OPEN,
-                               TILE_LOAD_ERR_TILESET_SEEK,
-                               TILE_LOAD_ERR_MAP_READ)) {
-        resident_slot_release_resources(slot);
-        slot->state = SLOT_STATE_FAILED;
-        slot->load_stage = SLOT_STAGE_NONE;
-        return -1;
-      }
-      slot->tilemap_offset += want;
-      pumped_total += (int)want;
-      TilesetCacheEntry *cache = &tileset_cache[slot->cache_index];
-      slot->loaded_bytes = slot->tilemap_offset + cache->load_offset;
-      if (budget > 0) {
-        if (want >= budget) {
-          budget = 0;
-        } else {
-          budget -= want;
-        }
-      }
-      if (slot->tilemap_offset >= slot->tilemap_bytes) {
-        if (!resident_validate_tilemap_ids(slot, cache)) {
-          resident_slot_release_resources(slot);
-          slot->state = SLOT_STATE_FAILED;
-          slot->load_stage = SLOT_STAGE_NONE;
-          return -1;
-        }
-        slot->state = SLOT_STATE_READY;
-        slot->load_stage = SLOT_STAGE_READY;
-        slot->loaded_bytes = slot->total_bytes;
-      }
-      if (!sync_complete || budget == 0) {
-        break;
-      }
-      continue;
-    }
-    break;
-  }
-
-  return pumped_total;
 }
 
 static const uint16_t *tile_get_pixels(uint16_t tile_idx, mp_obj_t stream_file) {
@@ -1256,21 +481,24 @@ static const uint16_t *tile_get_pixels(uint16_t tile_idx, mp_obj_t stream_file) 
 static void tile_free_buffers(void) {
   tile_close_stream();
   tile_free_cache();
+  if (tile_state.tileset) {
+    heap_caps_free(tile_state.tileset);
+    tile_state.tileset = nullptr;
+  }
+  if (tile_state.tilemap) {
+    heap_caps_free(tile_state.tilemap);
+    tile_state.tilemap = nullptr;
+  }
   if (tile_state.dirty) {
     heap_caps_free(tile_state.dirty);
     tile_state.dirty = nullptr;
-    tile_state.dirty_len = 0;
   }
-  tile_state.tileset = nullptr;
-  tile_state.tilemap = nullptr;
   tile_state.tileset_len = 0;
   tile_state.tile_count = 0;
   tile_state.tile_bytes = 0;
   tile_state.loaded = false;
   tile_state.has_prev_scroll = false;
-  tile_state.active_slot_id = -1;
   player_overlay.valid = false;
-  enemy_overlay.valid = false;
 }
 
 static bool ensure_sprite_size(int w, int h, bool use_psram) {
@@ -1318,13 +546,6 @@ static inline void draw_map_tile_to_sprite(int tx, int ty, int sx, int sy, mp_ob
   size_t map_idx = (size_t)ty * (size_t)tile_state.map_w + (size_t)tx;
   uint16_t tile_idx = tile_state.tilemap[map_idx];
   if (tile_idx >= tile_state.tile_count) {
-    if (slot_id_valid(tile_state.active_slot_id)) {
-      ResidentSlot *slot = &resident_slots[tile_state.active_slot_id];
-      if (!slot->invalid_tile_logged) {
-        slot->invalid_tile_logged = true;
-        printf("tile_id_oob: slot=%d idx=%u count=%u\n", tile_state.active_slot_id, (unsigned)tile_idx, (unsigned)tile_state.tile_count);
-      }
-    }
     sprite.fillRect(dst_x0, dst_y0, clip_w, clip_h, 0x0000);
     return;
   }
@@ -1345,7 +566,7 @@ static inline void draw_map_tile_to_sprite(int tx, int ty, int sx, int sy, mp_ob
   }
 }
 
-static void redraw_map_rect_to_sprite(int x, int y, int w, int h, mp_obj_t stream_file, int scroll_x, int scroll_y) {
+static void redraw_map_rect_to_sprite(int x, int y, int w, int h, mp_obj_t stream_file) {
   if (w <= 0 || h <= 0) {
     return;
   }
@@ -1364,6 +585,8 @@ static void redraw_map_rect_to_sprite(int x, int y, int w, int h, mp_obj_t strea
   }
 
   int tile = tile_state.tile_size;
+  int scroll_x = tile_state.prev_scroll_x;
+  int scroll_y = tile_state.prev_scroll_y;
   int wx0 = scroll_x + x0;
   int wy0 = scroll_y + y0;
   int wx1 = scroll_x + x1;
@@ -1595,7 +818,7 @@ static bool player_build_bg_mask(const uint16_t *sheet_pixels, int sheet_w, int 
   return true;
 }
 
-static void push_rect_from_sprite_to_lcd_locked(int x, int y, int w, int h) {
+static void push_rect_from_sprite_to_lcd(int x, int y, int w, int h) {
   if (!sprite_ready || w <= 0 || h <= 0) {
     return;
   }
@@ -1618,16 +841,12 @@ static void push_rect_from_sprite_to_lcd_locked(int x, int y, int w, int h) {
   }
   uint16_t *buf = static_cast<uint16_t *>(sprite.getBuffer());
   int stride = sprite.width();
+  lcd.startWrite();
   for (int yy = 0; yy < h; ++yy) {
     const lgfx::swap565_t *line = reinterpret_cast<const lgfx::swap565_t *>(buf + (y + yy) * stride + x);
     // Sprite buffers are rgb565_2Byte (swap565) regardless of lcd swap settings.
     lcd.pushImage(x, y + yy, w, 1, line);
   }
-}
-
-static void push_rect_from_sprite_to_lcd(int x, int y, int w, int h) {
-  lcd.startWrite();
-  push_rect_from_sprite_to_lcd_locked(x, y, w, h);
   lcd.endWrite();
 }
 
@@ -1652,151 +871,7 @@ static void player_sheet_release(void) {
   player_sprite.enabled = false;
 }
 
-static void enemy_sheet_release(void) {
-  if (enemy_sprite.pixels) {
-    heap_caps_free(enemy_sprite.pixels);
-    enemy_sprite.pixels = nullptr;
-  }
-  if (enemy_sprite.bg_mask) {
-    heap_caps_free(enemy_sprite.bg_mask);
-    enemy_sprite.bg_mask = nullptr;
-  }
-  enemy_sprite.pixels_len = 0;
-  enemy_sprite.bg_mask_len = 0;
-  enemy_sprite.sheet_w = 0;
-  enemy_sprite.sheet_h = 0;
-  enemy_sprite.frame_w = 0;
-  enemy_sprite.frame_h = 0;
-  enemy_sprite.frame_count = 0;
-  enemy_sprite.current_frame = 0;
-  enemy_sprite.enabled = false;
-  enemy_overlay.valid = false;
-}
-
-static bool enemy_draw_sheet_frame(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h, bool has_active_write) {
-  if (!enemy_sprite.enabled || !enemy_sprite.pixels || enemy_sprite.frame_count <= 0) {
-    return false;
-  }
-
-  int frame_w = enemy_sprite.frame_w;
-  int frame_h = enemy_sprite.frame_h;
-  if (frame_w <= 0 || frame_h <= 0 || enemy_sprite.sheet_w <= 0 || enemy_sprite.sheet_h <= 0) {
-    return false;
-  }
-
-  int frames_per_row = enemy_sprite.sheet_w / frame_w;
-  if (frames_per_row <= 0) {
-    return false;
-  }
-
-  int frame_index = enemy_sprite.current_frame;
-  if (frame_index < 0 || frame_index >= enemy_sprite.frame_count) {
-    frame_index %= enemy_sprite.frame_count;
-    if (frame_index < 0) {
-      frame_index += enemy_sprite.frame_count;
-    }
-  }
-
-  int src_col = frame_index % frames_per_row;
-  int src_row = frame_index / frames_per_row;
-  int src_x = src_col * frame_w;
-  int src_y = src_row * frame_h;
-  if (src_x < 0 || src_y < 0 || src_x + frame_w > enemy_sprite.sheet_w || src_y + frame_h > enemy_sprite.sheet_h) {
-    return false;
-  }
-
-  int dst_x = center_x - frame_w / 2;
-  int dst_y = center_y - frame_h / 2;
-  int clip_x0 = dst_x < 0 ? 0 : dst_x;
-  int clip_y0 = dst_y < 0 ? 0 : dst_y;
-  int clip_x1 = dst_x + frame_w;
-  int clip_y1 = dst_y + frame_h;
-  if (clip_x1 > tile_state.view_w) {
-    clip_x1 = tile_state.view_w;
-  }
-  if (clip_y1 > tile_state.view_h) {
-    clip_y1 = tile_state.view_h;
-  }
-  if (clip_x0 >= clip_x1 || clip_y0 >= clip_y1) {
-    if (out_x) {
-      *out_x = dst_x;
-    }
-    if (out_y) {
-      *out_y = dst_y;
-    }
-    if (out_w) {
-      *out_w = frame_w;
-    }
-    if (out_h) {
-      *out_h = frame_h;
-    }
-    return true;
-  }
-
-  int src_clip_x = clip_x0 - dst_x;
-  int src_clip_y = clip_y0 - dst_y;
-  int draw_w = clip_x1 - clip_x0;
-  int draw_h = clip_y1 - clip_y0;
-  const uint16_t *base = enemy_sprite.pixels + (size_t)src_y * (size_t)enemy_sprite.sheet_w + (size_t)src_x;
-
-  bool opened_write = false;
-  if (!has_active_write) {
-    lcd.startWrite();
-    opened_write = true;
-  }
-  size_t frame_pixels = (size_t)frame_w * (size_t)frame_h;
-  size_t frame_offset = (size_t)frame_index * frame_pixels;
-  for (int yy = 0; yy < draw_h; ++yy) {
-    const uint16_t *row_base = base + (size_t)(src_clip_y + yy) * (size_t)enemy_sprite.sheet_w;
-    const uint16_t *line = row_base + (size_t)src_clip_x;
-    int run_start = -1;
-    for (int xx = 0; xx < draw_w; ++xx) {
-      size_t local_x = (size_t)(src_clip_x + xx);
-      bool transparent = false;
-      if (enemy_sprite.bg_mask && enemy_sprite.bg_mask_len > 0) {
-        size_t local_y = (size_t)(src_clip_y + yy);
-        size_t mask_idx = frame_offset + local_y * (size_t)frame_w + local_x;
-        if (mask_idx < frame_pixels * (size_t)enemy_sprite.frame_count) {
-          transparent = mask_bit_get(enemy_sprite.bg_mask, mask_idx);
-        }
-      } else {
-        transparent = player_pixel_is_transparent(row_base[local_x]);
-      }
-      if (!transparent) {
-        if (run_start < 0) {
-          run_start = xx;
-        }
-      } else if (run_start >= 0) {
-        int run_len = xx - run_start;
-        lcd.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, line + run_start);
-        run_start = -1;
-      }
-    }
-    if (run_start >= 0) {
-      int run_len = draw_w - run_start;
-      lcd.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, line + run_start);
-    }
-  }
-  if (opened_write) {
-    lcd.endWrite();
-  }
-
-  if (out_x) {
-    *out_x = dst_x;
-  }
-  if (out_y) {
-    *out_y = dst_y;
-  }
-  if (out_w) {
-    *out_w = frame_w;
-  }
-  if (out_h) {
-    *out_h = frame_h;
-  }
-  return true;
-}
-
-static bool player_draw_sheet_frame(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h, bool has_active_write) {
+static bool player_draw_sheet_frame(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h) {
   if (!player_sprite.enabled || !player_sprite.pixels || player_sprite.frame_count <= 0) {
     return false;
   }
@@ -1862,11 +937,7 @@ static bool player_draw_sheet_frame(int center_x, int center_y, int *out_x, int 
   int draw_h = clip_y1 - clip_y0;
   const uint16_t *base = player_sprite.pixels + (size_t)src_y * (size_t)player_sprite.sheet_w + (size_t)src_x;
 
-  bool opened_write = false;
-  if (!has_active_write) {
-    lcd.startWrite();
-    opened_write = true;
-  }
+  lcd.startWrite();
   size_t frame_pixels = (size_t)frame_w * (size_t)frame_h;
   size_t frame_offset = (size_t)frame_index * frame_pixels;
   bool flip_x = player_sprite.flip_x;
@@ -1932,9 +1003,7 @@ static bool player_draw_sheet_frame(int center_x, int center_y, int *out_x, int 
   if (flip_buf) {
     std::free(flip_buf);
   }
-  if (opened_write) {
-    lcd.endWrite();
-  }
+  lcd.endWrite();
 
   if (out_x) {
     *out_x = dst_x;
@@ -1949,180 +1018,6 @@ static bool player_draw_sheet_frame(int center_x, int center_y, int *out_x, int 
     *out_h = frame_h;
   }
   return true;
-}
-
-static bool player_draw_sheet_frame_to_sprite(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h) {
-  if (!player_sprite.enabled || !player_sprite.pixels || player_sprite.frame_count <= 0) {
-    return false;
-  }
-
-  int frame_w = player_sprite.frame_w;
-  int frame_h = player_sprite.frame_h;
-  if (frame_w <= 0 || frame_h <= 0 || player_sprite.sheet_w <= 0 || player_sprite.sheet_h <= 0) {
-    return false;
-  }
-
-  int frames_per_row = player_sprite.sheet_w / frame_w;
-  if (frames_per_row <= 0) {
-    return false;
-  }
-
-  int frame_index = player_sprite.current_frame;
-  if (frame_index < 0 || frame_index >= player_sprite.frame_count) {
-    frame_index %= player_sprite.frame_count;
-    if (frame_index < 0) {
-      frame_index += player_sprite.frame_count;
-    }
-  }
-
-  int src_col = frame_index % frames_per_row;
-  int src_row = frame_index / frames_per_row;
-  int src_x = src_col * frame_w;
-  int src_y = src_row * frame_h;
-  if (src_x < 0 || src_y < 0 || src_x + frame_w > player_sprite.sheet_w || src_y + frame_h > player_sprite.sheet_h) {
-    return false;
-  }
-
-  int dst_x = center_x - frame_w / 2;
-  int dst_y = center_y - frame_h / 2;
-  int clip_x0 = dst_x < 0 ? 0 : dst_x;
-  int clip_y0 = dst_y < 0 ? 0 : dst_y;
-  int clip_x1 = dst_x + frame_w;
-  int clip_y1 = dst_y + frame_h;
-  if (clip_x1 > tile_state.view_w) {
-    clip_x1 = tile_state.view_w;
-  }
-  if (clip_y1 > tile_state.view_h) {
-    clip_y1 = tile_state.view_h;
-  }
-  if (clip_x0 >= clip_x1 || clip_y0 >= clip_y1) {
-    if (out_x) {
-      *out_x = dst_x;
-    }
-    if (out_y) {
-      *out_y = dst_y;
-    }
-    if (out_w) {
-      *out_w = frame_w;
-    }
-    if (out_h) {
-      *out_h = frame_h;
-    }
-    return true;
-  }
-
-  int src_clip_x = clip_x0 - dst_x;
-  int src_clip_y = clip_y0 - dst_y;
-  int draw_w = clip_x1 - clip_x0;
-  int draw_h = clip_y1 - clip_y0;
-  const uint16_t *base = player_sprite.pixels + (size_t)src_y * (size_t)player_sprite.sheet_w + (size_t)src_x;
-
-  size_t frame_pixels = (size_t)frame_w * (size_t)frame_h;
-  size_t frame_offset = (size_t)frame_index * frame_pixels;
-  bool flip_x = player_sprite.flip_x;
-  uint16_t *flip_buf = nullptr;
-  if (flip_x) {
-    flip_buf = static_cast<uint16_t *>(std::malloc((size_t)draw_w * sizeof(uint16_t)));
-    if (!flip_buf) {
-      flip_x = false;
-    }
-  }
-  for (int yy = 0; yy < draw_h; ++yy) {
-    const uint16_t *row_base = base + (size_t)(src_clip_y + yy) * (size_t)player_sprite.sheet_w;
-    const uint16_t *line = row_base + (size_t)src_clip_x;
-    int run_start = -1;
-    for (int xx = 0; xx < draw_w; ++xx) {
-      size_t local_x = (size_t)(src_clip_x + xx);
-      if (flip_x) {
-        local_x = (size_t)(frame_w - 1) - local_x;
-      }
-      bool transparent = false;
-      if (player_sprite.bg_mask && player_sprite.bg_mask_len > 0) {
-        size_t local_y = (size_t)(src_clip_y + yy);
-        size_t mask_idx = frame_offset + local_y * (size_t)frame_w + local_x;
-        if (mask_idx < frame_pixels * (size_t)player_sprite.frame_count) {
-          transparent = mask_bit_get(player_sprite.bg_mask, mask_idx);
-        }
-      } else {
-        transparent = player_pixel_is_transparent(row_base[local_x]);
-      }
-      if (!transparent) {
-        if (run_start < 0) {
-          run_start = xx;
-        }
-      } else if (run_start >= 0) {
-        int run_len = xx - run_start;
-        if (!flip_x) {
-          sprite.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, line + run_start);
-        } else {
-          for (int i = 0; i < run_len; ++i) {
-            size_t src_local_x = (size_t)(src_clip_x + run_start + i);
-            src_local_x = (size_t)(frame_w - 1) - src_local_x;
-            flip_buf[i] = row_base[src_local_x];
-          }
-          sprite.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, flip_buf);
-        }
-        run_start = -1;
-      }
-    }
-    if (run_start >= 0) {
-      int run_len = draw_w - run_start;
-      if (!flip_x) {
-        sprite.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, line + run_start);
-      } else {
-        for (int i = 0; i < run_len; ++i) {
-          size_t src_local_x = (size_t)(src_clip_x + run_start + i);
-          src_local_x = (size_t)(frame_w - 1) - src_local_x;
-          flip_buf[i] = row_base[src_local_x];
-        }
-        sprite.pushImage(clip_x0 + run_start, clip_y0 + yy, run_len, 1, flip_buf);
-      }
-    }
-  }
-  if (flip_buf) {
-    std::free(flip_buf);
-  }
-
-  if (out_x) {
-    *out_x = dst_x;
-  }
-  if (out_y) {
-    *out_y = dst_y;
-  }
-  if (out_w) {
-    *out_w = frame_w;
-  }
-  if (out_h) {
-    *out_h = frame_h;
-  }
-  return true;
-}
-
-static void player_draw_to_sprite(int center_x, int center_y, uint16_t color, int radius, int *out_x, int *out_y, int *out_w, int *out_h) {
-  int new_x = 0;
-  int new_y = 0;
-  int new_w = 0;
-  int new_h = 0;
-  bool drew_sprite = player_draw_sheet_frame_to_sprite(center_x, center_y, &new_x, &new_y, &new_w, &new_h);
-  if (!drew_sprite) {
-    sprite.fillCircle(center_x, center_y, radius, color);
-    new_x = center_x - radius;
-    new_y = center_y - radius;
-    new_w = radius * 2 + 1;
-    new_h = radius * 2 + 1;
-  }
-  if (out_x) {
-    *out_x = new_x;
-  }
-  if (out_y) {
-    *out_y = new_y;
-  }
-  if (out_w) {
-    *out_w = new_w;
-  }
-  if (out_h) {
-    *out_h = new_h;
-  }
 }
 
 static uint16_t *player_alloc_pixels(size_t len) {
@@ -2166,40 +1061,11 @@ extern "C" void lgfx_init_impl(void) {
   sprite.setSwapBytes(lcd.getSwapBytes());
   lcd.setBrightness(255);
   player_overlay.valid = false;
-  enemy_overlay.valid = false;
   scene_epoch = 0;
 }
 
 extern "C" void lgfx_fill_impl(uint16_t color) {
   lcd.fillScreen(color);
-}
-
-extern "C" void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
-  if (!text) {
-    return;
-  }
-  lcd.setTextFont(1);
-  lcd.setTextSize(1);
-  lcd.setTextColor(color, 0x0000);
-  lcd.drawString(text, x, y);
-}
-
-extern "C" void lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
-  if (w <= 0 || h <= 0) {
-    return;
-  }
-  lcd.drawRect(x, y, w, h, color);
-}
-
-extern "C" void lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
-  if (r <= 0) {
-    return;
-  }
-  lcd.fillCircle(x, y, r, color);
-}
-
-extern "C" void lgfx_clear_impl(void) {
-  lcd.fillScreen(0);
 }
 
 extern "C" void lgfx_set_rotation_impl(int rotation) {
@@ -2252,31 +1118,25 @@ extern "C" bool lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int vi
   tile_state.view_h = view_h;
   tile_state.use_psram = use_psram;
 
-  // Reserve the largest contiguous block first. This improves success rate
-  // for full-screen sprite allocation when heap/PSRAM is fragmented.
-  if (!ensure_sprite_size(view_w, view_h, use_psram)) {
-    tile_free_buffers();
-    return false;
-  }
-
   size_t map_cells = (size_t)map_w * (size_t)map_h;
-  if (!ensure_dirty_buffer(map_cells, use_psram)) {
+  tile_state.tilemap = static_cast<uint16_t *>(lgfx_alloc(map_cells * sizeof(uint16_t), use_psram));
+  tile_state.dirty = static_cast<uint8_t *>(lgfx_alloc(map_cells, use_psram));
+  if (!tile_state.tilemap || !tile_state.dirty) {
     tile_free_buffers();
     return false;
   }
 
-  tile_state.tileset = nullptr;
-  tile_state.tilemap = nullptr;
+  memset(tile_state.tilemap, 0, map_cells * sizeof(uint16_t));
+  memset(tile_state.dirty, 1, map_cells);
   tile_state.loaded = false;
   tile_state.last_error = TILE_LOAD_OK;
   tile_state.has_prev_scroll = false;
-  tile_state.active_slot_id = -1;
 
-  return true;
+  return ensure_sprite_size(view_w, view_h, use_psram);
 }
 
 extern "C" bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_len, const uint8_t *tilemap_data, size_t tilemap_len) {
-  if (!tileset_data || !tilemap_data) {
+  if (!tile_state.tilemap || !tile_state.dirty || !tileset_data || !tilemap_data) {
     return tile_fail(TILE_LOAD_ERR_ARGS);
   }
   size_t map_cells = (size_t)tile_state.map_w * (size_t)tile_state.map_h;
@@ -2293,73 +1153,31 @@ extern "C" bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_
   if (new_tile_count == 0) {
     return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
   }
-  if (!slot_id_valid(0)) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-  }
-  if (tile_state.active_slot_id == 0) {
-    tile_state.loaded = false;
-    tile_state.active_slot_id = -1;
-  }
-  ResidentSlot *slot = &resident_slots[0];
-  resident_slot_release_resources(slot);
-  slot->state = SLOT_STATE_READY;
-  slot->load_stage = SLOT_STAGE_READY;
-  slot->role = slot->role == SLOT_ROLE_NONE ? SLOT_ROLE_ACTIVE : slot->role;
-  slot->map_token = 0;
-  slot->tileset_token = 0;
-  slot->tile_size = tile_state.tile_size;
-  slot->map_w = tile_state.map_w;
-  slot->map_h = tile_state.map_h;
-  slot->tilemap_bytes = tilemap_len;
-  slot->tilemap_offset = tilemap_len;
-  slot->loaded_bytes = tilemap_len + tileset_len;
-  slot->total_bytes = slot->loaded_bytes;
-  slot->use_psram = tile_state.use_psram;
-  slot->tilemap_ptr = static_cast<uint16_t *>(lgfx_alloc(tilemap_len, tile_state.use_psram));
-  if (!slot->tilemap_ptr) {
-    resident_slot_reset(slot);
-    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
-  }
-  memcpy(slot->tilemap_ptr, tilemap_data, tilemap_len);
 
-  int cache_index = tileset_cache_find(0);
-  if (cache_index >= 0 && (tileset_cache[cache_index].total_bytes != tileset_len || tileset_cache[cache_index].tile_bytes != tile_bytes)) {
-    tileset_cache_reset(&tileset_cache[cache_index]);
-    cache_index = -1;
+  tile_close_stream();
+  tile_free_cache();
+  if (tile_state.tileset) {
+    heap_caps_free(tile_state.tileset);
+    tile_state.tileset = nullptr;
+    tile_state.tileset_len = 0;
+    tile_state.tile_count = 0;
   }
-  if (cache_index < 0) {
-    cache_index = tileset_cache_find_free();
-  }
-  if (cache_index < 0) {
-    resident_slot_release_resources(slot);
+
+  tile_state.tileset = static_cast<uint16_t *>(lgfx_alloc(tileset_len, tile_state.use_psram));
+  if (!tile_state.tileset) {
     return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
   }
-  TilesetCacheEntry *cache = &tileset_cache[cache_index];
-  if (!cache->ptr) {
-    cache->ptr = static_cast<uint16_t *>(lgfx_alloc(tileset_len, tile_state.use_psram));
-  }
-  if (!cache->ptr) {
-    resident_slot_release_resources(slot);
-    tileset_cache_reset(cache);
-    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
-  }
-  memcpy(cache->ptr, tileset_data, tileset_len);
-  cache->tileset_token = 0;
-  cache->total_bytes = tileset_len;
-  cache->load_offset = tileset_len;
-  cache->tile_count = new_tile_count;
-  cache->tile_bytes = tile_bytes;
-  cache->ref_count = 1;
-  cache->waiter_count = 0;
-  cache->state = CACHE_STATE_READY;
-  cache->use_psram = tile_state.use_psram;
-  slot->cache_index = cache_index;
-  slot->cache_waiting = false;
-  if (!resident_validate_tilemap_ids(slot, cache)) {
-    resident_slot_release_resources(slot);
-    return false;
-  }
-  return resident_activate_slot(0, true);
+  memcpy(tile_state.tileset, tileset_data, tileset_len);
+  memcpy(tile_state.tilemap, tilemap_data, tilemap_len);
+  memset(tile_state.dirty, 1, map_cells);
+
+  tile_state.tileset_len = tileset_len;
+  tile_state.tile_count = new_tile_count;
+  tile_state.tile_bytes = tile_bytes;
+  tile_state.loaded = true;
+  tile_state.last_error = TILE_LOAD_OK;
+  tile_state.has_prev_scroll = false;
+  return true;
 }
 
 extern "C" bool lgfx_tile_set_impl(int tx, int ty, int tile_index) {
@@ -2381,176 +1199,81 @@ extern "C" bool lgfx_tile_set_impl(int tx, int ty, int tile_index) {
 }
 
 extern "C" bool lgfx_tile_load_files_impl(const char *tileset_path, const char *tilemap_path) {
-  return lgfx_slot_load_files_impl(0, 0, 0, tileset_path, tilemap_path, tile_state.tile_size, tile_state.map_w, tile_state.map_h);
+  if (!tileset_path || !tilemap_path || !tile_state.tilemap || !tile_state.dirty) {
+    return tile_fail(TILE_LOAD_ERR_ARGS);
+  }
+
+  mp_obj_t f_map = vfs_open_rb(tilemap_path);
+  if (f_map == MP_OBJ_NULL) {
+    return tile_fail(TILE_LOAD_ERR_MAP_OPEN);
+  }
+  size_t map_cells = (size_t)tile_state.map_w * (size_t)tile_state.map_h;
+  size_t expected_tilemap_len = map_cells * sizeof(uint16_t);
+  bool map_ok = vfs_read_exact(f_map, tile_state.tilemap, expected_tilemap_len);
+  vfs_close_quiet(f_map);
+  if (!map_ok) {
+    return tile_fail(TILE_LOAD_ERR_MAP_READ);
+  }
+
+  mp_obj_t f_tiles = vfs_open_rb(tileset_path);
+  if (f_tiles == MP_OBJ_NULL) {
+    return tile_fail(TILE_LOAD_ERR_TILESET_OPEN);
+  }
+
+  int errcode = 0;
+  mp_off_t tile_file_size = mp_stream_seek(f_tiles, 0, MP_SEEK_END, &errcode);
+  if (tile_file_size <= 0 || errcode != 0) {
+    vfs_close_quiet(f_tiles);
+    return tile_fail(TILE_LOAD_ERR_TILESET_SEEK);
+  }
+  mp_off_t seek0 = mp_stream_seek(f_tiles, 0, MP_SEEK_SET, &errcode);
+  if (seek0 < 0 || errcode != 0) {
+    vfs_close_quiet(f_tiles);
+    return tile_fail(TILE_LOAD_ERR_TILESET_SEEK);
+  }
+
+  size_t tileset_len = (size_t)tile_file_size;
+  size_t tile_pixels = (size_t)tile_state.tile_size * (size_t)tile_state.tile_size;
+  size_t tile_bytes = tile_pixels * sizeof(uint16_t);
+  if (tile_bytes == 0 || (tileset_len % tile_bytes) != 0) {
+    vfs_close_quiet(f_tiles);
+    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
+  }
+  size_t new_tile_count = tileset_len / tile_bytes;
+  if (new_tile_count == 0) {
+    vfs_close_quiet(f_tiles);
+    return tile_fail(TILE_LOAD_ERR_TILESET_FORMAT);
+  }
+
+  tile_close_stream();
+  tile_free_cache();
+  if (tile_state.tileset) {
+    heap_caps_free(tile_state.tileset);
+    tile_state.tileset = nullptr;
+    tile_state.tileset_len = 0;
+    tile_state.tile_count = 0;
+  }
+  if (!tile_alloc_cache(tile_bytes, tile_state.use_psram)) {
+    vfs_close_quiet(f_tiles);
+    return tile_fail(TILE_LOAD_ERR_CACHE_ALLOC);
+  }
+  vfs_close_quiet(f_tiles);
+
+  memset(tile_state.dirty, 1, map_cells);
+  tile_state.tileset_len = tileset_len;
+  tile_state.tile_count = new_tile_count;
+  tile_state.tile_bytes = tile_bytes;
+  strncpy(tile_state.tileset_path, tileset_path, sizeof(tile_state.tileset_path) - 1);
+  tile_state.tileset_path[sizeof(tile_state.tileset_path) - 1] = '\0';
+  tile_state.tileset_stream = true;
+  tile_state.loaded = true;
+  tile_state.last_error = TILE_LOAD_OK;
+  tile_state.has_prev_scroll = false;
+  return true;
 }
 
 extern "C" int lgfx_tile_loader_mode_impl(void) {
-  return 3;
-}
-
-extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
-  if (!slot_id_valid(slot_id)) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-  }
-  if (tile_state.active_slot_id == slot_id) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
-  }
-  ResidentSlot *slot = &resident_slots[slot_id];
-  if (!resident_slot_prepare_load(slot, map_token, tileset_token, tileset_path, tilemap_path, tile_size, map_w, map_h)) {
-    slot->state = SLOT_STATE_FAILED;
-    slot->load_stage = SLOT_STAGE_NONE;
-    return false;
-  }
-  int pumped = resident_slot_pump(slot, 0, true);
-  if (pumped < 0 || slot->state != SLOT_STATE_READY) {
-    slot->state = SLOT_STATE_FAILED;
-    slot->load_stage = SLOT_STAGE_NONE;
-    return false;
-  }
-  tile_state.last_error = TILE_LOAD_OK;
-  return true;
-}
-
-extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
-  if (!slot_id_valid(slot_id)) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-  }
-  if (tile_state.active_slot_id == slot_id) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
-  }
-  ResidentSlot *slot = &resident_slots[slot_id];
-  if (!resident_slot_prepare_load(slot, map_token, tileset_token, tileset_path, tilemap_path, tile_size, map_w, map_h)) {
-    slot->state = SLOT_STATE_FAILED;
-    slot->load_stage = SLOT_STAGE_NONE;
-    return false;
-  }
-  tile_state.last_error = TILE_LOAD_OK;
-  return true;
-}
-
-extern "C" int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
-  if (!slot_id_valid(slot_id)) {
-    tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-    return -1;
-  }
-  if (tile_state.active_slot_id == slot_id) {
-    tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
-    return -1;
-  }
-  ResidentSlot *slot = &resident_slots[slot_id];
-  if (slot->state != SLOT_STATE_LOADING) {
-    return 0;
-  }
-  int pumped = resident_slot_pump(slot, max_bytes, false);
-  if (pumped < 0) {
-    slot->state = SLOT_STATE_FAILED;
-    slot->load_stage = SLOT_STAGE_NONE;
-  }
-  return pumped;
-}
-
-extern "C" bool lgfx_slot_cancel_load_impl(int slot_id) {
-  if (!slot_id_valid(slot_id)) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-  }
-  if (tile_state.active_slot_id == slot_id) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
-  }
-  ResidentSlot *slot = &resident_slots[slot_id];
-  if (slot->state != SLOT_STATE_LOADING) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_STATE);
-  }
-  resident_slot_release_resources(slot);
-  tile_state.last_error = TILE_LOAD_OK;
-  return true;
-}
-
-extern "C" bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
-  if (!slot_id_valid(slot_id)) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-  }
-  if (resident_slots[slot_id].state != SLOT_STATE_READY) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_STATE);
-  }
-  if (!resident_activate_slot(slot_id, force_full_redraw)) {
-    return false;
-  }
-  if (force_full_redraw) {
-    tile_state.has_prev_scroll = false;
-  }
-  tile_state.last_error = TILE_LOAD_OK;
-  return true;
-}
-
-extern "C" bool lgfx_slot_release_impl(int slot_id) {
-  if (!slot_id_valid(slot_id)) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
-  }
-  if (tile_state.active_slot_id == slot_id) {
-    return tile_fail(TILE_LOAD_ERR_SLOT_ACTIVE);
-  }
-  resident_slot_release_resources(&resident_slots[slot_id]);
-  tile_state.last_error = TILE_LOAD_OK;
-  return true;
-}
-
-extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
-  if (!slot_id_valid(slot_id)) {
-    return false;
-  }
-  ResidentSlot *slot = &resident_slots[slot_id];
-  return slot->state != SLOT_STATE_EMPTY && slot->map_token == map_token;
-}
-
-extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
-  if (!slot_id_valid(slot_id)) {
-    return false;
-  }
-  ResidentSlot *slot = &resident_slots[slot_id];
-  TilesetCacheEntry *cache = (slot->cache_index >= 0 && slot->cache_index < TILESET_CACHE_COUNT) ? &tileset_cache[slot->cache_index] : nullptr;
-  if (role) {
-    *role = slot->role;
-  }
-  if (state) {
-    *state = slot->state;
-  }
-  if (map_token) {
-    *map_token = slot->map_token;
-  }
-  if (tileset_token) {
-    *tileset_token = slot->tileset_token;
-  }
-  if (load_stage) {
-    *load_stage = slot->load_stage;
-  }
-  if (loaded_bytes) {
-    *loaded_bytes = slot->loaded_bytes;
-  }
-  if (total_bytes) {
-    *total_bytes = slot->total_bytes;
-  }
-  if (ref_count) {
-    *ref_count = cache ? cache->ref_count : 0;
-  }
-  if (waiter_count) {
-    *waiter_count = cache ? cache->waiter_count : 0;
-  }
-  if (is_active) {
-    *is_active = (tile_state.active_slot_id == slot_id);
-  }
-  return true;
-}
-
-extern "C" void lgfx_slot_set_role_impl(int slot_id, int role) {
-  if (!slot_id_valid(slot_id)) {
-    return;
-  }
-  resident_slots[slot_id].role = role;
-}
-
-extern "C" void lgfx_display_wait_idle_impl(void) {
-  lcd.waitDMA();
-  lcd.waitDisplay();
+  return 2;
 }
 
 extern "C" int lgfx_tile_last_error_impl(void) {
@@ -2679,133 +1402,10 @@ extern "C" void lgfx_player_sheet_clear_impl(void) {
   player_sheet_release();
 }
 
-extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
-  if (!sheet_path) {
-    return false;
-  }
-
-  size_t expected_len = (size_t)sheet_w * (size_t)sheet_h * sizeof(uint16_t);
-  int frame_count = 0;
-  if (!player_sheet_validate(expected_len, sheet_w, sheet_h, frame_w, frame_h, &frame_count)) {
-    return false;
-  }
-
-  mp_obj_t file = vfs_open_rb(sheet_path);
-  if (file == MP_OBJ_NULL) {
-    return false;
-  }
-
-  int errcode = 0;
-  mp_off_t file_size = mp_stream_seek(file, 0, MP_SEEK_END, &errcode);
-  if (file_size < 0 || errcode != 0 || (size_t)file_size != expected_len) {
-    vfs_close_quiet(file);
-    return false;
-  }
-  mp_off_t seek0 = mp_stream_seek(file, 0, MP_SEEK_SET, &errcode);
-  if (seek0 < 0 || errcode != 0) {
-    vfs_close_quiet(file);
-    return false;
-  }
-
-  uint16_t *new_pixels = player_alloc_pixels(expected_len);
-  if (!new_pixels) {
-    vfs_close_quiet(file);
-    return false;
-  }
-  bool read_ok = vfs_read_exact(file, new_pixels, expected_len);
-  vfs_close_quiet(file);
-  if (!read_ok) {
-    heap_caps_free(new_pixels);
-    return false;
-  }
-
-  uint8_t *new_mask = nullptr;
-  size_t new_mask_len = 0;
-  player_build_bg_mask(new_pixels, sheet_w, sheet_h, frame_w, frame_h, frame_count, &new_mask, &new_mask_len);
-
-  if (enemy_sprite.pixels) {
-    heap_caps_free(enemy_sprite.pixels);
-  }
-  if (enemy_sprite.bg_mask) {
-    heap_caps_free(enemy_sprite.bg_mask);
-  }
-  enemy_sprite.pixels = new_pixels;
-  enemy_sprite.pixels_len = expected_len;
-  enemy_sprite.bg_mask = new_mask;
-  enemy_sprite.bg_mask_len = new_mask_len;
-  enemy_sprite.sheet_w = sheet_w;
-  enemy_sprite.sheet_h = sheet_h;
-  enemy_sprite.frame_w = frame_w;
-  enemy_sprite.frame_h = frame_h;
-  enemy_sprite.frame_count = frame_count;
-  enemy_sprite.current_frame = 0;
-  enemy_sprite.enabled = true;
-  enemy_overlay.valid = false;
-  return true;
-}
-
-extern "C" void lgfx_enemy_frame_set_impl(int frame_index) {
-  if (!enemy_sprite.enabled || enemy_sprite.frame_count <= 0) {
-    return;
-  }
-  int norm = frame_index % enemy_sprite.frame_count;
-  if (norm < 0) {
-    norm += enemy_sprite.frame_count;
-  }
-  enemy_sprite.current_frame = norm;
-}
-
-extern "C" void lgfx_enemy_sheet_clear_impl(void) {
-  enemy_sheet_release();
-}
-
-extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
-  if (!path || w <= 0 || h <= 0) {
-    return false;
-  }
-
-  mp_obj_t file = vfs_open_rb(path);
-  if (file == MP_OBJ_NULL) {
-    return false;
-  }
-
-  int errcode = 0;
-  mp_off_t file_size = mp_stream_seek(file, 0, MP_SEEK_END, &errcode);
-  if (file_size <= 0 || errcode != 0) {
-    vfs_close_quiet(file);
-    return false;
-  }
-  mp_off_t seek0 = mp_stream_seek(file, 0, MP_SEEK_SET, &errcode);
-  if (seek0 < 0 || errcode != 0) {
-    vfs_close_quiet(file);
-    return false;
-  }
-
-  size_t png_len = (size_t)file_size;
-  uint8_t *png_data = player_alloc_bytes(png_len);
-  if (!png_data) {
-    vfs_close_quiet(file);
-    return false;
-  }
-
-  bool read_ok = vfs_read_exact(file, png_data, png_len);
-  vfs_close_quiet(file);
-  if (!read_ok) {
-    heap_caps_free(png_data);
-    return false;
-  }
-
-  bool ok = lcd.drawPng(png_data, (uint32_t)png_len, x, y, w, h, 0, 0, -1.0f, -1.0f);
-  heap_caps_free(png_data);
-  return ok;
-}
-
 extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full) {
   if (!tile_state.loaded || !sprite_ready) {
     return 0;
   }
-
-  render_compose_applied = false;
 
   mp_obj_t stream_file = MP_OBJ_NULL;
   if (tile_state.tileset_stream && tile_state.tileset_path[0] != '\0') {
@@ -2819,14 +1419,8 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
   int prev_scroll_y = tile_state.prev_scroll_y;
   int dx_scroll = scroll_x - prev_scroll_x;
   int dy_scroll = scroll_y - prev_scroll_y;
-  bool camera_scrolled = (dx_scroll != 0 || dy_scroll != 0);
   bool full_redraw = force_full || !tile_state.has_prev_scroll;
-  bool try_scroll_opt = !full_redraw && camera_scrolled;
-  bool compose_player = render_compose_player;
-  int compose_rect_x = 0;
-  int compose_rect_y = 0;
-  int compose_rect_w = 0;
-  int compose_rect_h = 0;
+  bool try_scroll_opt = !full_redraw && (dx_scroll != 0 || dy_scroll != 0);
   int tile = tile_state.tile_size;
   int tiles_x = (tile_state.view_w + tile - 1) / tile + 1;
   int tiles_y = (tile_state.view_h + tile - 1) / tile + 1;
@@ -2847,33 +1441,17 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
         render_stats.last_tiles += 1;
       }
     }
-    if (compose_player) {
-      player_draw_to_sprite(render_compose_player_x, render_compose_player_y, render_compose_player_color, render_compose_player_radius,
-                            &compose_rect_x, &compose_rect_y, &compose_rect_w, &compose_rect_h);
-      render_compose_applied = true;
-    }
     sprite.pushSprite(0, 0);
-    if (render_compose_applied) {
-      redraw_map_rect_to_sprite(compose_rect_x, compose_rect_y, compose_rect_w, compose_rect_h, stream_file, scroll_x, scroll_y);
-    }
     scene_epoch += 1;
     size_t map_cells = (size_t)tile_state.map_w * (size_t)tile_state.map_h;
     memset(tile_state.dirty, 0, map_cells);
     render_stats.full_frames += 1;
     player_overlay.valid = false;
-    enemy_overlay.valid = false;
   } else if (try_scroll_opt && iabs(dx_scroll) < tile_state.view_w && iabs(dy_scroll) < tile_state.view_h) {
     // Scroll current sprite contents, then redraw only newly exposed strips + dirty tiles.
-    if (enemy_overlay.valid) {
-      redraw_map_rect_to_sprite(enemy_overlay.x, enemy_overlay.y, enemy_overlay.w, enemy_overlay.h, stream_file,
-                                tile_state.prev_scroll_x, tile_state.prev_scroll_y);
-      enemy_overlay.valid = false;
-    }
     if (player_overlay.valid) {
-      redraw_map_rect_to_sprite(player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h, stream_file,
-                                tile_state.prev_scroll_x, tile_state.prev_scroll_y);
+      redraw_map_rect_to_sprite(player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h, stream_file);
       player_overlay.valid = false;
-      enemy_overlay.valid = false;
     }
     sprite.scroll(-dx_scroll, -dy_scroll);
 
@@ -2920,19 +1498,10 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
         }
       }
     }
-    if (compose_player) {
-      player_draw_to_sprite(render_compose_player_x, render_compose_player_y, render_compose_player_color, render_compose_player_radius,
-                            &compose_rect_x, &compose_rect_y, &compose_rect_w, &compose_rect_h);
-      render_compose_applied = true;
-    }
     sprite.pushSprite(0, 0);
-    if (render_compose_applied) {
-      redraw_map_rect_to_sprite(compose_rect_x, compose_rect_y, compose_rect_w, compose_rect_h, stream_file, scroll_x, scroll_y);
-    }
     scene_epoch += 1;
     render_stats.full_frames += 1;
     player_overlay.valid = false;
-    enemy_overlay.valid = false;
   } else {
     int min_x = tile_state.view_w;
     int min_y = tile_state.view_h;
@@ -2995,28 +1564,6 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
   return full_redraw ? 2 : 1;
 }
 
-extern "C" int lgfx_tile_render_player_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius, bool force_full) {
-  if (radius <= 0) {
-    radius = 1;
-  }
-  render_compose_player = true;
-  render_compose_player_x = player_x;
-  render_compose_player_y = player_y;
-  render_compose_player_color = color;
-  render_compose_player_radius = radius;
-
-  int mode = lgfx_tile_render_impl(scroll_x, scroll_y, force_full);
-  bool composed = render_compose_applied;
-
-  render_compose_player = false;
-  render_compose_applied = false;
-
-  if (!composed) {
-    lgfx_draw_player_impl(player_x, player_y, color, radius);
-  }
-  return mode;
-}
-
 extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) {
   if (radius <= 0) {
     return;
@@ -3041,16 +1588,15 @@ extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) 
     lcd.fillCircle(x, y, radius, color);
     return;
   }
-  lcd.startWrite();
   if (player_overlay.valid) {
-    push_rect_from_sprite_to_lcd_locked(player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h);
+    push_rect_from_sprite_to_lcd(player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h);
   }
 
   int new_x = 0;
   int new_y = 0;
   int new_w = 0;
   int new_h = 0;
-  bool drew_sprite = player_draw_sheet_frame(x, y, &new_x, &new_y, &new_w, &new_h, true);
+  bool drew_sprite = player_draw_sheet_frame(x, y, &new_x, &new_y, &new_w, &new_h);
   if (!drew_sprite) {
     lcd.fillCircle(x, y, radius, color);
     new_x = x - radius;
@@ -3058,7 +1604,6 @@ extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) 
     new_w = radius * 2 + 1;
     new_h = radius * 2 + 1;
   }
-  lcd.endWrite();
 
   player_overlay.valid = true;
   player_overlay.x = new_x;
@@ -3073,52 +1618,6 @@ extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) 
   player_overlay.frame_index = frame_index;
   player_overlay.flip_x = flip_x;
   player_overlay.scene_epoch = scene_epoch;
-}
-
-extern "C" void lgfx_enemy_draw_impl(int x, int y) {
-  bool can_use_sprite = enemy_sprite.enabled && enemy_sprite.pixels && enemy_sprite.frame_count > 0;
-  int frame_index = enemy_sprite.current_frame;
-  if (enemy_overlay.valid &&
-      enemy_overlay.center_x == x &&
-      enemy_overlay.center_y == y &&
-      enemy_overlay.used_sprite == can_use_sprite &&
-      enemy_overlay.scene_epoch == scene_epoch) {
-    bool same_frame = !can_use_sprite || (enemy_overlay.frame_index == frame_index);
-    if (same_frame) {
-      return;
-    }
-  }
-  if (!sprite_ready || !can_use_sprite) {
-    return;
-  }
-
-  lcd.startWrite();
-  if (enemy_overlay.valid) {
-    push_rect_from_sprite_to_lcd_locked(enemy_overlay.x, enemy_overlay.y, enemy_overlay.w, enemy_overlay.h);
-  }
-
-  int new_x = 0;
-  int new_y = 0;
-  int new_w = 0;
-  int new_h = 0;
-  bool drew_sprite = enemy_draw_sheet_frame(x, y, &new_x, &new_y, &new_w, &new_h, true);
-  if (!drew_sprite) {
-    lcd.endWrite();
-    enemy_overlay.valid = false;
-    return;
-  }
-  lcd.endWrite();
-
-  enemy_overlay.valid = true;
-  enemy_overlay.x = new_x;
-  enemy_overlay.y = new_y;
-  enemy_overlay.w = new_w;
-  enemy_overlay.h = new_h;
-  enemy_overlay.center_x = x;
-  enemy_overlay.center_y = y;
-  enemy_overlay.used_sprite = can_use_sprite;
-  enemy_overlay.frame_index = frame_index;
-  enemy_overlay.scene_epoch = scene_epoch;
 }
 
 extern "C" void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
