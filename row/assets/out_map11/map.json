@@ -1,0 +1,12 @@
+{
+  "tile_size": 16,
+  "map_w": 60,
+  "map_h": 38,
+  "tileset_count": 1270,
+  "endian": "little",
+  "row_order": "top_to_bottom",
+  "spawn_x": 482,
+  "spawn_y": 448,
+  "collision": "collision.bin",
+  "collision_format": "u8"
+}
