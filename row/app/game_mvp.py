@@ -671,11 +671,15 @@ MAP1_STORY_PHASE2_EVENT_TORIEL_LINES = 5
 MAP1_STORY_PHASE2_NEAR_HIT_PAD_PX = 12
 MAP1_STORY_PHASE2_FREEZE_MS = 4000
 MAP1_STORY_FIRE_FLY_MS = 1800
-MAP1_STORY_FIRE_HOLD_MS = 2000
+MAP1_STORY_FIRE_HOLD_MS = 3000
 MAP1_STORY_TORIEL_SLIDE_MS = 900
 MAP1_STORY_FIRE_STEP_PX = 2
 MAP1_STORY_TORIEL_STEP_PX = 2
 MAP1_STORY_ANIM_STEP_MAX = 10
+MAP1_STORY_DIALOG_LEFT_INSET = 14
+MAP1_STORY_DIALOG_GAP_PX = 10
+MAP1_STORY_TORIEL_TARGET_SHIFT_LEFT_PX = 0
+MAP1_STORY_FIRE_HIT_OVERLAP_PX = 20
 MAP1_ENEMY_ANCHOR_CENTER = 0
 MAP1_ENEMY_ANCHOR_SLIDING_LEFT = 1
 MAP1_ENEMY_ANCHOR_LEFT = 2
@@ -4137,6 +4141,27 @@ def _clear_rect_black(x, y, w, h):
     _fill_rect_solid(x, y, w, h, 0x0000)
 
 
+def _clear_rect_black_in_battle_interior(frame_x, frame_y, frame_w, x, y, w, h):
+    if w <= 0 or h <= 0:
+        return
+    pad = BATTLE_FRAME_BORDER_THICK
+    inner_x0 = frame_x + pad
+    inner_y0 = frame_y + pad
+    inner_x1 = frame_x + frame_w - pad
+    inner_y1 = frame_y + BATTLE_FRAME_H - pad
+    x0 = x if x > inner_x0 else inner_x0
+    y0 = y if y > inner_y0 else inner_y0
+    x1 = x + w
+    y1 = y + h
+    if x1 > inner_x1:
+        x1 = inner_x1
+    if y1 > inner_y1:
+        y1 = inner_y1
+    if x1 <= x0 or y1 <= y0:
+        return
+    _clear_rect_black(x0, y0, x1 - x0, y1 - y0)
+
+
 def _rect_union(x1, y1, w1, h1, x2, y2, w2, h2):
     if w1 <= 0 or h1 <= 0:
         return x2, y2, w2, h2
@@ -4154,47 +4179,73 @@ def _rect_union(x1, y1, w1, h1, x2, y2, w2, h2):
 
 
 def _map1_story_dialog_safe_rect(frame_x, frame_y, frame_w, cmd_y):
+    status_y = cmd_y - (8 + BATTLE_STATUS_TO_CMD_GAP)
+    status_band_top = status_y - BATTLE_HP_BAR_H - 3
+    y_min = frame_y + 10
+    y_max = status_band_top - 4
+    if y_max <= y_min:
+        y_max = y_min + 20
+
+    enemy_left = battle_menu_enemy_x
+    enemy_right = enemy_left + battle_menu_enemy_w
+    enemy_mid_y = battle_menu_enemy_y + (battle_menu_enemy_h // 2)
+
+    src_w = MAP1_STORY_LINE_PNG_W
+    src_h = MAP1_STORY_LINE_PNG_H
+    # Keep text visually larger than the previous auto-shrink behavior.
+    desired_w = 162 if _map1_story_is_toriel_lines() else 164
+    if desired_w > src_w + 4:
+        desired_w = src_w + 4
+
     if _map1_story_is_toriel_lines():
-        dialog_left = frame_x + 8
         toriel_left = map1_story_toriel_x
         if toriel_left <= 0:
             toriel_left = frame_x + frame_w - MAP1_STORY_TORIEL_DRAW_W - 4
-        dialog_right = toriel_left - 8
-        if dialog_right < dialog_left + 72:
-            dialog_right = frame_x + frame_w - MAP1_STORY_TORIEL_DRAW_W - 10
-        dialog_top = frame_y + 10
-    elif map1_story_line_index == 0:
-        # Keep the first line on the right while FLOWEY transitions to left.
-        target_enemy_left_x = frame_x + 4
-        target_enemy_right_x = target_enemy_left_x + MAP1_STORY_ENEMY_DRAW_W
-        dialog_left = target_enemy_right_x + 8
-        dialog_right = frame_x + frame_w - 8
-        dialog_top = frame_y + 10
+        side_left = frame_x + 8
+        side_right = toriel_left - 4
+        if side_right <= side_left + 20:
+            side_right = side_left + 20
+        avail_w = side_right - side_left
+        dialog_w = desired_w
+        if dialog_w > avail_w - 4:
+            dialog_w = avail_w - 4
+        if dialog_w < 40:
+            dialog_w = 40
+        dialog_h = (dialog_w * src_h) // src_w
+        if dialog_h < 20:
+            dialog_h = 20
+        dialog_left = side_right - dialog_w - 1
+        if dialog_left < side_left:
+            dialog_left = side_left
     else:
-        dialog_left = battle_menu_enemy_x + battle_menu_enemy_w + 8
-        dialog_right = frame_x + frame_w - 8
-        dialog_top = frame_y + 10
-    status_y = cmd_y - (8 + BATTLE_STATUS_TO_CMD_GAP)
-    status_band_top = status_y - BATTLE_HP_BAR_H - 3
-    dialog_bottom = status_band_top - 4
+        side_left = enemy_right + 6
+        side_right = frame_x + frame_w - 8
+        if side_right <= side_left + 20:
+            side_right = side_left + 20
+        avail_w = side_right - side_left
+        dialog_w = desired_w
+        if dialog_w > avail_w - 4:
+            dialog_w = avail_w - 4
+        if dialog_w < 40:
+            dialog_w = 40
+        dialog_h = (dialog_w * src_h) // src_w
+        if dialog_h < 20:
+            dialog_h = 20
+        # Keep box beside FLOWEY, not pinned to screen edge.
+        dialog_left = side_left + 2
+        if dialog_left + dialog_w > side_right:
+            dialog_left = side_right - dialog_w
+        if dialog_left < side_left:
+            dialog_left = side_left
 
-    if map1_story_line_index != 0 and dialog_right - dialog_left < 72:
-        dialog_left = frame_x + 10
-        dialog_top = battle_menu_enemy_y + battle_menu_enemy_h + 6
-    if dialog_top < frame_y + 8:
-        dialog_top = frame_y + 8
-    if dialog_bottom <= dialog_top:
-        dialog_top = frame_y + 8
-        dialog_bottom = status_band_top - 4
-    if dialog_bottom <= dialog_top:
-        dialog_bottom = dialog_top + 20
+    dialog_top = enemy_mid_y - (dialog_h // 2)
+    if dialog_top < y_min:
+        dialog_top = y_min
+    if dialog_top + dialog_h > y_max:
+        dialog_top = y_max - dialog_h
+        if dialog_top < y_min:
+            dialog_top = y_min
 
-    dialog_w = dialog_right - dialog_left
-    dialog_h = dialog_bottom - dialog_top
-    if dialog_w < 24:
-        dialog_w = 24
-    if dialog_h < 20:
-        dialog_h = 20
     return dialog_left, dialog_top, dialog_w, dialog_h
 
 
@@ -4230,50 +4281,10 @@ def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd
     enemy_drawn = False
 
     if _map1_story_is_active():
-        moving_story = (
-            map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
-            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
-            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
-        )
-        if moving_story:
-            if map1_story_fire_prev_valid:
-                _clear_rect_black(
-                    map1_story_fire_prev_x - 2,
-                    map1_story_fire_prev_y - 2,
-                    MAP1_STORY_FIRE_DRAW_W + 4,
-                    MAP1_STORY_FIRE_DRAW_H + 4,
-                )
-            if map1_story_toriel_prev_valid:
-                _clear_rect_black(
-                    map1_story_toriel_prev_x - 2,
-                    map1_story_toriel_prev_y - 2,
-                    MAP1_STORY_TORIEL_DRAW_W + 4,
-                    MAP1_STORY_TORIEL_DRAW_H + 4,
-                )
         flowey_visible = not map1_story_flowey_hidden
         if (not flowey_visible) and map1_story_prev_flowey_visible:
             _clear_rect_black(frame_x + 2, frame_y + 8, MAP1_STORY_ENEMY_DRAW_W + 4, MAP1_STORY_ENEMY_DRAW_H + 4)
         map1_story_prev_flowey_visible = flowey_visible
-        if flowey_visible and hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
-            enemy_drawn = bool(
-                lgfx.draw_png_file(
-                    enemy_sprite_path,
-                    enemy_x,
-                    enemy_y,
-                    enemy_sprite_w,
-                    enemy_sprite_h,
-                )
-            )
-        if flowey_visible and (not enemy_drawn):
-            monster_cx = frame_x + (frame_w // 2)
-            monster_cy = frame_y + 75
-            lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
-            enemy_x = monster_cx - 22
-            enemy_y = monster_cy - 22
-            enemy_sprite_w = 44
-            enemy_sprite_h = 44
-            enemy_bottom = monster_cy + 22
-            enemy_drawn = True
 
         if map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD:
             fire_path = _map1_story_fire_sprite_path()
@@ -4298,6 +4309,27 @@ def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd
             map1_story_fire_prev_valid = True
         else:
             map1_story_fire_prev_valid = False
+
+        if flowey_visible and hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
+            enemy_drawn = bool(
+                lgfx.draw_png_file(
+                    enemy_sprite_path,
+                    enemy_x,
+                    enemy_y,
+                    enemy_sprite_w,
+                    enemy_sprite_h,
+                )
+            )
+        if flowey_visible and (not enemy_drawn):
+            monster_cx = frame_x + (frame_w // 2)
+            monster_cy = frame_y + 75
+            lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
+            enemy_x = monster_cx - 22
+            enemy_y = monster_cy - 22
+            enemy_sprite_w = 44
+            enemy_sprite_h = 44
+            enemy_bottom = monster_cy + 22
+            enemy_drawn = True
 
         if map1_story_toriel_visible:
             toriel_path = _map1_story_toriel_sprite_path()
@@ -4383,6 +4415,169 @@ def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd
             _draw_text_in_box(bx, by, cmd_w, BATTLE_CMD_H, label, BATTLE_CMD_COLOR)
 
     return enemy_bottom
+
+
+def _map1_story_phase2_event_is_moving():
+    return (
+        _map1_story_is_active()
+        and (
+            map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
+            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
+            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
+        )
+    )
+
+
+def _draw_map1_story_phase2_overlay(frame_x, frame_y, frame_w):
+    global battle_menu_enemy_x, battle_menu_enemy_y, battle_menu_enemy_w, battle_menu_enemy_h
+    global map1_story_fire_prev_x, map1_story_fire_prev_y, map1_story_fire_prev_valid
+    global map1_story_toriel_prev_x, map1_story_toriel_prev_y, map1_story_toriel_prev_valid, map1_story_prev_flowey_visible
+
+    if not _map1_story_phase2_event_is_moving():
+        return battle_menu_enemy_y + battle_menu_enemy_h
+
+    if map1_story_fire_prev_valid:
+        _clear_rect_black_in_battle_interior(
+            frame_x,
+            frame_y,
+            frame_w,
+            map1_story_fire_prev_x - 2,
+            map1_story_fire_prev_y - 2,
+            MAP1_STORY_FIRE_DRAW_W + 4,
+            MAP1_STORY_FIRE_DRAW_H + 4,
+        )
+    if map1_story_toriel_prev_valid:
+        _clear_rect_black_in_battle_interior(
+            frame_x,
+            frame_y,
+            frame_w,
+            map1_story_toriel_prev_x - 2,
+            map1_story_toriel_prev_y - 2,
+            MAP1_STORY_TORIEL_DRAW_W + 4,
+            MAP1_STORY_TORIEL_DRAW_H + 4,
+        )
+
+    right_x = frame_x + frame_w
+    if right_x < ACTIVE_VIEW_W:
+        _clear_rect_black(right_x, frame_y, ACTIVE_VIEW_W - right_x, BATTLE_FRAME_H)
+    if frame_x > 0:
+        _clear_rect_black(0, frame_y, frame_x, BATTLE_FRAME_H)
+
+    enemy_sprite_path = _map1_story_enemy_sprite_path()
+    flowey_x = frame_x + 4
+    flowey_y = frame_y + 10
+    flowey_visible = not map1_story_flowey_hidden
+    if (not flowey_visible) and map1_story_prev_flowey_visible:
+        _clear_rect_black_in_battle_interior(
+            frame_x,
+            frame_y,
+            frame_w,
+            flowey_x - 2,
+            flowey_y - 2,
+            MAP1_STORY_ENEMY_DRAW_W + 4,
+            MAP1_STORY_ENEMY_DRAW_H + 4,
+        )
+    map1_story_prev_flowey_visible = flowey_visible
+
+    fire_present = (
+        map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
+        or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
+    )
+    if fire_present:
+        fire_path = _map1_story_fire_sprite_path()
+        fire_drawn = False
+        if hasattr(lgfx, "draw_png_file") and _path_exists(fire_path):
+            fire_drawn = bool(
+                lgfx.draw_png_file(
+                    fire_path,
+                    map1_story_fire_x,
+                    map1_story_fire_y,
+                    MAP1_STORY_FIRE_DRAW_W,
+                    MAP1_STORY_FIRE_DRAW_H,
+                )
+            )
+        if not fire_drawn:
+            fire_cx = map1_story_fire_x + (MAP1_STORY_FIRE_DRAW_W // 2)
+            fire_cy = map1_story_fire_y + (MAP1_STORY_FIRE_DRAW_H // 2)
+            lgfx.draw_circle(fire_cx, fire_cy, 12, BATTLE_COLOR_WHITE)
+            lgfx.draw_circle(fire_cx, fire_cy, 8, BATTLE_COLOR_RED)
+        map1_story_fire_prev_x = map1_story_fire_x
+        map1_story_fire_prev_y = map1_story_fire_y
+        map1_story_fire_prev_valid = True
+    else:
+        map1_story_fire_prev_valid = False
+
+    if flowey_visible:
+        drew_flowey = False
+        if hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
+            drew_flowey = bool(
+                lgfx.draw_png_file(
+                    enemy_sprite_path,
+                    flowey_x,
+                    flowey_y,
+                    MAP1_STORY_ENEMY_DRAW_W,
+                    MAP1_STORY_ENEMY_DRAW_H,
+                )
+            )
+        if not drew_flowey:
+            monster_cx = flowey_x + (MAP1_STORY_ENEMY_DRAW_W // 2)
+            monster_cy = flowey_y + (MAP1_STORY_ENEMY_DRAW_H // 2)
+            lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
+        battle_menu_enemy_x = flowey_x
+        battle_menu_enemy_y = flowey_y
+        battle_menu_enemy_w = MAP1_STORY_ENEMY_DRAW_W
+        battle_menu_enemy_h = MAP1_STORY_ENEMY_DRAW_H
+
+    # Keep FLOWEY visually above fire even if PNG alpha/keying leaves dark fringe.
+    if fire_present and flowey_visible and hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
+        lgfx.draw_png_file(
+            enemy_sprite_path,
+            flowey_x,
+            flowey_y,
+            MAP1_STORY_ENEMY_DRAW_W,
+            MAP1_STORY_ENEMY_DRAW_H,
+        )
+
+    if map1_story_toriel_visible:
+        toriel_path = _map1_story_toriel_sprite_path()
+        toriel_drawn = False
+        if hasattr(lgfx, "draw_png_file") and _path_exists(toriel_path):
+            toriel_drawn = bool(
+                lgfx.draw_png_file(
+                    toriel_path,
+                    map1_story_toriel_x,
+                    frame_y + 10,
+                    MAP1_STORY_TORIEL_DRAW_W,
+                    MAP1_STORY_TORIEL_DRAW_H,
+                )
+            )
+        if not toriel_drawn:
+            _draw_rect_thick(
+                map1_story_toriel_x + 12,
+                frame_y + 16,
+                MAP1_STORY_TORIEL_DRAW_W - 24,
+                MAP1_STORY_TORIEL_DRAW_H - 20,
+                BATTLE_COLOR_WHITE,
+                2,
+            )
+        map1_story_toriel_prev_x = map1_story_toriel_x
+        map1_story_toriel_prev_y = frame_y + 10
+        map1_story_toriel_prev_valid = True
+        battle_menu_enemy_x = map1_story_toriel_x
+        battle_menu_enemy_y = frame_y + 10
+        battle_menu_enemy_w = MAP1_STORY_TORIEL_DRAW_W
+        battle_menu_enemy_h = MAP1_STORY_TORIEL_DRAW_H
+    else:
+        map1_story_toriel_prev_valid = False
+        if not flowey_visible:
+            battle_menu_enemy_x = frame_x + ((frame_w - MAP1_STORY_FIRE_DRAW_W) // 2)
+            battle_menu_enemy_y = frame_y + 10
+            battle_menu_enemy_w = MAP1_STORY_FIRE_DRAW_W
+            battle_menu_enemy_h = MAP1_STORY_FIRE_DRAW_H
+
+    _draw_battle_frame(frame_x, frame_y, frame_w, BATTLE_FRAME_H)
+
+    return battle_menu_enemy_y + battle_menu_enemy_h
 
 
 def _draw_png_in_box(png_info, x, y, w, h, preserve_aspect=True, allow_upscale=False):
@@ -4802,23 +4997,8 @@ def _draw_battle_menu_screen(dialog_active):
         or (frame_y != battle_menu_static_frame_y)
         or (frame_w != battle_menu_static_frame_w)
         or (_map1_story_is_active() and map1_enemy_anchor_mode == MAP1_ENEMY_ANCHOR_SLIDING_LEFT)
-        or (
-            _map1_story_is_active()
-            and (
-                map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
-                or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
-                or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
-            )
-        )
     )
-    moving_story = (
-        _map1_story_is_active()
-        and (
-            map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
-            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
-            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
-        )
-    )
+    moving_story = _map1_story_phase2_event_is_moving()
     if static_changed:
         if (not did_full_clear) and battle_menu_static_ready and (not moving_story):
             clear_x, clear_y, clear_w, clear_h = _rect_union(
@@ -4838,6 +5018,8 @@ def _draw_battle_menu_screen(dialog_active):
         battle_menu_static_frame_y = frame_y
         battle_menu_static_frame_w = frame_w
         battle_menu_static_ready = True
+    elif moving_story:
+        battle_menu_enemy_bottom_used = _draw_map1_story_phase2_overlay(frame_x, frame_y, frame_w)
 
     if not dialog_active:
         act_menu_slot_cache = None
@@ -4953,10 +5135,10 @@ def _draw_battle_menu_screen(dialog_active):
         if _map1_story_is_active():
             rendered = _draw_png_in_box(
                 battle_dialog_png_info,
-                dialog_x + 2,
-                dialog_render_y + 2,
-                dialog_w - 4,
-                dialog_h - 4,
+                dialog_x,
+                dialog_render_y,
+                dialog_w,
+                dialog_h,
                 preserve_aspect=True,
                 allow_upscale=False,
             )
@@ -5214,9 +5396,9 @@ def _map1_story_init_rescue_positions():
     if fire_y < frame_y + 4:
         fire_y = frame_y + 4
     fire_start_x = frame_x + frame_w - MAP1_STORY_FIRE_DRAW_W - 6
-    fire_target_x = flowey_cx - (MAP1_STORY_FIRE_DRAW_W // 2)
+    fire_target_x = flowey_cx - (MAP1_STORY_FIRE_DRAW_W // 2) - MAP1_STORY_FIRE_HIT_OVERLAP_PX
     fire_target_y = flowey_cy - (MAP1_STORY_FIRE_DRAW_H // 2)
-    toriel_target_x = frame_x + frame_w - MAP1_STORY_TORIEL_DRAW_W - 8
+    toriel_target_x = frame_x + frame_w - MAP1_STORY_TORIEL_DRAW_W - 8 - MAP1_STORY_TORIEL_TARGET_SHIFT_LEFT_PX
     if toriel_target_x < frame_x + 4:
         toriel_target_x = frame_x + 4
     toriel_start_x = ACTIVE_VIEW_W + 6
@@ -5601,7 +5783,7 @@ def _map1_story_update_menu(loop_start):
                 map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
                 map1_story_phase2_event_started_ms = loop_start
                 map1_story_toriel_visible = True
-            battle_menu_dirty = True
+                battle_menu_dirty = True
             return
         if map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE:
             if map1_story_toriel_x <= map1_story_toriel_target_x:

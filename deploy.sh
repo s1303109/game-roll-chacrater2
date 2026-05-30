@@ -63,8 +63,12 @@ UI_FILE_MAP=(
   "enemy_clean.png|enemy.png"
   "FLOWEY.png|FLOWEY.png"
   "ANGRY FLOWEY.png|ANGRY FLOWEY.png"
+  "FLOWEY_anim_96.png|FLOWEY_anim_96.png"
+  "ANGRY FLOWEY_anim_96.png|ANGRY FLOWEY_anim_96.png"
   "fire ball.png|fire ball.png"
+  "fire ball_anim_64.png|fire ball_anim_64.png"
   "kind people.png|kind people.png"
+  "kind people_anim_96.png|kind people_anim_96.png"
   "map1_story_line_01.png|map1_story_line_01.png"
   "map1_story_line_02.png|map1_story_line_02.png"
   "map1_story_line_03.png|map1_story_line_03.png"
@@ -278,8 +282,12 @@ STALE_FLASH_FILES = (
     "/enemy.png",
     "/FLOWEY.png",
     "/ANGRY FLOWEY.png",
+    "/FLOWEY_anim_96.png",
+    "/ANGRY FLOWEY_anim_96.png",
     "/fire ball.png",
+    "/fire ball_anim_64.png",
     "/kind people.png",
+    "/kind people_anim_96.png",
     "/map1_story_line_01.png",
     "/map1_story_line_02.png",
     "/map1_story_line_03.png",
