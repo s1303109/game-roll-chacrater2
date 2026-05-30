@@ -66,6 +66,7 @@ UI_FILE_MAP=(
   "FLOWEY_anim_96.png|FLOWEY_anim_96.png"
   "ANGRY FLOWEY_anim_96.png|ANGRY FLOWEY_anim_96.png"
   "fire ball.png|fire ball.png"
+  "fire ball small.png|fire ball small.png"
   "fire ball_anim_64.png|fire ball_anim_64.png"
   "kind people.png|kind people.png"
   "kind people_anim_96.png|kind people_anim_96.png"
@@ -344,6 +345,7 @@ STALE_FLASH_FILES = (
     "/FLOWEY_anim_96.png",
     "/ANGRY FLOWEY_anim_96.png",
     "/fire ball.png",
+    "/fire ball small.png",
     "/fire ball_anim_64.png",
     "/kind people.png",
     "/kind people_anim_96.png",
