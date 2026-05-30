@@ -63,6 +63,8 @@ UI_FILE_MAP=(
   "enemy_clean.png|enemy.png"
   "FLOWEY.png|FLOWEY.png"
   "ANGRY FLOWEY.png|ANGRY FLOWEY.png"
+  "fire ball.png|fire ball.png"
+  "kind people.png|kind people.png"
   "map1_story_line_01.png|map1_story_line_01.png"
   "map1_story_line_02.png|map1_story_line_02.png"
   "map1_story_line_03.png|map1_story_line_03.png"
@@ -73,6 +75,14 @@ UI_FILE_MAP=(
   "map1_story_line_08.png|map1_story_line_08.png"
   "map1_story_line_09.png|map1_story_line_09.png"
   "map1_story_line_10.png|map1_story_line_10.png"
+  "map1_story_line_11.png|map1_story_line_11.png"
+  "map1_story_line_12.png|map1_story_line_12.png"
+  "map1_story_line_13.png|map1_story_line_13.png"
+  "map1_story_line_14.png|map1_story_line_14.png"
+  "map1_story_line_15.png|map1_story_line_15.png"
+  "map1_story_line_16.png|map1_story_line_16.png"
+  "map1_story_line_17.png|map1_story_line_17.png"
+  "map1_story_line_18.png|map1_story_line_18.png"
   "fight_icon.png|fight_icon.png"
   "act_icon.png|act_icon.png"
   "item_icon.png|item_icon.png"
@@ -268,6 +278,8 @@ STALE_FLASH_FILES = (
     "/enemy.png",
     "/FLOWEY.png",
     "/ANGRY FLOWEY.png",
+    "/fire ball.png",
+    "/kind people.png",
     "/map1_story_line_01.png",
     "/map1_story_line_02.png",
     "/map1_story_line_03.png",
@@ -278,6 +290,14 @@ STALE_FLASH_FILES = (
     "/map1_story_line_08.png",
     "/map1_story_line_09.png",
     "/map1_story_line_10.png",
+    "/map1_story_line_11.png",
+    "/map1_story_line_12.png",
+    "/map1_story_line_13.png",
+    "/map1_story_line_14.png",
+    "/map1_story_line_15.png",
+    "/map1_story_line_16.png",
+    "/map1_story_line_17.png",
+    "/map1_story_line_18.png",
     "/fight_icon.png",
     "/act_icon.png",
     "/item_icon.png",

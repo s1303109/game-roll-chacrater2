@@ -662,11 +662,29 @@ MAP1_STORY_STAGE_INTRO_LINES = 1
 MAP1_STORY_STAGE_PHASE1 = 2
 MAP1_STORY_STAGE_MID_LINES = 3
 MAP1_STORY_STAGE_PHASE2 = 4
+MAP1_STORY_PHASE2_EVENT_NONE = 0
+MAP1_STORY_PHASE2_EVENT_PAUSE = 1
+MAP1_STORY_PHASE2_EVENT_FIRE_FLY = 2
+MAP1_STORY_PHASE2_EVENT_FIRE_HOLD = 3
+MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE = 4
+MAP1_STORY_PHASE2_EVENT_TORIEL_LINES = 5
+MAP1_STORY_PHASE2_NEAR_HIT_PAD_PX = 12
+MAP1_STORY_PHASE2_FREEZE_MS = 4000
+MAP1_STORY_FIRE_FLY_MS = 1800
+MAP1_STORY_FIRE_HOLD_MS = 2000
+MAP1_STORY_TORIEL_SLIDE_MS = 900
+MAP1_STORY_FIRE_STEP_PX = 2
+MAP1_STORY_TORIEL_STEP_PX = 2
+MAP1_STORY_ANIM_STEP_MAX = 10
 MAP1_ENEMY_ANCHOR_CENTER = 0
 MAP1_ENEMY_ANCHOR_SLIDING_LEFT = 1
 MAP1_ENEMY_ANCHOR_LEFT = 2
 MAP1_FLOWEY_SPRITE_PATHS = _ui_asset_paths("FLOWEY.png")
 MAP1_ANGRY_FLOWEY_SPRITE_PATHS = _ui_asset_paths("ANGRY FLOWEY.png")
+MAP1_FLOWEY_ANIM_SPRITE_PATHS = (config.ui_path("FLOWEY_anim_96.png"),) + MAP1_FLOWEY_SPRITE_PATHS
+MAP1_ANGRY_FLOWEY_ANIM_SPRITE_PATHS = (config.ui_path("ANGRY FLOWEY_anim_96.png"),) + MAP1_ANGRY_FLOWEY_SPRITE_PATHS
+MAP1_FIRE_SPRITE_PATHS = (config.ui_path("fire ball_anim_64.png"),) + _ui_asset_paths("fire ball.png")
+MAP1_TORIEL_SPRITE_PATHS = (config.ui_path("kind people_anim_96.png"),) + _ui_asset_paths("kind people.png")
 MAP1_STORY_LINE_PNG_PATHS = (
     _ui_asset_paths("map1_story_line_01.png"),
     _ui_asset_paths("map1_story_line_02.png"),
@@ -678,6 +696,14 @@ MAP1_STORY_LINE_PNG_PATHS = (
     _ui_asset_paths("map1_story_line_06.png"),
     _ui_asset_paths("map1_story_line_08.png"),
     _ui_asset_paths("map1_story_line_09.png"),
+    _ui_asset_paths("map1_story_line_11.png"),
+    _ui_asset_paths("map1_story_line_12.png"),
+    _ui_asset_paths("map1_story_line_13.png"),
+    _ui_asset_paths("map1_story_line_14.png"),
+    _ui_asset_paths("map1_story_line_15.png"),
+    _ui_asset_paths("map1_story_line_16.png"),
+    _ui_asset_paths("map1_story_line_17.png"),
+    _ui_asset_paths("map1_story_line_18.png"),
 )
 MAP1_STORY_LINE_PNG_W = 200
 MAP1_STORY_LINE_PNG_H = 72
@@ -687,6 +713,10 @@ MAP1_STORY_ENEMY_DRAW_W = 96
 MAP1_STORY_ENEMY_DRAW_H = 96
 MAP1_STORY_PHASE1_BULLET_SPEED_PX = 2
 MAP1_STORY_PHASE2_BULLET_SPEED_PX = 1
+MAP1_STORY_FIRE_DRAW_W = 64
+MAP1_STORY_FIRE_DRAW_H = 64
+MAP1_STORY_TORIEL_DRAW_W = 96
+MAP1_STORY_TORIEL_DRAW_H = 96
 PLAYER_HP_MAX = 20
 PLAYER_NAME = "OTIS"
 PLAYER_LV = 1
@@ -2322,7 +2352,13 @@ def _init_runtime_state():
     global attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty, attack_prev_cursor_draw_x, mercy_exit_pending, battle_menu_full_clear_pending, battle_menu_static_ready
     global battle_menu_static_frame_x, battle_menu_static_frame_y, battle_menu_static_frame_w, battle_menu_enemy_bottom_used, battle_menu_enemy_x, battle_menu_enemy_y, battle_menu_enemy_w, battle_menu_enemy_h
     global battle_menu_prev_dialog_active, battle_menu_prev_dialog_x, battle_menu_prev_dialog_y, battle_menu_prev_dialog_w, battle_menu_prev_dialog_h, map1_story_active, map1_story_stage, map1_story_line_index
-    global map1_story_next_ms, map1_story_enemy_angry, map1_enemy_anchor_mode, map1_enemy_slide_start_ms, map1_story_phase2_center_x, map1_story_phase2_center_y, _rng_state, interact_sw_prev
+    global map1_story_next_ms, map1_story_enemy_angry, map1_enemy_anchor_mode, map1_enemy_slide_start_ms, map1_story_phase2_center_x, map1_story_phase2_center_y
+    global map1_story_phase2_event, map1_story_phase2_event_started_ms, map1_story_phase2_freeze_until_ms
+    global map1_story_fire_x, map1_story_fire_y, map1_story_fire_start_x, map1_story_fire_start_y, map1_story_fire_target_x, map1_story_fire_target_y
+    global map1_story_flowey_hidden, map1_story_toriel_visible, map1_story_toriel_x, map1_story_toriel_start_x, map1_story_toriel_target_x
+    global map1_story_fire_prev_x, map1_story_fire_prev_y, map1_story_fire_prev_valid
+    global map1_story_toriel_prev_x, map1_story_toriel_prev_y, map1_story_toriel_prev_valid, map1_story_prev_flowey_visible
+    global _rng_state, interact_sw_prev
     global btn_fight_prev, btn_act_prev, btn_item_prev, btn_mercy_prev, leaf_zone_prev_inside, map1_opening_battle_timer_started, map1_opening_battle_due_ms, map1_opening_battle_done
     global lamp_dialog_until_ms, explore_overlay_dirty, current_map_id, teleport_cooldown_frames, inv_choice_index, inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index
     global inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty, INV_TAB_ITEM, INV_TAB_STAT, INV_FOCUS_LEFT, INV_FOCUS_RIGHT, inv_tab_index
@@ -2457,6 +2493,27 @@ def _init_runtime_state():
     map1_enemy_slide_start_ms = 0
     map1_story_phase2_center_x = 0
     map1_story_phase2_center_y = 0
+    map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_NONE
+    map1_story_phase2_event_started_ms = 0
+    map1_story_phase2_freeze_until_ms = 0
+    map1_story_fire_x = 0
+    map1_story_fire_y = 0
+    map1_story_fire_start_x = 0
+    map1_story_fire_start_y = 0
+    map1_story_fire_target_x = 0
+    map1_story_fire_target_y = 0
+    map1_story_flowey_hidden = False
+    map1_story_toriel_visible = False
+    map1_story_toriel_x = 0
+    map1_story_toriel_start_x = 0
+    map1_story_toriel_target_x = 0
+    map1_story_fire_prev_x = 0
+    map1_story_fire_prev_y = 0
+    map1_story_fire_prev_valid = False
+    map1_story_toriel_prev_x = 0
+    map1_story_toriel_prev_y = 0
+    map1_story_toriel_prev_valid = False
+    map1_story_prev_flowey_visible = True
     _rng_state = (time.ticks_ms() | 1) & 0x7FFFFFFF
     interact_sw_prev = interact_sw.value()
     btn_fight_prev = btn_fight.value()
@@ -4097,7 +4154,16 @@ def _rect_union(x1, y1, w1, h1, x2, y2, w2, h2):
 
 
 def _map1_story_dialog_safe_rect(frame_x, frame_y, frame_w, cmd_y):
-    if map1_story_line_index == 0:
+    if _map1_story_is_toriel_lines():
+        dialog_left = frame_x + 8
+        toriel_left = map1_story_toriel_x
+        if toriel_left <= 0:
+            toriel_left = frame_x + frame_w - MAP1_STORY_TORIEL_DRAW_W - 4
+        dialog_right = toriel_left - 8
+        if dialog_right < dialog_left + 72:
+            dialog_right = frame_x + frame_w - MAP1_STORY_TORIEL_DRAW_W - 10
+        dialog_top = frame_y + 10
+    elif map1_story_line_index == 0:
         # Keep the first line on the right while FLOWEY transitions to left.
         target_enemy_left_x = frame_x + 4
         target_enemy_right_x = target_enemy_left_x + MAP1_STORY_ENEMY_DRAW_W
@@ -4135,6 +4201,8 @@ def _map1_story_dialog_safe_rect(frame_x, frame_y, frame_w, cmd_y):
 def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd_w):
     global battle_menu_enemy_x, battle_menu_enemy_y, battle_menu_enemy_w, battle_menu_enemy_h
     global map1_enemy_anchor_mode
+    global map1_story_fire_prev_x, map1_story_fire_prev_y, map1_story_fire_prev_valid
+    global map1_story_toriel_prev_x, map1_story_toriel_prev_y, map1_story_toriel_prev_valid, map1_story_prev_flowey_visible
 
     _draw_battle_frame(frame_x, frame_y, frame_w, BATTLE_FRAME_H)
 
@@ -4160,25 +4228,136 @@ def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd
     enemy_y = frame_y + 10 if _map1_story_is_active() else (frame_y + 16)
     enemy_bottom = enemy_y + enemy_sprite_h
     enemy_drawn = False
-    if hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
-        enemy_drawn = bool(
-            lgfx.draw_png_file(
-                enemy_sprite_path,
-                enemy_x,
-                enemy_y,
-                enemy_sprite_w,
-                enemy_sprite_h,
-            )
+
+    if _map1_story_is_active():
+        moving_story = (
+            map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
+            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
+            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
         )
-    if not enemy_drawn:
-        monster_cx = frame_x + (frame_w // 2)
-        monster_cy = frame_y + 75
-        lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
-        enemy_x = monster_cx - 22
-        enemy_y = monster_cy - 22
-        enemy_sprite_w = 44
-        enemy_sprite_h = 44
-        enemy_bottom = monster_cy + 22
+        if moving_story:
+            if map1_story_fire_prev_valid:
+                _clear_rect_black(
+                    map1_story_fire_prev_x - 2,
+                    map1_story_fire_prev_y - 2,
+                    MAP1_STORY_FIRE_DRAW_W + 4,
+                    MAP1_STORY_FIRE_DRAW_H + 4,
+                )
+            if map1_story_toriel_prev_valid:
+                _clear_rect_black(
+                    map1_story_toriel_prev_x - 2,
+                    map1_story_toriel_prev_y - 2,
+                    MAP1_STORY_TORIEL_DRAW_W + 4,
+                    MAP1_STORY_TORIEL_DRAW_H + 4,
+                )
+        flowey_visible = not map1_story_flowey_hidden
+        if (not flowey_visible) and map1_story_prev_flowey_visible:
+            _clear_rect_black(frame_x + 2, frame_y + 8, MAP1_STORY_ENEMY_DRAW_W + 4, MAP1_STORY_ENEMY_DRAW_H + 4)
+        map1_story_prev_flowey_visible = flowey_visible
+        if flowey_visible and hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
+            enemy_drawn = bool(
+                lgfx.draw_png_file(
+                    enemy_sprite_path,
+                    enemy_x,
+                    enemy_y,
+                    enemy_sprite_w,
+                    enemy_sprite_h,
+                )
+            )
+        if flowey_visible and (not enemy_drawn):
+            monster_cx = frame_x + (frame_w // 2)
+            monster_cy = frame_y + 75
+            lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
+            enemy_x = monster_cx - 22
+            enemy_y = monster_cy - 22
+            enemy_sprite_w = 44
+            enemy_sprite_h = 44
+            enemy_bottom = monster_cy + 22
+            enemy_drawn = True
+
+        if map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD:
+            fire_path = _map1_story_fire_sprite_path()
+            fire_drawn = False
+            if hasattr(lgfx, "draw_png_file") and _path_exists(fire_path):
+                fire_drawn = bool(
+                    lgfx.draw_png_file(
+                        fire_path,
+                        map1_story_fire_x,
+                        map1_story_fire_y,
+                        MAP1_STORY_FIRE_DRAW_W,
+                        MAP1_STORY_FIRE_DRAW_H,
+                    )
+                )
+            if not fire_drawn:
+                fire_cx = map1_story_fire_x + (MAP1_STORY_FIRE_DRAW_W // 2)
+                fire_cy = map1_story_fire_y + (MAP1_STORY_FIRE_DRAW_H // 2)
+                lgfx.draw_circle(fire_cx, fire_cy, 12, BATTLE_COLOR_WHITE)
+                lgfx.draw_circle(fire_cx, fire_cy, 8, BATTLE_COLOR_RED)
+            map1_story_fire_prev_x = map1_story_fire_x
+            map1_story_fire_prev_y = map1_story_fire_y
+            map1_story_fire_prev_valid = True
+        else:
+            map1_story_fire_prev_valid = False
+
+        if map1_story_toriel_visible:
+            toriel_path = _map1_story_toriel_sprite_path()
+            toriel_drawn = False
+            if hasattr(lgfx, "draw_png_file") and _path_exists(toriel_path):
+                toriel_drawn = bool(
+                    lgfx.draw_png_file(
+                        toriel_path,
+                        map1_story_toriel_x,
+                        frame_y + 10,
+                        MAP1_STORY_TORIEL_DRAW_W,
+                        MAP1_STORY_TORIEL_DRAW_H,
+                    )
+                )
+            if not toriel_drawn:
+                _draw_rect_thick(
+                    map1_story_toriel_x + 12,
+                    frame_y + 16,
+                    MAP1_STORY_TORIEL_DRAW_W - 24,
+                    MAP1_STORY_TORIEL_DRAW_H - 20,
+                    BATTLE_COLOR_WHITE,
+                    2,
+                )
+            enemy_x = map1_story_toriel_x
+            enemy_y = frame_y + 10
+            enemy_sprite_w = MAP1_STORY_TORIEL_DRAW_W
+            enemy_sprite_h = MAP1_STORY_TORIEL_DRAW_H
+            enemy_bottom = enemy_y + enemy_sprite_h
+            map1_story_toriel_prev_x = map1_story_toriel_x
+            map1_story_toriel_prev_y = frame_y + 10
+            map1_story_toriel_prev_valid = True
+        elif not flowey_visible:
+            enemy_x = frame_x + ((frame_w - MAP1_STORY_FIRE_DRAW_W) // 2)
+            enemy_y = frame_y + 10
+            enemy_sprite_w = MAP1_STORY_FIRE_DRAW_W
+            enemy_sprite_h = MAP1_STORY_FIRE_DRAW_H
+            enemy_bottom = enemy_y + enemy_sprite_h
+            map1_story_toriel_prev_valid = False
+        else:
+            map1_story_toriel_prev_valid = False
+    else:
+        if hasattr(lgfx, "draw_png_file") and _path_exists(enemy_sprite_path):
+            enemy_drawn = bool(
+                lgfx.draw_png_file(
+                    enemy_sprite_path,
+                    enemy_x,
+                    enemy_y,
+                    enemy_sprite_w,
+                    enemy_sprite_h,
+                )
+            )
+        if not enemy_drawn:
+            monster_cx = frame_x + (frame_w // 2)
+            monster_cy = frame_y + 75
+            lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
+            enemy_x = monster_cx - 22
+            enemy_y = monster_cy - 22
+            enemy_sprite_w = 44
+            enemy_sprite_h = 44
+            enemy_bottom = monster_cy + 22
     battle_menu_enemy_x = enemy_x
     battle_menu_enemy_y = enemy_y
     battle_menu_enemy_w = enemy_sprite_w
@@ -4623,9 +4802,25 @@ def _draw_battle_menu_screen(dialog_active):
         or (frame_y != battle_menu_static_frame_y)
         or (frame_w != battle_menu_static_frame_w)
         or (_map1_story_is_active() and map1_enemy_anchor_mode == MAP1_ENEMY_ANCHOR_SLIDING_LEFT)
+        or (
+            _map1_story_is_active()
+            and (
+                map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
+                or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
+                or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
+            )
+        )
+    )
+    moving_story = (
+        _map1_story_is_active()
+        and (
+            map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY
+            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
+            or map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
+        )
     )
     if static_changed:
-        if (not did_full_clear) and battle_menu_static_ready:
+        if (not did_full_clear) and battle_menu_static_ready and (not moving_story):
             clear_x, clear_y, clear_w, clear_h = _rect_union(
                 battle_menu_static_frame_x,
                 battle_menu_static_frame_y,
@@ -4986,10 +5181,119 @@ def _map1_story_is_active():
     return bool(map1_story_active and (current_map_id == MAP1_ID))
 
 
+def _map1_story_is_toriel_lines():
+    return bool(map1_story_line_index >= 10)
+
+
+def _map1_story_fire_sprite_path():
+    resolved = _resolve_first_existing_path(MAP1_FIRE_SPRITE_PATHS)
+    if resolved:
+        return resolved
+    return MAP1_FIRE_SPRITE_PATHS[0]
+
+
+def _map1_story_toriel_sprite_path():
+    resolved = _resolve_first_existing_path(MAP1_TORIEL_SPRITE_PATHS)
+    if resolved:
+        return resolved
+    return MAP1_TORIEL_SPRITE_PATHS[0]
+
+
+def _map1_story_init_rescue_positions():
+    global map1_story_fire_x, map1_story_fire_y, map1_story_fire_start_x, map1_story_fire_start_y
+    global map1_story_fire_target_x, map1_story_fire_target_y
+    global map1_story_toriel_x, map1_story_toriel_start_x, map1_story_toriel_target_x
+
+    frame_w = BATTLE_FRAME_W
+    frame_x, frame_y, _, _, _ = _battle_menu_geometry(frame_w)
+    flowey_x = frame_x + 4
+    flowey_y = frame_y + 10
+    flowey_cx = flowey_x + (MAP1_STORY_ENEMY_DRAW_W // 2)
+    flowey_cy = flowey_y + (MAP1_STORY_ENEMY_DRAW_H // 2)
+    fire_y = flowey_y + ((MAP1_STORY_ENEMY_DRAW_H - MAP1_STORY_FIRE_DRAW_H) // 2)
+    if fire_y < frame_y + 4:
+        fire_y = frame_y + 4
+    fire_start_x = frame_x + frame_w - MAP1_STORY_FIRE_DRAW_W - 6
+    fire_target_x = flowey_cx - (MAP1_STORY_FIRE_DRAW_W // 2)
+    fire_target_y = flowey_cy - (MAP1_STORY_FIRE_DRAW_H // 2)
+    toriel_target_x = frame_x + frame_w - MAP1_STORY_TORIEL_DRAW_W - 8
+    if toriel_target_x < frame_x + 4:
+        toriel_target_x = frame_x + 4
+    toriel_start_x = ACTIVE_VIEW_W + 6
+    map1_story_fire_x = fire_start_x
+    map1_story_fire_y = fire_y
+    map1_story_fire_start_x = fire_start_x
+    map1_story_fire_start_y = fire_y
+    map1_story_fire_target_x = fire_target_x
+    map1_story_fire_target_y = fire_target_y
+    map1_story_toriel_x = toriel_start_x
+    map1_story_toriel_start_x = toriel_start_x
+    map1_story_toriel_target_x = toriel_target_x
+
+
+def _map1_story_begin_phase2_rescue(loop_start):
+    global map1_story_phase2_event, map1_story_phase2_event_started_ms, map1_story_phase2_freeze_until_ms
+    global battle_fight_dirty, battle_bullets_dirty
+
+    if map1_story_phase2_event != MAP1_STORY_PHASE2_EVENT_NONE:
+        return
+    map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_PAUSE
+    map1_story_phase2_event_started_ms = loop_start
+    map1_story_phase2_freeze_until_ms = time.ticks_add(loop_start, MAP1_STORY_PHASE2_FREEZE_MS)
+    battle_fight_dirty = False
+    battle_bullets_dirty = False
+
+
+def _map1_story_enter_phase2_rescue_menu(loop_start):
+    global mode, bullets, battle_prev_bullet_positions, battle_bullets_dirty
+    global battle_menu_dirty, battle_dialog_visible, battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
+    global battle_dialog_mode, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms
+    global map1_story_phase2_event, map1_story_phase2_event_started_ms, map1_enemy_anchor_mode, map1_story_flowey_hidden, map1_story_toriel_visible
+    global map1_story_fire_prev_valid, map1_story_toriel_prev_valid, map1_story_prev_flowey_visible
+
+    mode = MODE_BATTLE_MENU
+    bullets = []
+    battle_prev_bullet_positions = []
+    battle_bullets_dirty = False
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_prev_dialog_active = False
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    battle_dialog_png_info = None
+    battle_dialog_text = None
+    act_dialog_until_ms = 0
+    map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_LEFT
+    map1_story_flowey_hidden = False
+    map1_story_toriel_visible = False
+    map1_story_fire_prev_valid = False
+    map1_story_toriel_prev_valid = False
+    map1_story_prev_flowey_visible = True
+    _map1_story_init_rescue_positions()
+    map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_FIRE_FLY
+    map1_story_phase2_event_started_ms = loop_start
+
+
+def _map1_story_begin_toriel_lines(loop_start):
+    global map1_story_phase2_event, map1_story_phase2_event_started_ms
+    global battle_menu_dirty
+
+    map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_TORIEL_LINES
+    map1_story_phase2_event_started_ms = loop_start
+    _map1_story_show_line(10, loop_start)
+    battle_menu_dirty = True
+
+
 def _map1_story_reset():
     global map1_story_active, map1_story_stage, map1_story_line_index, map1_story_next_ms
     global map1_story_enemy_angry, map1_enemy_anchor_mode, map1_enemy_slide_start_ms
     global map1_story_phase2_center_x, map1_story_phase2_center_y
+    global map1_story_phase2_event, map1_story_phase2_event_started_ms, map1_story_phase2_freeze_until_ms
+    global map1_story_fire_x, map1_story_fire_y, map1_story_fire_start_x, map1_story_fire_start_y, map1_story_fire_target_x, map1_story_fire_target_y
+    global map1_story_flowey_hidden, map1_story_toriel_visible, map1_story_toriel_x, map1_story_toriel_start_x, map1_story_toriel_target_x
+    global map1_story_fire_prev_x, map1_story_fire_prev_y, map1_story_fire_prev_valid
+    global map1_story_toriel_prev_x, map1_story_toriel_prev_y, map1_story_toriel_prev_valid, map1_story_prev_flowey_visible
 
     map1_story_active = False
     map1_story_stage = MAP1_STORY_STAGE_NONE
@@ -5000,10 +5304,31 @@ def _map1_story_reset():
     map1_enemy_slide_start_ms = 0
     map1_story_phase2_center_x = 0
     map1_story_phase2_center_y = 0
+    map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_NONE
+    map1_story_phase2_event_started_ms = 0
+    map1_story_phase2_freeze_until_ms = 0
+    map1_story_fire_x = 0
+    map1_story_fire_y = 0
+    map1_story_fire_start_x = 0
+    map1_story_fire_start_y = 0
+    map1_story_fire_target_x = 0
+    map1_story_fire_target_y = 0
+    map1_story_flowey_hidden = False
+    map1_story_toriel_visible = False
+    map1_story_toriel_x = 0
+    map1_story_toriel_start_x = 0
+    map1_story_toriel_target_x = 0
+    map1_story_fire_prev_x = 0
+    map1_story_fire_prev_y = 0
+    map1_story_fire_prev_valid = False
+    map1_story_toriel_prev_x = 0
+    map1_story_toriel_prev_y = 0
+    map1_story_toriel_prev_valid = False
+    map1_story_prev_flowey_visible = True
 
 
 def _map1_story_enemy_sprite_path():
-    paths = MAP1_ANGRY_FLOWEY_SPRITE_PATHS if map1_story_enemy_angry else MAP1_FLOWEY_SPRITE_PATHS
+    paths = MAP1_ANGRY_FLOWEY_ANIM_SPRITE_PATHS if map1_story_enemy_angry else MAP1_FLOWEY_ANIM_SPRITE_PATHS
     resolved = _resolve_first_existing_path(paths)
     if resolved:
         return resolved
@@ -5173,6 +5498,8 @@ def _map1_story_begin_phase2(loop_start):
     global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
     global battle_dialog_mode, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms
     global battle_fight_dirty, battle_bullets_dirty
+    global map1_story_phase2_event, map1_story_phase2_event_started_ms, map1_story_phase2_freeze_until_ms
+    global map1_story_flowey_hidden, map1_story_toriel_visible
 
     map1_story_stage = MAP1_STORY_STAGE_PHASE2
     mode = MODE_BATTLE_FIGHT
@@ -5185,6 +5512,11 @@ def _map1_story_begin_phase2(loop_start):
     battle_dialog_png_info = None
     battle_dialog_text = None
     act_dialog_until_ms = 0
+    map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_NONE
+    map1_story_phase2_event_started_ms = 0
+    map1_story_phase2_freeze_until_ms = 0
+    map1_story_flowey_hidden = False
+    map1_story_toriel_visible = False
     _reset_battle_state()
     _map1_story_spawn_phase2_bullets()
     battle_fight_dirty = True
@@ -5211,6 +5543,11 @@ def _map1_story_begin(loop_start):
 
 
 def _map1_story_update_menu(loop_start):
+    global map1_story_phase2_event, map1_story_phase2_event_started_ms
+    global map1_story_fire_x, map1_story_fire_y
+    global map1_story_flowey_hidden, map1_story_toriel_visible, map1_story_toriel_x
+    global battle_menu_dirty
+
     if map1_story_stage == MAP1_STORY_STAGE_INTRO_LINES:
         if time.ticks_diff(loop_start, map1_story_next_ms) < 0:
             return
@@ -5226,6 +5563,72 @@ def _map1_story_update_menu(loop_start):
             _map1_story_show_line(map1_story_line_index + 1, loop_start)
             return
         _map1_story_begin_phase2(loop_start)
+        return
+    if map1_story_stage == MAP1_STORY_STAGE_PHASE2:
+        if map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_FLY:
+            dx = map1_story_fire_target_x - map1_story_fire_x
+            dy = map1_story_fire_target_y - map1_story_fire_y
+            sx = MAP1_STORY_FIRE_STEP_PX
+            sy = MAP1_STORY_FIRE_STEP_PX
+            if frame_dt > TARGET_FRAME_MS:
+                step_mul = frame_dt // TARGET_FRAME_MS
+                if step_mul > 1:
+                    sx *= step_mul
+                    sy *= step_mul
+            if sx > MAP1_STORY_ANIM_STEP_MAX:
+                sx = MAP1_STORY_ANIM_STEP_MAX
+            if sy > MAP1_STORY_ANIM_STEP_MAX:
+                sy = MAP1_STORY_ANIM_STEP_MAX
+            if abs(dx) <= sx and abs(dy) <= sy:
+                map1_story_fire_x = map1_story_fire_target_x
+                map1_story_fire_y = map1_story_fire_target_y
+                map1_story_flowey_hidden = True
+                map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
+                map1_story_phase2_event_started_ms = loop_start
+            else:
+                if dx > 0:
+                    map1_story_fire_x += sx if dx > sx else dx
+                elif dx < 0:
+                    map1_story_fire_x -= sx if (-dx) > sx else (-dx)
+                if dy > 0:
+                    map1_story_fire_y += sy if dy > sy else dy
+                elif dy < 0:
+                    map1_story_fire_y -= sy if (-dy) > sy else (-dy)
+            battle_menu_dirty = True
+            return
+        if map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_FIRE_HOLD:
+            if time.ticks_diff(loop_start, map1_story_phase2_event_started_ms) >= MAP1_STORY_FIRE_HOLD_MS:
+                map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE
+                map1_story_phase2_event_started_ms = loop_start
+                map1_story_toriel_visible = True
+            battle_menu_dirty = True
+            return
+        if map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_SLIDE:
+            if map1_story_toriel_x <= map1_story_toriel_target_x:
+                map1_story_toriel_x = map1_story_toriel_target_x
+                _map1_story_begin_toriel_lines(loop_start)
+                return
+            toriel_step = MAP1_STORY_TORIEL_STEP_PX
+            if frame_dt > TARGET_FRAME_MS:
+                step_mul = frame_dt // TARGET_FRAME_MS
+                if step_mul > 1:
+                    toriel_step *= step_mul
+            if toriel_step > MAP1_STORY_ANIM_STEP_MAX:
+                toriel_step = MAP1_STORY_ANIM_STEP_MAX
+            map1_story_toriel_x -= toriel_step
+            frame_x, _, _, _, _ = _battle_menu_geometry(BATTLE_FRAME_W)
+            min_x = frame_x + 4
+            if map1_story_toriel_x < min_x:
+                map1_story_toriel_x = min_x
+            battle_menu_dirty = True
+            return
+        if map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_TORIEL_LINES:
+            if time.ticks_diff(loop_start, map1_story_next_ms) < 0:
+                return
+            if map1_story_line_index < 17:
+                _map1_story_show_line(map1_story_line_index + 1, loop_start)
+                return
+            _exit_battle_to_explore()
 
 
 def _map1_story_finish_phase1_hit(loop_start):
@@ -5253,6 +5656,11 @@ def _map1_story_update_fight(loop_start):
     global bullets, battle_bullets_dirty, battle_fight_dirty, battle_status_dirty
     global player_hp
 
+    if map1_story_stage == MAP1_STORY_STAGE_PHASE2 and map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_PAUSE:
+        if time.ticks_diff(loop_start, map1_story_phase2_freeze_until_ms) >= 0:
+            _map1_story_enter_phase2_rescue_menu(loop_start)
+        return
+
     if x_dir > 0:
         fight_heart_x += BATTLE_HEART_STEP
     elif x_dir < 0:
@@ -5266,6 +5674,8 @@ def _map1_story_update_fight(loop_start):
 
     hit_r = BATTLE_HEART_HIT_R + BULLET_R
     hit_r2 = hit_r * hit_r
+    near_r = hit_r + MAP1_STORY_PHASE2_NEAR_HIT_PAD_PX
+    near_r2 = near_r * near_r
     min_x, max_x, min_y, max_y = _map1_story_bullet_bounds()
     kept = []
     changed = False
@@ -5285,11 +5695,20 @@ def _map1_story_update_fight(loop_start):
             continue
         dx = bx - fight_heart_x
         dy = by - fight_heart_y
+        if map1_story_stage == MAP1_STORY_STAGE_PHASE2 and map1_story_phase2_event == MAP1_STORY_PHASE2_EVENT_NONE:
+            if (dx * dx + dy * dy) <= near_r2:
+                _map1_story_begin_phase2_rescue(loop_start)
+                battle_bullets_dirty = bool(bullets)
+                return
         if (dx * dx + dy * dy) <= hit_r2:
             if map1_story_stage == MAP1_STORY_STAGE_PHASE1:
                 player_hp = 1
                 battle_status_dirty = True
                 _map1_story_finish_phase1_hit(loop_start)
+                return
+            if map1_story_stage == MAP1_STORY_STAGE_PHASE2:
+                _map1_story_begin_phase2_rescue(loop_start)
+                battle_bullets_dirty = bool(bullets)
                 return
             _exit_battle_to_explore()
             return
