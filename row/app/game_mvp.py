@@ -12,6 +12,7 @@ from map_registry import (
     MAP4_ID,
     MAP5_ID,
     MAP6_ID,
+    MAP8_ID,
     WOOD_MAIN_ID,
     WOOD_UP_ID,
     WOOD_RIGHT_ID,
@@ -280,7 +281,7 @@ def _load_tiles(meta, base, tile, map_w, map_h, prefer_stream=False):
                 mode = lgfx.tile_loader_mode()
             except Exception:
                 return False
-            if mode != 2:
+            if mode < 2:
                 print("tile_loader_stream_skip_mode:", mode)
                 return False
         return True
@@ -332,6 +333,169 @@ def _load_tiles(meta, base, tile, map_w, map_h, prefer_stream=False):
     if stream_err not in ("STREAM_UNAVAILABLE", None):
         raise RuntimeError(stream_err)
     raise RuntimeError(mem_err if mem_err else "TILE_OOM")
+
+
+def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None):
+    global collision, meta, asset_base, current_map_id
+    global player_x, player_y, scroll_x, scroll_y
+    global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
+    global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
+    global explore_force_full_redraw, teleport_cooldown_frames
+    global tile, map_w, map_h, world_w, world_h, runtime_endian
+    global move_carry_x, move_carry_y, prev_input_x, prev_input_y
+    global preload_suspend_until_ms, gc_suspend_until_ms, gc_pending
+    global resident_back_slot_id, resident_active_slot_id, resident_ahead_slot_id
+    global preload_zone_target_map_id, preload_zone_enter_ms
+
+    try:
+        _release_preload_cache("switch_direct_fallback")
+        _resident_release_slot(resident_back_slot_id, "switch_direct_release_back")
+        _resident_release_slot(resident_ahead_slot_id, "switch_direct_release_ahead")
+
+        asset_base = target_record["asset_base"]
+        meta = target_record["meta"]
+        collision = target_record["collision"]
+        tile = meta["tile_size"]
+        map_w = meta["map_w"]
+        map_h = meta["map_h"]
+        world_w = map_w * tile
+        world_h = map_h * tile
+        _tile_setup_with_fallback()
+        runtime_endian = _load_tiles(meta, asset_base, tile, map_w, map_h, prefer_stream=True)
+        if hasattr(lgfx, "set_swap_bytes"):
+            lgfx.set_swap_bytes(runtime_endian == "little")
+    except Exception as err:
+        print("switch_map_direct_fail:", err)
+        return False
+
+    if spawn_x is None and target_record.get("spawn") and len(target_record["spawn"]) >= 2:
+        spawn_x = target_record["spawn"][0]
+    if spawn_y is None and target_record.get("spawn") and len(target_record["spawn"]) >= 2:
+        spawn_y = target_record["spawn"][1]
+
+    used_meta_spawn = False
+    if spawn_x is None:
+        spawn_x = meta.get("spawn_x", world_w // 2)
+        used_meta_spawn = True
+    if spawn_y is None:
+        spawn_y = meta.get("spawn_y", world_h // 2)
+        used_meta_spawn = True
+    if used_meta_spawn:
+        spawn_x, spawn_y = _apply_spawn_offset_for_map(target_map_id, spawn_x, spawn_y)
+
+    player_x = _clamp(spawn_x, PLAYER_R, world_w - PLAYER_R - 1)
+    player_y = _clamp(spawn_y, PLAYER_R, world_h - PLAYER_R - 1)
+    safe_x, safe_y = _nearest_walkable(player_x, player_y)
+    if safe_x != player_x or safe_y != player_y:
+        print("spawn_adjusted:", player_x, player_y, "->", safe_x, safe_y)
+    player_x, player_y = safe_x, safe_y
+    scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
+    scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
+    prev_scroll_x = scroll_x
+    prev_scroll_y = scroll_y
+    prev_player_x = player_x
+    prev_player_y = player_y
+    move_carry_x = 0
+    move_carry_y = 0
+    prev_input_x = 0
+    prev_input_y = 0
+
+    leaf_zone_prev_inside = False
+    explore_overlay_dirty = False
+    lamp_dialog_until_ms = 0
+    explore_force_full_redraw = True
+    teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+    current_map_id = target_map_id
+    _encounter_on_map_enter(current_map_id)
+
+    role_active = resident_slots[resident_active_slot_id]["role"]
+    resident_slots[resident_active_slot_id].update(target_record)
+    resident_slots[resident_active_slot_id]["role"] = role_active
+    _resident_clear_slot_record(resident_back_slot_id)
+    _resident_clear_slot_record(resident_ahead_slot_id)
+    _resident_sync_roles()
+
+    preload_zone_target_map_id = None
+    preload_zone_enter_ms = 0
+    now = time.ticks_ms()
+    preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
+    gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
+    if GC_DEFER_ENABLE:
+        gc_pending = True
+    else:
+        gc.collect()
+    print("switch_map_direct_ok:", target_map_id)
+    return True
+
+
+def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None):
+    global current_map_id
+    global player_x, player_y, scroll_x, scroll_y
+    global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
+    global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
+    global explore_force_full_redraw, teleport_cooldown_frames
+    global move_carry_x, move_carry_y, prev_input_x, prev_input_y
+    global preload_suspend_until_ms, gc_suspend_until_ms, gc_pending
+    global preload_zone_target_map_id, preload_zone_enter_ms
+
+    try:
+        _release_preload_cache("switch_boot_fallback")
+        _resident_boot_activate_map(target_map_id)
+    except Exception as err:
+        print("switch_map_boot_fail:", err)
+        return False
+
+    if spawn_x is None and target_record.get("spawn") and len(target_record["spawn"]) >= 2:
+        spawn_x = target_record["spawn"][0]
+    if spawn_y is None and target_record.get("spawn") and len(target_record["spawn"]) >= 2:
+        spawn_y = target_record["spawn"][1]
+
+    used_meta_spawn = False
+    if spawn_x is None:
+        spawn_x = meta.get("spawn_x", world_w // 2)
+        used_meta_spawn = True
+    if spawn_y is None:
+        spawn_y = meta.get("spawn_y", world_h // 2)
+        used_meta_spawn = True
+    if used_meta_spawn:
+        spawn_x, spawn_y = _apply_spawn_offset_for_map(target_map_id, spawn_x, spawn_y)
+
+    player_x = _clamp(spawn_x, PLAYER_R, world_w - PLAYER_R - 1)
+    player_y = _clamp(spawn_y, PLAYER_R, world_h - PLAYER_R - 1)
+    safe_x, safe_y = _nearest_walkable(player_x, player_y)
+    if safe_x != player_x or safe_y != player_y:
+        print("spawn_adjusted:", player_x, player_y, "->", safe_x, safe_y)
+    player_x, player_y = safe_x, safe_y
+    scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
+    scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
+    prev_scroll_x = scroll_x
+    prev_scroll_y = scroll_y
+    prev_player_x = player_x
+    prev_player_y = player_y
+    move_carry_x = 0
+    move_carry_y = 0
+    prev_input_x = 0
+    prev_input_y = 0
+
+    leaf_zone_prev_inside = False
+    explore_overlay_dirty = False
+    lamp_dialog_until_ms = 0
+    explore_force_full_redraw = True
+    teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+    current_map_id = target_map_id
+    _encounter_on_map_enter(current_map_id)
+
+    preload_zone_target_map_id = None
+    preload_zone_enter_ms = 0
+    now = time.ticks_ms()
+    preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
+    gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
+    if GC_DEFER_ENABLE:
+        gc_pending = True
+    else:
+        gc.collect()
+    print("switch_map_boot_ok:", target_map_id)
+    return True
 
 
 def _isqrt(n):
@@ -462,6 +626,8 @@ SPAWN_OVERLAY_PATHS = (
 PORTAL_TRANSITION_EFFECT_SPOTLIGHT = "spotlight_shrink"
 PORTAL_TRANSITION_DEFAULT_SHRINK_MS = 4000
 PORTAL_TRANSITION_DEFAULT_BLACK_MS = 1000
+PORTAL_TRANSITION_SWITCH_RETRY_MS = 250
+PORTAL_TRANSITION_SWITCH_MAX_RETRY = 24
 FORCE_SIMPLE_PLAYER = False
 USE_TILE_RENDER_PLAYER_COMPOSE = True
 ROTATION = 1
@@ -1003,6 +1169,11 @@ portal_transition_center_screen_y = 0
 portal_transition_shrink_ms = PORTAL_TRANSITION_DEFAULT_SHRINK_MS
 portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
 portal_transition_portal_ref = None
+portal_transition_last_switch_try_ms = 0
+portal_transition_switch_fail_count = 0
+portal_transition_rearm_required = False
+portal_transition_rearm_map_id = 0
+portal_transition_rearm_portal_ref = None
 gc_pending = False
 gc_last_run_ms = 0
 gc_suspend_until_ms = 0
@@ -1326,15 +1497,16 @@ def _tile_setup_with_fallback():
     global ACTIVE_VIEW_W, ACTIVE_VIEW_H
 
     # Fast path: try target fullscreen directly first.
-    gc.collect()
-    if lgfx.tile_setup(tile, map_w, map_h, VIEW_W, VIEW_H, False):
-        ACTIVE_VIEW_W, ACTIVE_VIEW_H = VIEW_W, VIEW_H
-        print("tile_setup:", VIEW_W, VIEW_H, "psram:", False)
-        return
+    # Prefer PSRAM to keep internal heap headroom for slot/preload loader.
     gc.collect()
     if lgfx.tile_setup(tile, map_w, map_h, VIEW_W, VIEW_H, True):
         ACTIVE_VIEW_W, ACTIVE_VIEW_H = VIEW_W, VIEW_H
         print("tile_setup:", VIEW_W, VIEW_H, "psram:", True)
+        return
+    gc.collect()
+    if lgfx.tile_setup(tile, map_w, map_h, VIEW_W, VIEW_H, False):
+        ACTIVE_VIEW_W, ACTIVE_VIEW_H = VIEW_W, VIEW_H
+        print("tile_setup:", VIEW_W, VIEW_H, "psram:", False)
         return
 
     def _try_setup(vw, vh, use_psram_order, retries):
@@ -1348,10 +1520,10 @@ def _tile_setup_with_fallback():
                     return True
         return False
 
-    # Fullscreen is the intended mode. Retry it first, preferring internal RAM
-    # to avoid unstable SPIRAM-path allocation failures on boards without PSRAM.
+    # Fullscreen is the intended mode. Retry it first, preferring PSRAM so
+    # slot-loader allocations are less likely to fail on large maps.
     if VIEW_W <= world_w and VIEW_H <= world_h:
-        if _try_setup(VIEW_W, VIEW_H, (False, True), FULL_VIEW_SETUP_RETRIES):
+        if _try_setup(VIEW_W, VIEW_H, (True, False), FULL_VIEW_SETUP_RETRIES):
             return
         if not ALLOW_VIEW_FALLBACK:
             raise RuntimeError("TILE_SETUP_FULLSCREEN_FAIL")
@@ -1378,7 +1550,7 @@ def _tile_setup_with_fallback():
     for vw, vh in candidates:
         if vw > world_w or vh > world_h:
             continue
-        if _try_setup(vw, vh, (False, True), 1):
+        if _try_setup(vw, vh, (True, False), 1):
             return
     raise RuntimeError("TILE_SETUP_FAIL")
 
@@ -1822,8 +1994,14 @@ def _resident_release_slot(slot_id, reason=None):
     if info is not None and info["state"] == SLOT_STATE_LOADING and hasattr(lgfx, "display_wait_idle"):
         lgfx.display_wait_idle()
     ok = True
-    if info is not None and info["state"] == SLOT_STATE_LOADING and hasattr(lgfx, "slot_cancel_load"):
-        ok = bool(lgfx.slot_cancel_load(slot_id))
+    if info is not None and info["state"] == SLOT_STATE_LOADING:
+        cancel_ok = True
+        if hasattr(lgfx, "slot_cancel_load"):
+            cancel_ok = bool(lgfx.slot_cancel_load(slot_id))
+        release_ok = True
+        if hasattr(lgfx, "slot_release"):
+            release_ok = bool(lgfx.slot_release(slot_id))
+        ok = bool(cancel_ok and release_ok)
     elif hasattr(lgfx, "slot_release"):
         ok = bool(lgfx.slot_release(slot_id))
     _resident_clear_slot_record(slot_id)
@@ -1931,6 +2109,12 @@ def _resident_start_slot_load(slot_id, record, sync_load):
         ok = lgfx.slot_load_files(*args)
     else:
         ok = lgfx.slot_begin_load_files(*args)
+        if not ok:
+            # Fallback to synchronous load when async begin fails (slot may
+            # still be settling after a cancel/release on some firmware builds).
+            if hasattr(lgfx, "display_wait_idle"):
+                lgfx.display_wait_idle()
+            ok = lgfx.slot_load_files(*args)
     if not ok:
         state = _resident_slot_info(slot_id)
         print("resident_slot_load_fail:", slot_id, record["map_id"], state)
@@ -1981,6 +2165,11 @@ def _resident_boot_activate_map(target_map_id):
     resident_active_slot_id = RESIDENT_ACTIVE_SLOT_ID
     resident_ahead_slot_id = RESIDENT_AHEAD_SLOT_ID
     for slot_id in RESIDENT_SLOT_IDS:
+        if hasattr(lgfx, "slot_release"):
+            try:
+                lgfx.slot_release(slot_id)
+            except Exception:
+                pass
         _resident_clear_slot_record(slot_id)
     _resident_sync_roles()
     record = _resident_resolve_map_record(target_map_id)
@@ -2169,6 +2358,14 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     prev_active_slot_id = resident_active_slot_id
     prev_ahead_slot_id = resident_ahead_slot_id
 
+    def _tile_last_error_code():
+        if hasattr(lgfx, "tile_last_error"):
+            try:
+                return lgfx.tile_last_error()
+            except Exception:
+                return None
+        return None
+
     target_slot_id = None
     if _resident_slot_has_target(resident_back_slot_id, target_map_id):
         target_slot_id = resident_back_slot_id
@@ -2188,7 +2385,41 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
             return False
         phase["resolve_base_ms"] = time.ticks_diff(time.ticks_ms(), t0)
         target_slot_id = resident_ahead_slot_id
-        if not _resident_start_slot_load(target_slot_id, record, False):
+        # Reduce heap fragmentation before slot loader allocates its tile cache.
+        gc.collect()
+        load_started = _resident_start_slot_load(target_slot_id, record, False)
+        if not load_started:
+            last_err = _tile_last_error_code()
+            if last_err == 8:
+                # Loader cache allocation failed. Free back slot payload and
+                # retry once before bailing out.
+                gc.collect()
+                _resident_release_slot(resident_back_slot_id, "switch_retry_release_back")
+                gc.collect()
+                load_started = _resident_start_slot_load(target_slot_id, record, False)
+                if load_started:
+                    last_err = 0
+            if last_err:
+                print("switch_map_tile_last_error:", last_err)
+        if not load_started:
+            if last_err == 8:
+                if target_map_id == MAP8_ID:
+                    # Slot loader can fail on very large maps even when PSRAM is
+                    # available. Use the direct loader as a targeted fallback for
+                    # Map8 instead of aborting the portal transition.
+                    if _switch_map_direct_fallback(target_map_id, record, spawn_x, spawn_y):
+                        return True
+                try:
+                    tile_bytes = record["meta"]["tile_size"] * record["meta"]["tile_size"] * 2
+                    print(
+                        "switch_map_diag_target:",
+                        target_map_id,
+                        "map_w", record["meta"]["map_w"],
+                        "map_h", record["meta"]["map_h"],
+                        "tileset_count", (os.stat(record["tile_base"] + "/tileset.bin")[6] // tile_bytes),
+                    )
+                except Exception:
+                    pass
             print("switch_map_fail_stage:slot_begin")
             _print_switch_timings()
             teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
@@ -2376,7 +2607,9 @@ def _init_runtime_state():
     global portal_transition_active, portal_transition_started_ms, portal_transition_stage
     global portal_transition_source_map_id, portal_transition_target_map_id, portal_transition_target_spawn
     global portal_transition_center_screen_x, portal_transition_center_screen_y
-    global portal_transition_shrink_ms, portal_transition_black_ms, portal_transition_portal_ref
+    global portal_transition_shrink_ms, portal_transition_black_ms, portal_transition_portal_ref, portal_transition_last_switch_try_ms
+    global portal_transition_switch_fail_count
+    global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
     adc_x = ADC(Pin(JOY_X_PIN))
     adc_y = ADC(Pin(JOY_Y_PIN))
@@ -2572,6 +2805,11 @@ def _init_runtime_state():
     portal_transition_shrink_ms = PORTAL_TRANSITION_DEFAULT_SHRINK_MS
     portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
     portal_transition_portal_ref = None
+    portal_transition_last_switch_try_ms = 0
+    portal_transition_switch_fail_count = 0
+    portal_transition_rearm_required = False
+    portal_transition_rearm_map_id = 0
+    portal_transition_rearm_portal_ref = None
     map6_boss_defeated = False
     map6_boss_battle_active = False
     map6_boss_anim_seq_index = 0
@@ -2750,7 +2988,7 @@ def _portal_transition_clear():
     global portal_transition_target_spawn
     global portal_transition_center_screen_x, portal_transition_center_screen_y
     global portal_transition_shrink_ms, portal_transition_black_ms
-    global portal_transition_portal_ref
+    global portal_transition_portal_ref, portal_transition_last_switch_try_ms, portal_transition_switch_fail_count
     portal_transition_active = False
     portal_transition_started_ms = 0
     portal_transition_stage = "none"
@@ -2762,6 +3000,38 @@ def _portal_transition_clear():
     portal_transition_shrink_ms = PORTAL_TRANSITION_DEFAULT_SHRINK_MS
     portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
     portal_transition_portal_ref = None
+    portal_transition_last_switch_try_ms = 0
+    portal_transition_switch_fail_count = 0
+
+
+def _portal_transition_rearm_clear():
+    global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
+    portal_transition_rearm_required = False
+    portal_transition_rearm_map_id = 0
+    portal_transition_rearm_portal_ref = None
+
+
+def _portal_transition_rearm_update(px, py):
+    global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
+    if not portal_transition_rearm_required:
+        return
+    portal = portal_transition_rearm_portal_ref
+    if portal is None:
+        _portal_transition_rearm_clear()
+        return
+    if current_map_id != portal_transition_rearm_map_id:
+        _portal_transition_rearm_clear()
+        return
+    if not _portal_trigger_hit(portal, px, py):
+        _portal_transition_rearm_clear()
+
+
+def _portal_transition_rearm_blocked(portal):
+    if not portal_transition_rearm_required:
+        return False
+    if current_map_id != portal_transition_rearm_map_id:
+        return False
+    return portal is portal_transition_rearm_portal_ref
 
 
 def _portal_transition_start(portal):
@@ -2770,7 +3040,17 @@ def _portal_transition_start(portal):
     global portal_transition_target_spawn
     global portal_transition_center_screen_x, portal_transition_center_screen_y
     global portal_transition_shrink_ms, portal_transition_black_ms
-    global portal_transition_portal_ref, explore_force_full_redraw
+    global portal_transition_portal_ref, portal_transition_last_switch_try_ms, portal_transition_switch_fail_count, explore_force_full_redraw
+    global preload_zone_target_map_id, preload_zone_enter_ms, preload_release_due_ms
+    global preload_last_build_ms, preload_suspend_until_ms
+    # Ensure no background preload load is occupying resident ahead slot when
+    # the cinematic finishes and switch_map needs to stage the target map.
+    _release_preload_cache("portal_transition_start")
+    preload_zone_target_map_id = None
+    preload_zone_enter_ms = 0
+    preload_release_due_ms = 0
+    preload_last_build_ms = 0
+    preload_suspend_until_ms = 0
     portal_transition_active = True
     portal_transition_started_ms = time.ticks_ms()
     portal_transition_stage = "shrink"
@@ -2786,11 +3066,14 @@ def _portal_transition_start(portal):
     if portal_transition_black_ms < 0:
         portal_transition_black_ms = PORTAL_TRANSITION_DEFAULT_BLACK_MS
     portal_transition_portal_ref = portal
+    portal_transition_last_switch_try_ms = 0
+    portal_transition_switch_fail_count = 0
     explore_force_full_redraw = True
 
 
 def _portal_transition_update(loop_start):
-    global portal_transition_stage
+    global portal_transition_stage, portal_transition_last_switch_try_ms, portal_transition_switch_fail_count
+    global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
     if not portal_transition_active:
         return
     if mode != MODE_EXPLORE:
@@ -2812,13 +3095,41 @@ def _portal_transition_update(loop_start):
         portal_transition_stage = "black"
         return
 
+    portal_transition_stage = "black"
+    if portal_transition_last_switch_try_ms and time.ticks_diff(loop_start, portal_transition_last_switch_try_ms) < PORTAL_TRANSITION_SWITCH_RETRY_MS:
+        return
+    portal_transition_last_switch_try_ms = loop_start
+
     target_map_id = portal_transition_target_map_id
     target_spawn = portal_transition_target_spawn
-    _portal_transition_clear()
+    ok = False
     if target_spawn and len(target_spawn) >= 2:
-        switch_map(target_map_id, target_spawn[0], target_spawn[1])
+        ok = bool(switch_map(target_map_id, target_spawn[0], target_spawn[1]))
     else:
-        switch_map(target_map_id)
+        ok = bool(switch_map(target_map_id))
+    if ok:
+        _portal_transition_rearm_clear()
+        _portal_transition_clear()
+        return
+
+    portal_transition_switch_fail_count += 1
+    print(
+        "portal_transition_switch_retry:",
+        portal_transition_switch_fail_count,
+        "target:",
+        target_map_id,
+    )
+    if portal_transition_switch_fail_count == 1:
+        _release_preload_cache("portal_transition_switch_retry")
+    elif portal_transition_switch_fail_count == 2:
+        _try_mount_sd()
+    elif portal_transition_switch_fail_count >= PORTAL_TRANSITION_SWITCH_MAX_RETRY:
+        print("portal_transition_abort_after_retries:", portal_transition_switch_fail_count)
+        portal_transition_rearm_required = True
+        portal_transition_rearm_map_id = portal_transition_source_map_id
+        portal_transition_rearm_portal_ref = portal_transition_portal_ref
+        _portal_transition_clear()
+        return
 
 
 def _update_preload_for_player(px, py):
@@ -5884,6 +6195,7 @@ def _map1_story_update_menu(loop_start):
     global map1_story_fire_x, map1_story_fire_y
     global map1_story_flowey_hidden, map1_story_toriel_visible, map1_story_toriel_x
     global battle_menu_dirty, battle_menu_static_ready, battle_menu_full_clear_pending
+    global enemy_hp
 
     if map1_story_stage == MAP1_STORY_STAGE_INTRO_LINES:
         if time.ticks_diff(loop_start, map1_story_next_ms) < 0:
@@ -5921,6 +6233,7 @@ def _map1_story_update_menu(loop_start):
             )
             if hit_now:
                 map1_story_flowey_hidden = True
+                enemy_hp = 0
                 map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
                 map1_story_phase2_event_started_ms = loop_start
                 battle_menu_full_clear_pending = True
@@ -5936,6 +6249,7 @@ def _map1_story_update_menu(loop_start):
                 map1_story_fire_x = map1_story_fire_target_x
                 map1_story_fire_y = map1_story_fire_target_y
                 map1_story_flowey_hidden = True
+                enemy_hp = 0
                 map1_story_phase2_event = MAP1_STORY_PHASE2_EVENT_FIRE_HOLD
                 map1_story_phase2_event_started_ms = loop_start
                 battle_menu_full_clear_pending = True
@@ -7516,6 +7830,7 @@ def _run_main_loop():
 
                 if mode == MODE_EXPLORE:
                     _update_preload_for_player(player_x, player_y)
+                    _portal_transition_rearm_update(player_x, player_y)
 
                     if teleport_cooldown_frames == 0:
                         move_dx = player_x - prev_player_x
@@ -7523,7 +7838,8 @@ def _run_main_loop():
                         active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
                         if active_portal:
                             if active_portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
-                                _portal_transition_start(active_portal)
+                                if not _portal_transition_rearm_blocked(active_portal):
+                                    _portal_transition_start(active_portal)
                             else:
                                 target_spawn = active_portal.get("target_spawn")
                                 if target_spawn and len(target_spawn) >= 2:
