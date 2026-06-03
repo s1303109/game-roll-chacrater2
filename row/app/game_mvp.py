@@ -735,6 +735,14 @@ BATTLE_HEART_USE_PNG_ON_MOVE = False
 ENEMY_SPRITE_PATH = config.ui_path("enemy.png")
 ENEMY_SPRITE_W = 72
 ENEMY_SPRITE_H = 72
+NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET = 4
+NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET = 10
+NORMAL_BATTLE_ENEMY_DRAW_W = 96
+NORMAL_BATTLE_ENEMY_DRAW_H = 96
+MAP2_ENEMY_SPRITE_PATHS = (config.ui_path("map2_enemy_anim_96.png"),) + _ui_asset_paths("map2 enemy.png")
+MAP3_ENEMY_SPRITE_PATHS = (config.ui_path("map3_enemy_anim_96.png"),) + _ui_asset_paths("map3 enemy.png")
+MAP4_ENEMY_SPRITE_PATHS = (config.ui_path("map4_enemy_anim_96.png"),) + _ui_asset_paths("map4 enemy.png")
+MAP5_ENEMY_SPRITE_PATHS = (config.ui_path("map5_enemy_anim_96.png"),) + _ui_asset_paths("map5 enemy.png")
 MAP6_BOSS_BATTLE_SPRITE_PATH = config.ui_path("map6_boss_battle.png")
 MAP6_BOSS_SHEET_PATH = config.sprite_path("map6_boss_sheet.rgb565")
 MAP6_BOSS_SHEET_W = 576
@@ -756,6 +764,23 @@ ACT_REPLY1_PNG = config.ui_path("act_reply1_text.png")
 ACT_REPLY2_PNG = config.ui_path("act_reply2_text.png")
 ACT_REPLY3_PNG = config.ui_path("act_reply3_text.png")
 MERCY_LOCKED_PNG = config.ui_path("mercy_locked_text.png")
+MAP2_GLOOMBELL_OPENING1_PNG = config.ui_path("map2_gloombell_opening_01.png")
+MAP2_GLOOMBELL_OPENING2_PNG = config.ui_path("map2_gloombell_opening_02.png")
+MAP2_GLOOMBELL_OPENING3_PNG = config.ui_path("map2_gloombell_opening_03.png")
+MAP2_GLOOMBELL_ACT_WATCH_PNG = config.ui_path("map2_gloombell_act_watch.png")
+MAP2_GLOOMBELL_ACT_CALL_PNG = config.ui_path("map2_gloombell_act_call.png")
+MAP2_GLOOMBELL_ACT_WAIT_PNG = config.ui_path("map2_gloombell_act_wait.png")
+MAP2_GLOOMBELL_LOOK1_PNG = config.ui_path("map2_gloombell_look_01.png")
+MAP2_GLOOMBELL_LOOK2_PNG = config.ui_path("map2_gloombell_look_02.png")
+MAP2_GLOOMBELL_CALL1_PNG = config.ui_path("map2_gloombell_call_01.png")
+MAP2_GLOOMBELL_CALL2_PNG = config.ui_path("map2_gloombell_call_02.png")
+MAP2_GLOOMBELL_CALL3_PNG = config.ui_path("map2_gloombell_call_03.png")
+MAP2_GLOOMBELL_WAIT1_PNG = config.ui_path("map2_gloombell_wait_01.png")
+MAP2_GLOOMBELL_WAIT2_PNG = config.ui_path("map2_gloombell_wait_02.png")
+MAP2_GLOOMBELL_WAIT3_PNG = config.ui_path("map2_gloombell_wait_03.png")
+MAP2_GLOOMBELL_MERCY1_PNG = config.ui_path("map2_gloombell_mercy_01.png")
+MAP2_GLOOMBELL_MERCY2_PNG = config.ui_path("map2_gloombell_mercy_02.png")
+MAP2_GLOOMBELL_MERCY3_PNG = config.ui_path("map2_gloombell_mercy_03.png")
 CMD_ICON_SRC_W = 32
 CMD_ICON_SRC_H = 32
 STAR_ICON_SRC_W = 24
@@ -813,7 +838,6 @@ GC_DEFER_ENABLE = True
 GC_DEFER_MIN_INTERVAL_MS = 900
 GC_DEFER_IDLE_ONLY = True
 GC_POST_SWITCH_PAUSE_MS = 1500
-DEBUG_PERF = False
 TELEPORT_COOLDOWN_FRAMES = 30
 LAMP_DIALOG_TEXT_W = 214
 LAMP_DIALOG_TEXT_H = 27
@@ -885,6 +909,15 @@ MAP1_STORY_LINE1_PNG_W = 200
 MAP1_STORY_LINE1_PNG_H = 72
 MAP1_STORY_ENEMY_DRAW_W = 96
 MAP1_STORY_ENEMY_DRAW_H = 96
+MAP2_GLOOMBELL_ENEMY_ID = "MAP2_ENEMY1"
+MAP2_GLOOMBELL_DIALOG_DELAY_MS = 1500
+MAP2_GLOOMBELL_DIALOG_PNG_W = 200
+MAP2_GLOOMBELL_DIALOG_PNG_H = 72
+MAP2_GLOOMBELL_SIDE_DIALOG_GAP_PX = 6
+MAP2_GLOOMBELL_SCRIPT_KIND_NONE = 0
+MAP2_GLOOMBELL_SCRIPT_KIND_OPENING = 1
+MAP2_GLOOMBELL_SCRIPT_KIND_ACT = 2
+MAP2_GLOOMBELL_SCRIPT_KIND_MERCY = 3
 MAP1_STORY_PHASE1_BULLET_SPEED_PX = 2
 MAP1_STORY_PHASE2_BULLET_SPEED_PX = 1
 MAP1_STORY_FIRE_DRAW_W = 20
@@ -944,9 +977,6 @@ ENEMY_HP_BAR_W = 120
 ENEMY_HP_BAR_H = 8
 ENEMY_HP_BAR_FILL_COLOR = 0x801F  # purple
 ENEMY_HP_BAR_EMPTY_COLOR = 0xF800  # red
-BUILD_TAG = "game_mvp_tune36_revert_tune33_heart_20260519"
-
-print("build:", BUILD_TAG)
 
 MAP_ENCOUNTER_PORTAL_SAFE_PAD_PX = 32
 MAP_ENCOUNTER_ENTRY_MIN_TRAVEL_PX = 0
@@ -977,29 +1007,61 @@ ENEMY_REGISTRY = {
     },
     "MAP2_ENEMY1": {
         "enemy_id": "MAP2_ENEMY1",
-        "display_name": "MAP2 Enemy 1",
-        "sprite_path": ENEMY_SPRITE_PATH,
-        "sprite_w": ENEMY_SPRITE_W,
-        "sprite_h": ENEMY_SPRITE_H,
+        "display_name": "Gloombell",
+        "sprite_paths": MAP2_ENEMY_SPRITE_PATHS,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
-            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
-            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
-            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+            {"png": MAP2_GLOOMBELL_ACT_WATCH_PNG, "png_w": 46, "png_h": 25, "text": "查看"},
+            {"png": MAP2_GLOOMBELL_ACT_CALL_PNG, "png_w": 46, "png_h": 25, "text": "呼喚"},
+            {"png": MAP2_GLOOMBELL_ACT_WAIT_PNG, "png_w": 46, "png_h": 27, "text": "等待"},
         ),
-        "act_replies": (
-            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP2 Enemy 1 replies A."},
-            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP2 Enemy 1 replies B."},
-            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP2 Enemy 1 replies C."},
+        "opening_dialog": (
+            {"png": MAP2_GLOOMBELL_OPENING1_PNG, "png_w": 200, "png_h": 72, "text": "你……看得見我嗎？"},
+            {"png": MAP2_GLOOMBELL_OPENING2_PNG, "png_w": 200, "png_h": 72, "text": "不要走太快。"},
+            {"png": MAP2_GLOOMBELL_OPENING3_PNG, "png_w": 200, "png_h": 72, "text": "這裡已經很久沒有人停下來了。"},
         ),
+        "act_sequences": (
+            (
+                {"png": MAP2_GLOOMBELL_LOOK1_PNG, "png_w": 200, "png_h": 72, "text": "你仔細看著幽鈴燈的光。"},
+                {"png": MAP2_GLOOMBELL_LOOK2_PNG, "png_w": 200, "png_h": 72, "text": "它不是在威脅你，而是在發抖。"},
+            ),
+            (
+                {"png": MAP2_GLOOMBELL_CALL1_PNG, "png_w": 200, "png_h": 72, "text": "你輕聲呼喚幽鈴燈。"},
+                {"png": MAP2_GLOOMBELL_CALL2_PNG, "png_w": 200, "png_h": 72, "text": "幽鈴燈的光稍微穩定了一點。"},
+                {"png": MAP2_GLOOMBELL_CALL3_PNG, "png_w": 200, "png_h": 72, "text": "你真的……不是要丟下我嗎？"},
+            ),
+            (
+                {"png": MAP2_GLOOMBELL_WAIT1_PNG, "png_w": 200, "png_h": 72, "text": "你停下腳步，陪著幽鈴燈待了一會。"},
+                {"png": MAP2_GLOOMBELL_WAIT2_PNG, "png_w": 200, "png_h": 72, "text": "幽鈴燈的光變得柔和。"},
+                {"png": MAP2_GLOOMBELL_WAIT3_PNG, "png_w": 200, "png_h": 72, "text": "原來……有人停下來的時候，是這種感覺。"},
+            ),
+        ),
+        "mercy_unlock_order": (0, 1, 2),
+        "mercy_success_sequence": (
+            {"png": MAP2_GLOOMBELL_MERCY1_PNG, "png_w": 200, "png_h": 72, "text": "謝謝你……"},
+            {"png": MAP2_GLOOMBELL_MERCY2_PNG, "png_w": 200, "png_h": 72, "text": "前面的路很暗，但你應該不會害怕了。"},
+            {"png": MAP2_GLOOMBELL_MERCY3_PNG, "png_w": 200, "png_h": 72, "text": "因為你願意停下來看見別人。"},
+        ),
+        "opening_delay_ms": MAP2_GLOOMBELL_DIALOG_DELAY_MS,
+        "dialog_line_ms": MAP1_STORY_LINE_MS,
         "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
         "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
     },
     "MAP2_ENEMY2": {
         "enemy_id": "MAP2_ENEMY2",
-        "display_name": "MAP2 Enemy 2",
-        "sprite_path": ENEMY_SPRITE_PATH,
-        "sprite_w": ENEMY_SPRITE_W,
-        "sprite_h": ENEMY_SPRITE_H,
+        "display_name": "Gloombell",
+        "sprite_paths": MAP2_ENEMY_SPRITE_PATHS,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
             {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
             {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
@@ -1015,10 +1077,14 @@ ENEMY_REGISTRY = {
     },
     "MAP3_ENEMY1": {
         "enemy_id": "MAP3_ENEMY1",
-        "display_name": "MAP3 Enemy 1",
-        "sprite_path": ENEMY_SPRITE_PATH,
-        "sprite_w": ENEMY_SPRITE_W,
-        "sprite_h": ENEMY_SPRITE_H,
+        "display_name": "Mimi-Stitch",
+        "sprite_paths": MAP3_ENEMY_SPRITE_PATHS,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
             {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
             {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
@@ -1034,10 +1100,14 @@ ENEMY_REGISTRY = {
     },
     "MAP3_ENEMY2": {
         "enemy_id": "MAP3_ENEMY2",
-        "display_name": "MAP3 Enemy 2",
-        "sprite_path": ENEMY_SPRITE_PATH,
-        "sprite_w": ENEMY_SPRITE_W,
-        "sprite_h": ENEMY_SPRITE_H,
+        "display_name": "Mimi-Stitch",
+        "sprite_paths": MAP3_ENEMY_SPRITE_PATHS,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
             {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
             {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
@@ -1053,10 +1123,14 @@ ENEMY_REGISTRY = {
     },
     "MAP4_ENEMY1": {
         "enemy_id": "MAP4_ENEMY1",
-        "display_name": "MAP4 Enemy 1",
-        "sprite_path": ENEMY_SPRITE_PATH,
-        "sprite_w": ENEMY_SPRITE_W,
-        "sprite_h": ENEMY_SPRITE_H,
+        "display_name": "Mushmuse",
+        "sprite_paths": MAP4_ENEMY_SPRITE_PATHS,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
             {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
             {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
@@ -1072,10 +1146,14 @@ ENEMY_REGISTRY = {
     },
     "MAP4_ENEMY2": {
         "enemy_id": "MAP4_ENEMY2",
-        "display_name": "MAP4 Enemy 2",
-        "sprite_path": ENEMY_SPRITE_PATH,
-        "sprite_w": ENEMY_SPRITE_W,
-        "sprite_h": ENEMY_SPRITE_H,
+        "display_name": "Mushmuse",
+        "sprite_paths": MAP4_ENEMY_SPRITE_PATHS,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
             {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
             {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
@@ -1085,6 +1163,29 @@ ENEMY_REGISTRY = {
             {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 2 replies A."},
             {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP4 Enemy 2 replies B."},
             {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 2 replies C."},
+        ),
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP5_ENEMY1": {
+        "enemy_id": "MAP5_ENEMY1",
+        "display_name": "Cyclobot",
+        "sprite_paths": MAP5_ENEMY_SPRITE_PATHS,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "act_options": (
+            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
+            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
+            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+        ),
+        "act_replies": (
+            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "Cyclobot replies A."},
+            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "Cyclobot replies B."},
+            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "Cyclobot replies C."},
         ),
         "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
         "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
@@ -1129,6 +1230,12 @@ MAP_ENCOUNTER_CONFIG = {
         "enemy_ids": ("MAP4_ENEMY1",),
         "pick_mode": MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN,
     },
+    MAP5_ID: {
+        "enabled": True,
+        "quota_range": (1, 1),
+        "enemy_ids": ("MAP5_ENEMY1",),
+        "pick_mode": MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN,
+    },
 }
 
 map_encounter_state = {}
@@ -1143,6 +1250,16 @@ for _encounter_map_id in MAP_ENCOUNTER_CONFIG:
     }
 
 current_battle_enemy = ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID)
+map2_gloombell_script_active = False
+map2_gloombell_script_kind = MAP2_GLOOMBELL_SCRIPT_KIND_NONE
+map2_gloombell_script_entries = ()
+map2_gloombell_script_index = -1
+map2_gloombell_script_next_ms = 0
+map2_gloombell_script_opening_due_ms = 0
+map2_gloombell_script_opening_pending = False
+map2_gloombell_script_side_dialog = False
+map2_gloombell_script_return_to_act = False
+map2_gloombell_script_pending_exit = False
 map6_boss_sheet_loaded = False
 map6_boss_defeated = False
 map6_boss_battle_active = False
@@ -1177,19 +1294,6 @@ portal_transition_rearm_portal_ref = None
 gc_pending = False
 gc_last_run_ms = 0
 gc_suspend_until_ms = 0
-perf_preload_build_count = 0
-perf_preload_build_fail_count = 0
-perf_preload_build_ms_total = 0
-perf_preload_release_count = 0
-perf_preload_skip_cached = 0
-perf_preload_skip_cooldown = 0
-perf_preload_skip_debounce = 0
-perf_preload_skip_dwell = 0
-perf_preload_skip_same_zone = 0
-perf_preload_skip_motion = 0
-perf_preload_skip_post_switch = 0
-perf_gc_run_count = 0
-perf_gc_run_ms_total = 0
 
 SLOT_ROLE_NONE = 0
 SLOT_ROLE_BACK = 1
@@ -1987,7 +2091,6 @@ def _resident_clear_slot_record(slot_id):
 
 def _resident_release_slot(slot_id, reason=None):
     global preload_last_release_ms, preload_release_due_ms
-    global perf_preload_release_count
     if slot_id == resident_active_slot_id:
         return False
     info = _resident_slot_info(slot_id)
@@ -2006,11 +2109,8 @@ def _resident_release_slot(slot_id, reason=None):
         ok = bool(lgfx.slot_release(slot_id))
     _resident_clear_slot_record(slot_id)
     _resident_sync_roles()
-    if reason:
-        print("preload_release:", reason)
     preload_last_release_ms = time.ticks_ms()
     preload_release_due_ms = 0
-    perf_preload_release_count += 1
     return ok
 
 
@@ -2027,27 +2127,6 @@ def _resident_apply_slot_globals(slot_id):
     world_w = map_w * tile
     world_h = map_h * tile
     runtime_endian = "little"
-
-
-def _resident_log_slots(prefix):
-    for slot_id in RESIDENT_SLOT_IDS:
-        info = _resident_slot_info(slot_id)
-        record = resident_slots[slot_id]
-        if info is None:
-            print(prefix, "slot", slot_id, "info:missing")
-            continue
-        print(
-            prefix,
-            "slot", slot_id,
-            _resident_role_name(record["role"]),
-            "map", record["map_id"],
-            "state", _resident_slot_state_name(info["state"]),
-            "stage", _resident_slot_stage_name(info["load_stage"]),
-            "loaded", info["loaded_bytes"], "/", info["total_bytes"],
-            "ref", info["ref_count"],
-            "wait", info["waiter_count"],
-            "active", info["is_active"],
-        )
 
 
 def _resident_resolve_map_record(target_map_id, spawn=None):
@@ -2177,7 +2256,6 @@ def _resident_boot_activate_map(target_map_id):
         raise RuntimeError("RESIDENT_BOOT_LOAD_FAIL")
     resident_slots[resident_active_slot_id].update(record)
     _resident_prepare_active_slot(resident_active_slot_id)
-    _resident_log_slots("boot_slot")
 
 
 def _play_boot_comic_intro():
@@ -2557,7 +2635,6 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
     gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
     _print_switch_timings()
-    _resident_log_slots("switch_slot")
     if GC_DEFER_ENABLE:
         gc_pending = True
     else:
@@ -2597,6 +2674,9 @@ def _init_runtime_state():
     global map1_story_flowey_hidden, map1_story_toriel_visible, map1_story_toriel_x, map1_story_toriel_start_x, map1_story_toriel_target_x
     global map1_story_fire_prev_x, map1_story_fire_prev_y, map1_story_fire_prev_valid
     global map1_story_toriel_prev_x, map1_story_toriel_prev_y, map1_story_toriel_prev_valid, map1_story_prev_flowey_visible
+    global map2_gloombell_script_active, map2_gloombell_script_kind, map2_gloombell_script_entries, map2_gloombell_script_index
+    global map2_gloombell_script_next_ms, map2_gloombell_script_opening_due_ms, map2_gloombell_script_opening_pending
+    global map2_gloombell_script_side_dialog, map2_gloombell_script_return_to_act, map2_gloombell_script_pending_exit
     global _rng_state, interact_sw_prev
     global btn_fight_prev, btn_act_prev, btn_item_prev, btn_mercy_prev, leaf_zone_prev_inside, map1_opening_battle_timer_started, map1_opening_battle_due_ms, map1_opening_battle_done
     global lamp_dialog_until_ms, explore_overlay_dirty, current_map_id, teleport_cooldown_frames, inv_choice_index, inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index
@@ -2755,6 +2835,16 @@ def _init_runtime_state():
     map1_story_toriel_prev_y = 0
     map1_story_toriel_prev_valid = False
     map1_story_prev_flowey_visible = True
+    map2_gloombell_script_active = False
+    map2_gloombell_script_kind = MAP2_GLOOMBELL_SCRIPT_KIND_NONE
+    map2_gloombell_script_entries = ()
+    map2_gloombell_script_index = -1
+    map2_gloombell_script_next_ms = 0
+    map2_gloombell_script_opening_due_ms = 0
+    map2_gloombell_script_opening_pending = False
+    map2_gloombell_script_side_dialog = False
+    map2_gloombell_script_return_to_act = False
+    map2_gloombell_script_pending_exit = False
     _rng_state = (time.ticks_ms() | 1) & 0x7FFFFFFF
     interact_sw_prev = interact_sw.value()
     btn_fight_prev = btn_fight.value()
@@ -2893,7 +2983,7 @@ def _expand_rect(rect, pad):
 
 def _release_preload_cache(reason=None):
     global preload_last_release_ms, preload_release_due_ms
-    global gc_pending, perf_preload_release_count
+    global gc_pending
     info = _resident_slot_info(resident_ahead_slot_id)
     if info is None or info["state"] == SLOT_STATE_EMPTY:
         return
@@ -2906,25 +2996,20 @@ def _release_preload_cache(reason=None):
 
 
 def _build_preload_cache(source_map_id, portal):
-    started = time.ticks_ms()
     target_map_id = portal.get("target_map_id")
     config = MAP_REGISTRY.get(target_map_id)
     if not config:
         print("preload_skip_missing_target:", target_map_id)
-        print("preload_ms_total:", time.ticks_diff(time.ticks_ms(), started))
         return False
 
     try:
         record = _resident_resolve_map_record(target_map_id, portal.get("target_spawn"))
         if not _resident_start_slot_load(resident_ahead_slot_id, record, False):
             raise RuntimeError("slot_begin_failed")
-        print("preload_ready:", source_map_id, "->", target_map_id, "base:", record["tile_base"])
         return True
     except Exception as err:
         print("preload_fail:", err)
         return False
-    finally:
-        print("preload_ms_total:", time.ticks_diff(time.ticks_ms(), started))
 
 
 def _preload_debounce_ready(px, py, rect, debounce_px):
@@ -3135,11 +3220,6 @@ def _portal_transition_update(loop_start):
 def _update_preload_for_player(px, py):
     global preload_zone_target_map_id, preload_zone_enter_ms
     global preload_last_build_ms, preload_release_due_ms, preload_suspend_until_ms
-    global perf_preload_build_count, perf_preload_build_fail_count
-    global perf_preload_build_ms_total
-    global perf_preload_skip_cached, perf_preload_skip_cooldown
-    global perf_preload_skip_debounce, perf_preload_skip_dwell, perf_preload_skip_same_zone
-    global perf_preload_skip_motion, perf_preload_skip_post_switch
 
     if resident_transition_active:
         return
@@ -3184,47 +3264,33 @@ def _update_preload_for_player(px, py):
 
     target_map_id = preload_portal.get("target_map_id")
     fast_track_target = target_map_id in PRELOAD_FAST_TRACK_TARGET_MAP_IDS
-    if target_map_id == preload_zone_target_map_id:
-        perf_preload_skip_same_zone += 1
-    else:
+    if target_map_id != preload_zone_target_map_id:
         preload_zone_target_map_id = target_map_id
         preload_zone_enter_ms = now
 
     preload_release_due_ms = 0
 
     if _resident_slot_has_target(resident_ahead_slot_id, target_map_id):
-        perf_preload_skip_cached += 1
         return
 
     if (not fast_track_target) and preload_suspend_until_ms and time.ticks_diff(now, preload_suspend_until_ms) < 0:
-        perf_preload_skip_post_switch += 1
         return
 
     if (not fast_track_target) and (x_dir != 0 or y_dir_raw != 0):
-        perf_preload_skip_motion += 1
         return
 
     if (not fast_track_target) and preload_zone_enter_ms and time.ticks_diff(now, preload_zone_enter_ms) < PRELOAD_DWELL_MS:
-        perf_preload_skip_dwell += 1
         return
 
     if not _preload_debounce_ready(px, py, preload_zone_rect, PRELOAD_DEBOUNCE_PX):
-        perf_preload_skip_debounce += 1
         return
 
     if preload_last_build_ms and time.ticks_diff(now, preload_last_build_ms) < PRELOAD_COOLDOWN_MS:
-        perf_preload_skip_cooldown += 1
         return
 
     _release_preload_cache("retarget_preload")
-    started = time.ticks_ms()
-    ok = _build_preload_cache(current_map_id, preload_portal)
-    perf_preload_build_ms_total += time.ticks_diff(time.ticks_ms(), started)
+    _build_preload_cache(current_map_id, preload_portal)
     preload_last_build_ms = now
-    if ok:
-        perf_preload_build_count += 1
-    else:
-        perf_preload_build_fail_count += 1
 
 
 def _resident_pump_preload():
@@ -3236,26 +3302,17 @@ def _resident_pump_preload():
     pumped = lgfx.slot_pump_load(resident_ahead_slot_id, PRELOAD_BUDGET_BYTES)
     if pumped < 0:
         print("preload_pump_fail:", resident_ahead_slot_id, _resident_slot_info(resident_ahead_slot_id))
-    elif pumped > 0:
-        updated = _resident_slot_info(resident_ahead_slot_id)
-        if updated and updated["state"] == SLOT_STATE_READY:
-            print("preload_slot_ready:", resident_slots[resident_ahead_slot_id]["map_id"])
-            _resident_log_slots("preload_slot")
 
 
 def _maybe_run_deferred_gc(loop_start, moved, scrolled):
     global gc_pending, gc_last_run_ms, gc_suspend_until_ms
-    global perf_gc_run_count, perf_gc_run_ms_total
 
     if not gc_pending:
         return False
     if gc_suspend_until_ms and time.ticks_diff(loop_start, gc_suspend_until_ms) < 0:
         return False
     if not GC_DEFER_ENABLE:
-        started = time.ticks_ms()
         gc.collect()
-        perf_gc_run_count += 1
-        perf_gc_run_ms_total += time.ticks_diff(time.ticks_ms(), started)
         gc_pending = False
         gc_last_run_ms = loop_start
         return True
@@ -3266,10 +3323,7 @@ def _maybe_run_deferred_gc(loop_start, moved, scrolled):
             return False
         if moved or scrolled:
             return False
-    started = time.ticks_ms()
     gc.collect()
-    perf_gc_run_count += 1
-    perf_gc_run_ms_total += time.ticks_diff(time.ticks_ms(), started)
     gc_pending = False
     gc_last_run_ms = loop_start
     return True
@@ -4684,7 +4738,13 @@ def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd
     _draw_battle_frame(frame_x, frame_y, frame_w, BATTLE_FRAME_H)
 
     enemy_sprite_path, enemy_sprite_w, enemy_sprite_h = _battle_enemy_sprite_info()
-    enemy_x = frame_x + ((frame_w - enemy_sprite_w) // 2)
+    enemy_x, enemy_y, enemy_sprite_w, enemy_sprite_h = _battle_enemy_menu_draw_info(
+        frame_x,
+        frame_y,
+        frame_w,
+        enemy_sprite_w,
+        enemy_sprite_h,
+    )
     if _map1_story_is_active():
         enemy_sprite_path = _map1_story_enemy_sprite_path()
         enemy_sprite_w = MAP1_STORY_ENEMY_DRAW_W
@@ -4702,7 +4762,8 @@ def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd
                 map1_enemy_anchor_mode = MAP1_ENEMY_ANCHOR_LEFT
             else:
                 enemy_x = center_x + (((left_x - center_x) * elapsed) // MAP1_STORY_ENEMY_SLIDE_MS)
-    enemy_y = frame_y + 10 if _map1_story_is_active() else (frame_y + 16)
+    if _map1_story_is_active():
+        enemy_y = frame_y + 10
     enemy_bottom = enemy_y + enemy_sprite_h
     enemy_drawn = False
 
@@ -4811,8 +4872,8 @@ def _draw_battle_menu_static_layer(frame_x, frame_y, frame_w, cmd_x0, cmd_y, cmd
                 )
             )
         if not enemy_drawn:
-            monster_cx = frame_x + (frame_w // 2)
-            monster_cy = frame_y + 75
+            monster_cx = enemy_x + (enemy_sprite_w // 2)
+            monster_cy = enemy_y + (enemy_sprite_h // 2)
             lgfx.draw_circle(monster_cx, monster_cy, 22, BATTLE_COLOR_WHITE)
             enemy_x = monster_cx - 22
             enemy_y = monster_cy - 22
@@ -5500,7 +5561,11 @@ def _draw_battle_menu_screen(dialog_active):
     if not act_menu_active and not item_menu_active:
         if _map1_story_is_active():
             dialog_x, dialog_render_y, dialog_w, dialog_h = _map1_story_dialog_safe_rect(frame_x, frame_y, frame_w, cmd_y)
+        elif map2_gloombell_script_active and map2_gloombell_script_side_dialog:
+            dialog_x, dialog_render_y, dialog_w, dialog_h = _map2_gloombell_opening_dialog_rect(frame_x, frame_y, frame_w, cmd_y)
         else:
+            if map2_gloombell_script_active:
+                dialog_h = MAP2_GLOOMBELL_DIALOG_PNG_H
             dialog_render_y = battle_menu_enemy_bottom_used + 6
             max_dialog_y = cmd_y - dialog_h - 6
             if dialog_render_y > max_dialog_y:
@@ -5602,6 +5667,16 @@ def _draw_battle_menu_screen(dialog_active):
                 preserve_aspect=True,
                 allow_upscale=False,
             )
+        elif map2_gloombell_script_active:
+            rendered = _draw_png_in_box(
+                battle_dialog_png_info,
+                dialog_x,
+                dialog_render_y,
+                dialog_w,
+                dialog_h,
+                preserve_aspect=True,
+                allow_upscale=False,
+            )
         else:
             rendered = _draw_star_line_with_png(
                 battle_dialog_png_info,
@@ -5611,6 +5686,16 @@ def _draw_battle_menu_screen(dialog_active):
                 20,
             )
     if (not _map1_story_is_active()) and (not rendered) and battle_dialog_text:
+        if map2_gloombell_script_active:
+            _draw_text_in_box(
+                dialog_x + 4,
+                dialog_render_y + 8,
+                dialog_w - 8,
+                dialog_h - 16,
+                battle_dialog_text,
+                BATTLE_COLOR_WHITE,
+            )
+            return
         _draw_text_in_box(
             dialog_x + 4,
             dialog_render_y + ((dialog_h - 16) // 2),
@@ -5737,11 +5822,23 @@ def _enemy_entry_text(entry, fallback_text=""):
 
 def _battle_enemy_sprite_info():
     profile = _battle_enemy_profile()
-    path = profile.get("sprite_path", ENEMY_SPRITE_PATH)
-    resolved = _resolve_runtime_png_path(path)
-    if resolved and resolved != path:
-        profile["sprite_path"] = resolved
-        path = resolved
+    path = None
+    sprite_paths = profile.get("sprite_paths", ())
+    if sprite_paths:
+        resolved_paths = []
+        for candidate in sprite_paths:
+            resolved = _resolve_runtime_png_path(candidate)
+            resolved_paths.append(resolved if resolved else candidate)
+        profile["sprite_paths"] = tuple(resolved_paths)
+        path = _resolve_first_existing_path(profile["sprite_paths"])
+        if (not path) and profile["sprite_paths"]:
+            path = profile["sprite_paths"][0]
+    if not path:
+        path = profile.get("sprite_path", ENEMY_SPRITE_PATH)
+        resolved = _resolve_runtime_png_path(path)
+        if resolved and resolved != path:
+            profile["sprite_path"] = resolved
+            path = resolved
     draw_w = int(profile.get("sprite_w", ENEMY_SPRITE_W))
     draw_h = int(profile.get("sprite_h", ENEMY_SPRITE_H))
     if draw_w < 1:
@@ -5749,6 +5846,26 @@ def _battle_enemy_sprite_info():
     if draw_h < 1:
         draw_h = ENEMY_SPRITE_H
     return path, draw_w, draw_h
+
+
+def _battle_enemy_menu_draw_info(frame_x, frame_y, frame_w, sprite_w, sprite_h):
+    profile = _battle_enemy_profile()
+    draw_w = int(profile.get("menu_draw_w", sprite_w))
+    draw_h = int(profile.get("menu_draw_h", sprite_h))
+    if draw_w < 1:
+        draw_w = sprite_w
+    if draw_h < 1:
+        draw_h = sprite_h
+
+    if "menu_draw_x_offset" in profile:
+        draw_x = frame_x + int(profile.get("menu_draw_x_offset", 0))
+    else:
+        draw_x = frame_x + ((frame_w - draw_w) // 2)
+    if "menu_draw_y_offset" in profile:
+        draw_y = frame_y + int(profile.get("menu_draw_y_offset", 16))
+    else:
+        draw_y = frame_y + 16
+    return draw_x, draw_y, draw_w, draw_h
 
 
 def _battle_enemy_display_name():
@@ -5805,6 +5922,238 @@ def _battle_enemy_dialog_apply_entry(entry):
     battle_dialog_png_info = _enemy_entry_png_info(entry)
     text = _enemy_entry_text(entry, "")
     battle_dialog_text = text if text else None
+
+
+def _battle_enemy_id():
+    profile = _battle_enemy_profile()
+    return profile.get("enemy_id", DEFAULT_BATTLE_ENEMY_ID)
+
+
+def _map2_gloombell_is_current_enemy():
+    return _battle_enemy_id() == MAP2_GLOOMBELL_ENEMY_ID
+
+
+def _map2_gloombell_dialog_line_ms():
+    profile = _battle_enemy_profile()
+    line_ms = int(profile.get("dialog_line_ms", MAP1_STORY_LINE_MS))
+    if line_ms < 1:
+        line_ms = MAP1_STORY_LINE_MS
+    return line_ms
+
+
+def _map2_gloombell_opening_dialog_rect(frame_x, frame_y, frame_w, cmd_y):
+    status_y = cmd_y - (8 + BATTLE_STATUS_TO_CMD_GAP)
+    status_band_top = status_y - BATTLE_HP_BAR_H - 3
+    y_min = frame_y + 10
+    y_max = status_band_top - 4
+    if y_max <= y_min:
+        y_max = y_min + 24
+
+    enemy_right = battle_menu_enemy_x + battle_menu_enemy_w
+    enemy_mid_y = battle_menu_enemy_y + (battle_menu_enemy_h // 2)
+    side_left = enemy_right + MAP2_GLOOMBELL_SIDE_DIALOG_GAP_PX
+    side_right = frame_x + frame_w - 8
+    if side_right <= side_left + 20:
+        side_right = side_left + 20
+
+    desired_w = 164
+    dialog_w = desired_w
+    avail_w = side_right - side_left
+    if dialog_w > avail_w - 4:
+        dialog_w = avail_w - 4
+    if dialog_w < 40:
+        dialog_w = 40
+    dialog_h = (dialog_w * MAP2_GLOOMBELL_DIALOG_PNG_H) // MAP2_GLOOMBELL_DIALOG_PNG_W
+    if dialog_h < 20:
+        dialog_h = 20
+
+    dialog_x = side_left + 2
+    if dialog_x + dialog_w > side_right:
+        dialog_x = side_right - dialog_w
+    if dialog_x < side_left:
+        dialog_x = side_left
+
+    dialog_y = enemy_mid_y - (dialog_h // 2)
+    if dialog_y < y_min:
+        dialog_y = y_min
+    if dialog_y + dialog_h > y_max:
+        dialog_y = y_max - dialog_h
+        if dialog_y < y_min:
+            dialog_y = y_min
+    return dialog_x, dialog_y, dialog_w, dialog_h
+
+
+def _map2_gloombell_script_reset():
+    global map2_gloombell_script_active, map2_gloombell_script_kind, map2_gloombell_script_entries, map2_gloombell_script_index
+    global map2_gloombell_script_next_ms, map2_gloombell_script_opening_due_ms, map2_gloombell_script_opening_pending
+    global map2_gloombell_script_side_dialog, map2_gloombell_script_return_to_act, map2_gloombell_script_pending_exit
+
+    map2_gloombell_script_active = False
+    map2_gloombell_script_kind = MAP2_GLOOMBELL_SCRIPT_KIND_NONE
+    map2_gloombell_script_entries = ()
+    map2_gloombell_script_index = -1
+    map2_gloombell_script_next_ms = 0
+    map2_gloombell_script_opening_due_ms = 0
+    map2_gloombell_script_opening_pending = False
+    map2_gloombell_script_side_dialog = False
+    map2_gloombell_script_return_to_act = False
+    map2_gloombell_script_pending_exit = False
+
+
+def _map2_gloombell_script_apply_current_line(now_ms):
+    global battle_dialog_mode, battle_dialog_started_ms, act_dialog_until_ms, battle_menu_dirty
+    if map2_gloombell_script_index < 0 or map2_gloombell_script_index >= len(map2_gloombell_script_entries):
+        return
+    _battle_enemy_dialog_apply_entry(map2_gloombell_script_entries[map2_gloombell_script_index])
+    battle_dialog_mode = BATTLE_DIALOG_ACT_REPLY
+    battle_dialog_started_ms = now_ms
+    act_dialog_until_ms = time.ticks_add(now_ms, _map2_gloombell_dialog_line_ms())
+    battle_menu_dirty = True
+
+
+def _map2_gloombell_script_start_sequence(entries, kind, now_ms, side_dialog=False, return_to_act=False, pending_exit=False):
+    global mercy_exit_pending
+    global map2_gloombell_script_active, map2_gloombell_script_kind, map2_gloombell_script_entries, map2_gloombell_script_index
+    global map2_gloombell_script_next_ms, map2_gloombell_script_side_dialog, map2_gloombell_script_return_to_act, map2_gloombell_script_pending_exit
+
+    seq = tuple(entries) if entries else ()
+    if not seq:
+        return False
+    mercy_exit_pending = False
+    map2_gloombell_script_active = True
+    map2_gloombell_script_kind = kind
+    map2_gloombell_script_entries = seq
+    map2_gloombell_script_index = 0
+    map2_gloombell_script_next_ms = 0
+    map2_gloombell_script_side_dialog = bool(side_dialog)
+    map2_gloombell_script_return_to_act = bool(return_to_act)
+    map2_gloombell_script_pending_exit = bool(pending_exit)
+    _map2_gloombell_script_apply_current_line(now_ms)
+    map2_gloombell_script_next_ms = act_dialog_until_ms
+    return True
+
+
+def _map2_gloombell_script_finish():
+    global act_menu_active, act_choice_index, act_nav_prev_dir, act_menu_slot_cache, act_prev_selected_index, act_selection_dirty
+    global battle_dialog_mode, battle_dialog_started_ms, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms, battle_menu_dirty
+
+    pending_exit = map2_gloombell_script_pending_exit
+    return_to_act = map2_gloombell_script_return_to_act
+    _map2_gloombell_script_reset()
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    battle_dialog_started_ms = 0
+    battle_dialog_png_info = None
+    battle_dialog_text = None
+    act_dialog_until_ms = 0
+    if pending_exit:
+        _exit_battle_to_explore()
+        return
+    if return_to_act:
+        act_menu_active = True
+        act_choice_index = 0
+        act_nav_prev_dir = 0
+        act_menu_slot_cache = None
+        act_prev_selected_index = -1
+        act_selection_dirty = False
+        battle_dialog_mode = BATTLE_DIALOG_ACT_OPTIONS
+    battle_menu_dirty = True
+
+
+def _map2_gloombell_script_begin_opening(now_ms):
+    profile = _battle_enemy_profile()
+    opening = profile.get("opening_dialog", ())
+    if not opening:
+        return False
+    return _map2_gloombell_script_start_sequence(
+        opening,
+        MAP2_GLOOMBELL_SCRIPT_KIND_OPENING,
+        now_ms,
+        side_dialog=True,
+    )
+
+
+def _map2_gloombell_script_update(loop_start):
+    global map2_gloombell_script_index, map2_gloombell_script_next_ms, map2_gloombell_script_opening_pending
+
+    if (not _map2_gloombell_is_current_enemy()) or _map1_story_is_active():
+        return False
+    if map2_gloombell_script_opening_pending:
+        if time.ticks_diff(loop_start, map2_gloombell_script_opening_due_ms) >= 0:
+            map2_gloombell_script_opening_pending = False
+            _map2_gloombell_script_begin_opening(loop_start)
+        return True
+    if not map2_gloombell_script_active:
+        return False
+    if time.ticks_diff(map2_gloombell_script_next_ms, loop_start) > 0:
+        return True
+    next_index = map2_gloombell_script_index + 1
+    if next_index >= len(map2_gloombell_script_entries):
+        _map2_gloombell_script_finish()
+        return True
+    map2_gloombell_script_index = next_index
+    _map2_gloombell_script_apply_current_line(loop_start)
+    map2_gloombell_script_next_ms = act_dialog_until_ms
+    return True
+
+
+def _map2_gloombell_start_act_sequence(selected, loop_start):
+    global act_menu_active, act_nav_prev_dir, act_menu_slot_cache, act_prev_selected_index, act_selection_dirty
+    global act_sequence_step, battle_dialog_mode, battle_dialog_started_ms, battle_menu_dirty
+
+    profile = _battle_enemy_profile()
+    sequences = profile.get("act_sequences", ())
+    if selected < 0 or selected >= len(sequences):
+        return False
+    if selected == 0:
+        act_sequence_step = 1
+    elif selected == 1:
+        act_sequence_step = 2 if act_sequence_step == 1 else 0
+    else:
+        act_sequence_step = 3 if act_sequence_step == 2 else 0
+    act_menu_active = False
+    act_nav_prev_dir = 0
+    act_menu_slot_cache = None
+    act_prev_selected_index = -1
+    act_selection_dirty = False
+    battle_dialog_mode = BATTLE_DIALOG_ACT_REPLY
+    battle_dialog_started_ms = loop_start
+    battle_menu_dirty = True
+    return _map2_gloombell_script_start_sequence(
+        sequences[selected],
+        MAP2_GLOOMBELL_SCRIPT_KIND_ACT,
+        loop_start,
+        side_dialog=False,
+        return_to_act=True,
+    )
+
+
+def _map2_gloombell_try_mercy(loop_start):
+    global battle_dialog_mode, battle_dialog_started_ms, act_dialog_until_ms, mercy_exit_pending, battle_menu_dirty
+
+    if act_sequence_step == 3:
+        profile = _battle_enemy_profile()
+        mercy_seq = profile.get("mercy_success_sequence", ())
+        if mercy_seq and _map2_gloombell_script_start_sequence(
+            mercy_seq,
+            MAP2_GLOOMBELL_SCRIPT_KIND_MERCY,
+            loop_start,
+            side_dialog=False,
+            pending_exit=True,
+        ):
+            print("MERCY: success")
+            battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
+            battle_dialog_started_ms = loop_start
+            mercy_exit_pending = False
+            battle_menu_dirty = True
+            return True
+    print("MERCY: locked")
+    battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
+    _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
+    act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+    battle_dialog_started_ms = loop_start
+    mercy_exit_pending = False
+    battle_menu_dirty = True
+    return True
 
 
 def _battle_enemy_act_option_source_size(index):
@@ -6560,6 +6909,7 @@ def _exit_battle_to_explore():
     battle_menu_static_ready = False
     battle_menu_prev_dialog_active = False
     _map1_story_reset()
+    _map2_gloombell_script_reset()
     _reset_battle_state()
     map6_boss_battle_active = False
 
@@ -6581,6 +6931,7 @@ def _clear_act_dialog_state(reset_sequence):
     battle_dialog_png_info = None
     battle_dialog_text = None
     act_dialog_until_ms = 0
+    _map2_gloombell_script_reset()
     _reset_item_menu_state()
     if reset_sequence:
         act_sequence_step = 0
@@ -6593,7 +6944,7 @@ def _start_battle_from_explore(enemy_id=None):
     global battle_menu_static_ready, battle_menu_prev_dialog_active
     global explore_moved, explore_scrolled, explore_anim_changed
     global lamp_dialog_until_ms, explore_overlay_dirty
-    global map6_boss_battle_active
+    global map6_boss_battle_active, map2_gloombell_script_opening_pending, map2_gloombell_script_opening_due_ms
 
     mode = MODE_BATTLE_MENU
     _clear_act_dialog_state(True)
@@ -6613,6 +6964,13 @@ def _start_battle_from_explore(enemy_id=None):
         _map1_story_begin(time.ticks_ms())
     else:
         _map1_story_reset()
+    if _map2_gloombell_is_current_enemy():
+        profile = _battle_enemy_profile()
+        delay_ms = int(profile.get("opening_delay_ms", MAP2_GLOOMBELL_DIALOG_DELAY_MS))
+        if delay_ms < 0:
+            delay_ms = 0
+        map2_gloombell_script_opening_pending = True
+        map2_gloombell_script_opening_due_ms = time.ticks_add(time.ticks_ms(), delay_ms)
     print("battle_menu: Fight(GPIO38) Act(GPIO39) Item(GPIO40) Mercy(GPIO41)")
     explore_moved = False
     explore_scrolled = False
@@ -7197,6 +7555,9 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         _map1_story_update_menu(loop_start)
         return
 
+    if _map2_gloombell_script_update(loop_start):
+        return
+
     dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
     if mercy_exit_pending and not dialog_active:
         _exit_battle_to_explore()
@@ -7238,20 +7599,23 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             return
         if mercy_pressed:
             _reset_item_menu_state()
-            if act_sequence_step == 3:
-                print("MERCY: success")
-                battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
-                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
-                act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
-                battle_dialog_started_ms = loop_start
-                mercy_exit_pending = True
+            if _map2_gloombell_is_current_enemy():
+                _map2_gloombell_try_mercy(loop_start)
             else:
-                print("MERCY: locked")
-                battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
-                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
-                act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
-                battle_dialog_started_ms = loop_start
-                mercy_exit_pending = False
+                if act_sequence_step == 3:
+                    print("MERCY: success")
+                    battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
+                    _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
+                    act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
+                    battle_dialog_started_ms = loop_start
+                    mercy_exit_pending = True
+                else:
+                    print("MERCY: locked")
+                    battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
+                    _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
+                    act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+                    battle_dialog_started_ms = loop_start
+                    mercy_exit_pending = False
             battle_menu_dirty = True
             return
 
@@ -7343,20 +7707,23 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             act_menu_slot_cache = None
             act_prev_selected_index = -1
             act_selection_dirty = False
-            if act_sequence_step == 3:
-                print("MERCY: success")
-                battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
-                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
-                act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
-                battle_dialog_started_ms = loop_start
-                mercy_exit_pending = True
+            if _map2_gloombell_is_current_enemy():
+                _map2_gloombell_try_mercy(loop_start)
             else:
-                print("MERCY: locked")
-                battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
-                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
-                act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
-                battle_dialog_started_ms = loop_start
-                mercy_exit_pending = False
+                if act_sequence_step == 3:
+                    print("MERCY: success")
+                    battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
+                    _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
+                    act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
+                    battle_dialog_started_ms = loop_start
+                    mercy_exit_pending = True
+                else:
+                    print("MERCY: locked")
+                    battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
+                    _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
+                    act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+                    battle_dialog_started_ms = loop_start
+                    mercy_exit_pending = False
             battle_menu_dirty = True
             return
 
@@ -7376,33 +7743,36 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         act_nav_prev_dir = nav_dir
         if act_pressed:
             selected = act_choice_index
-            reply_index = 0
-            if selected == 0:
-                act_sequence_step = 1
-                reply_index = 0
-            elif selected == 1:
-                if act_sequence_step == 1:
-                    act_sequence_step = 2
-                    reply_index = 1
-                else:
-                    act_sequence_step = 0
-                    reply_index = 0
+            if _map2_gloombell_is_current_enemy():
+                _map2_gloombell_start_act_sequence(selected, loop_start)
             else:
-                if act_sequence_step == 2:
-                    act_sequence_step = 3
-                    reply_index = 2
-                else:
-                    act_sequence_step = 0
+                reply_index = 0
+                if selected == 0:
+                    act_sequence_step = 1
                     reply_index = 0
-            _battle_enemy_dialog_apply_entry(_battle_enemy_act_reply_entry(reply_index))
-            act_menu_active = False
-            act_nav_prev_dir = 0
-            act_menu_slot_cache = None
-            act_prev_selected_index = -1
-            act_selection_dirty = False
-            battle_dialog_mode = BATTLE_DIALOG_ACT_REPLY
-            battle_dialog_started_ms = loop_start
-            act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+                elif selected == 1:
+                    if act_sequence_step == 1:
+                        act_sequence_step = 2
+                        reply_index = 1
+                    else:
+                        act_sequence_step = 0
+                        reply_index = 0
+                else:
+                    if act_sequence_step == 2:
+                        act_sequence_step = 3
+                        reply_index = 2
+                    else:
+                        act_sequence_step = 0
+                        reply_index = 0
+                _battle_enemy_dialog_apply_entry(_battle_enemy_act_reply_entry(reply_index))
+                act_menu_active = False
+                act_nav_prev_dir = 0
+                act_menu_slot_cache = None
+                act_prev_selected_index = -1
+                act_selection_dirty = False
+                battle_dialog_mode = BATTLE_DIALOG_ACT_REPLY
+                battle_dialog_started_ms = loop_start
+                act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
             battle_menu_dirty = True
         return
 
@@ -7449,20 +7819,23 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         battle_menu_dirty = True
         return
     if mercy_pressed:
-        if act_sequence_step == 3:
-            print("MERCY: success")
-            battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
-            _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
-            act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
-            battle_dialog_started_ms = loop_start
-            mercy_exit_pending = True
+        if _map2_gloombell_is_current_enemy():
+            _map2_gloombell_try_mercy(loop_start)
         else:
-            print("MERCY: locked")
-            battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
-            _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
-            act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
-            battle_dialog_started_ms = loop_start
-            mercy_exit_pending = False
+            if act_sequence_step == 3:
+                print("MERCY: success")
+                battle_dialog_mode = BATTLE_DIALOG_MERCY_EXIT
+                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_success_entry())
+                act_dialog_until_ms = time.ticks_add(loop_start, MERCY_DIALOG_MS)
+                battle_dialog_started_ms = loop_start
+                mercy_exit_pending = True
+            else:
+                print("MERCY: locked")
+                battle_dialog_mode = BATTLE_DIALOG_MERCY_LOCKED
+                _battle_enemy_dialog_apply_entry(_battle_enemy_mercy_locked_entry())
+                act_dialog_until_ms = time.ticks_add(loop_start, ACT_REPLY_MS)
+                battle_dialog_started_ms = loop_start
+                mercy_exit_pending = False
         battle_menu_dirty = True
 
 
@@ -7755,7 +8128,7 @@ def _run_main_loop():
     global fight_pressed, btn_act_prev, act_pressed, btn_item_prev, item_pressed, btn_mercy_prev, mercy_pressed, explore_moved
     global explore_scrolled, explore_anim_changed, move_dx, move_dy, active_portal, target_spawn, moved_since_last_map1, map1_opening_battle_timer_started
     global map1_opening_battle_due_ms, map1_opening_battle_done, move_dx_for_encounter, move_dy_for_encounter, move_dist_for_encounter, moved_since_last, encounter_enemy_id, lamp_dialog_until_ms
-    global explore_overlay_dirty, dt, fps, avg_preload_ms, total_preload_attempts, avg_gc_ms, frame_used, map6_boss_battle_active
+    global explore_overlay_dirty, map6_boss_battle_active
     while True:
         loop_start = time.ticks_ms()
         frame_dt = time.ticks_diff(loop_start, prev_loop_ms)
@@ -7911,39 +8284,6 @@ def _run_main_loop():
         draw_all(loop_start)
         _resident_pump_preload()
         _maybe_run_deferred_gc(loop_start, explore_moved, explore_scrolled)
-
-        if frame % 120 == 0:
-            dt = time.ticks_diff(time.ticks_ms(), t0)
-            fps = (frame * 1000 / dt) if dt else 0
-            print("frame", frame, "fps", fps, "mode", mode, "cooldown", encounter_cooldown_frames, "stats", lgfx.stats(), "mem_free", gc.mem_free())
-            if DEBUG_PERF:
-                avg_preload_ms = 0
-                total_preload_attempts = perf_preload_build_count + perf_preload_build_fail_count
-                if total_preload_attempts > 0:
-                    avg_preload_ms = perf_preload_build_ms_total // total_preload_attempts
-                avg_gc_ms = 0
-                if perf_gc_run_count > 0:
-                    avg_gc_ms = perf_gc_run_ms_total // perf_gc_run_count
-                print(
-                    "perf_preload",
-                    "build_ok", perf_preload_build_count,
-                    "build_fail", perf_preload_build_fail_count,
-                    "release", perf_preload_release_count,
-                    "skip_cached", perf_preload_skip_cached,
-                    "skip_cooldown", perf_preload_skip_cooldown,
-                    "skip_debounce", perf_preload_skip_debounce,
-                    "skip_dwell", perf_preload_skip_dwell,
-                    "skip_same_zone", perf_preload_skip_same_zone,
-                    "skip_motion", perf_preload_skip_motion,
-                    "skip_post_switch", perf_preload_skip_post_switch,
-                    "avg_ms", avg_preload_ms,
-                )
-                print(
-                    "perf_gc",
-                    "run", perf_gc_run_count,
-                    "avg_ms", avg_gc_ms,
-                    "pending", gc_pending,
-                )
 
         if mode == MODE_EXPLORE and not explore_moved and not explore_scrolled:
             time.sleep_ms(1)

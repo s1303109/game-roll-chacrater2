@@ -65,6 +65,10 @@ UI_FILE_MAP=(
   "ANGRY FLOWEY.png|ANGRY FLOWEY.png"
   "FLOWEY_anim_96.png|FLOWEY_anim_96.png"
   "ANGRY FLOWEY_anim_96.png|ANGRY FLOWEY_anim_96.png"
+  "map2_enemy_anim_96.png|map2_enemy_anim_96.png"
+  "map3_enemy_anim_96.png|map3_enemy_anim_96.png"
+  "map4_enemy_anim_96.png|map4_enemy_anim_96.png"
+  "map5_enemy_anim_96.png|map5_enemy_anim_96.png"
   "fire ball.png|fire ball.png"
   "fire ball small.png|fire ball small.png"
   "fire ball_anim_64.png|fire ball_anim_64.png"
@@ -88,6 +92,23 @@ UI_FILE_MAP=(
   "map1_story_line_16.png|map1_story_line_16.png"
   "map1_story_line_17.png|map1_story_line_17.png"
   "map1_story_line_18.png|map1_story_line_18.png"
+  "map2_gloombell_opening_01.png|map2_gloombell_opening_01.png"
+  "map2_gloombell_opening_02.png|map2_gloombell_opening_02.png"
+  "map2_gloombell_opening_03.png|map2_gloombell_opening_03.png"
+  "map2_gloombell_act_watch.png|map2_gloombell_act_watch.png"
+  "map2_gloombell_act_call.png|map2_gloombell_act_call.png"
+  "map2_gloombell_act_wait.png|map2_gloombell_act_wait.png"
+  "map2_gloombell_look_01.png|map2_gloombell_look_01.png"
+  "map2_gloombell_look_02.png|map2_gloombell_look_02.png"
+  "map2_gloombell_call_01.png|map2_gloombell_call_01.png"
+  "map2_gloombell_call_02.png|map2_gloombell_call_02.png"
+  "map2_gloombell_call_03.png|map2_gloombell_call_03.png"
+  "map2_gloombell_wait_01.png|map2_gloombell_wait_01.png"
+  "map2_gloombell_wait_02.png|map2_gloombell_wait_02.png"
+  "map2_gloombell_wait_03.png|map2_gloombell_wait_03.png"
+  "map2_gloombell_mercy_01.png|map2_gloombell_mercy_01.png"
+  "map2_gloombell_mercy_02.png|map2_gloombell_mercy_02.png"
+  "map2_gloombell_mercy_03.png|map2_gloombell_mercy_03.png"
   "fight_icon.png|fight_icon.png"
   "act_icon.png|act_icon.png"
   "item_icon.png|item_icon.png"
@@ -367,6 +388,23 @@ STALE_FLASH_FILES = (
     "/map1_story_line_16.png",
     "/map1_story_line_17.png",
     "/map1_story_line_18.png",
+    "/map2_gloombell_opening_01.png",
+    "/map2_gloombell_opening_02.png",
+    "/map2_gloombell_opening_03.png",
+    "/map2_gloombell_act_watch.png",
+    "/map2_gloombell_act_call.png",
+    "/map2_gloombell_act_wait.png",
+    "/map2_gloombell_look_01.png",
+    "/map2_gloombell_look_02.png",
+    "/map2_gloombell_call_01.png",
+    "/map2_gloombell_call_02.png",
+    "/map2_gloombell_call_03.png",
+    "/map2_gloombell_wait_01.png",
+    "/map2_gloombell_wait_02.png",
+    "/map2_gloombell_wait_03.png",
+    "/map2_gloombell_mercy_01.png",
+    "/map2_gloombell_mercy_02.png",
+    "/map2_gloombell_mercy_03.png",
     "/fight_icon.png",
     "/act_icon.png",
     "/item_icon.png",

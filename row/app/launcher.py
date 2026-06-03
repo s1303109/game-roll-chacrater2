@@ -141,7 +141,7 @@ def guard_psram_required():
     print("[OK] mem_free =", mem_free)
 
 
-def main():
+def _bootstrap_game_main():
     guard_psram_required()
     try:
         _mount_sd_with_retry()
@@ -172,13 +172,41 @@ def main():
         print("[launcher] cartridge load failed:", err)
         raise
 
-    if not hasattr(game_mvp, "main"):
+    game_main = getattr(game_mvp, "main", None)
+    if game_main is None:
         print("[launcher] game_mvp.py has no main()")
         raise RuntimeError("GAME_MAIN_MISSING")
 
+    return game_main
+
+
+def _release_boot_memory():
+    global STALE_FLASH_FILES, ensure_sd_32gb, mount_sd, sd_capacity_bytes
+    global os, time
+    global _path_exists, _ensure_game_path, _clear_game_modules
+    global _report_stale_flash_files, _mount_sd_with_retry, guard_psram_required
+
+    STALE_FLASH_FILES = ()
+    ensure_sd_32gb = None
+    mount_sd = None
+    sd_capacity_bytes = None
+    os = None
+    time = None
+    _path_exists = None
+    _ensure_game_path = None
+    _clear_game_modules = None
+    _report_stale_flash_files = None
+    _mount_sd_with_retry = None
+    guard_psram_required = None
+    sys.modules.pop(__name__, None)
+
+
+def main():
+    game_main = _bootstrap_game_main()
+    _release_boot_memory()
     gc.collect()
     try:
-        game_mvp.main()
+        game_main()
     except Exception as err:
         print("[launcher] game start failed:", err)
         raise
