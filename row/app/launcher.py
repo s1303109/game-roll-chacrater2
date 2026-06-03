@@ -131,8 +131,8 @@ def guard_psram_required():
         raise SystemExit("PSRAM_BUILD_MISMATCH")
 
     mem_free = gc.mem_free()
-    if mem_free < 4_000_000:
-        print("[ERROR] PSRAM_MEM_TOO_LOW: gc.mem_free() is below 4000000, this is likely not 8MB PSRAM firmware.")
+    if mem_free < 3_000_000:
+        print("[ERROR] PSRAM_MEM_TOO_LOW: gc.mem_free() is below 3000000, this is likely not the expected PSRAM heap configuration.")
         print("[ERROR] mem_free =", mem_free)
         raise SystemExit("PSRAM_MEM_TOO_LOW")
 

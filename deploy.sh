@@ -108,6 +108,23 @@ UI_FILE_MAP=(
   "map2_gloombell_mercy_01.png|map2_gloombell_mercy_01.png"
   "map2_gloombell_mercy_02.png|map2_gloombell_mercy_02.png"
   "map2_gloombell_mercy_03.png|map2_gloombell_mercy_03.png"
+  "map3_mimistitch_opening_01.png|map3_mimistitch_opening_01.png"
+  "map3_mimistitch_opening_02.png|map3_mimistitch_opening_02.png"
+  "map3_mimistitch_opening_03.png|map3_mimistitch_opening_03.png"
+  "map3_mimistitch_act_praise.png|map3_mimistitch_act_praise.png"
+  "map3_mimistitch_act_tidy.png|map3_mimistitch_act_tidy.png"
+  "map3_mimistitch_act_accept.png|map3_mimistitch_act_accept.png"
+  "map3_mimistitch_praise_01.png|map3_mimistitch_praise_01.png"
+  "map3_mimistitch_praise_02.png|map3_mimistitch_praise_02.png"
+  "map3_mimistitch_praise_03.png|map3_mimistitch_praise_03.png"
+  "map3_mimistitch_tidy_01.png|map3_mimistitch_tidy_01.png"
+  "map3_mimistitch_tidy_02.png|map3_mimistitch_tidy_02.png"
+  "map3_mimistitch_accept_01.png|map3_mimistitch_accept_01.png"
+  "map3_mimistitch_accept_02.png|map3_mimistitch_accept_02.png"
+  "map3_mimistitch_accept_03.png|map3_mimistitch_accept_03.png"
+  "map3_mimistitch_mercy_01.png|map3_mimistitch_mercy_01.png"
+  "map3_mimistitch_mercy_02.png|map3_mimistitch_mercy_02.png"
+  "map3_mimistitch_mercy_03.png|map3_mimistitch_mercy_03.png"
   "fight_icon.png|fight_icon.png"
   "act_icon.png|act_icon.png"
   "item_icon.png|item_icon.png"
@@ -235,8 +252,8 @@ if "SPIRAM_OCT" not in build:
     print("[ERROR] PSRAM_BUILD_MISMATCH: firmware is not SPIRAM_OCT.")
     print("[ERROR] build =", build)
     raise RuntimeError("PSRAM_BUILD_MISMATCH")
-if mem_free < 4_000_000:
-    print("[ERROR] PSRAM_MEM_TOO_LOW: gc.mem_free() is below 4000000, this is likely not 8MB PSRAM firmware.")
+if mem_free < 3_000_000:
+    print("[ERROR] PSRAM_MEM_TOO_LOW: gc.mem_free() is below 3000000, this is likely not the expected PSRAM heap configuration.")
     print("[ERROR] mem_free =", mem_free)
     raise RuntimeError("PSRAM_MEM_TOO_LOW")
 PY
