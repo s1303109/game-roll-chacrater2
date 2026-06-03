@@ -46,6 +46,10 @@ void lgfx_enemy_frame_set_impl(int frame_index);
 void lgfx_enemy_sheet_clear_impl(void);
 void lgfx_enemy_draw_impl(int x, int y);
 bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h);
+bool lgfx_png_slot_load_file_impl(int slot_id, const char *path);
+bool lgfx_png_slot_draw_impl(int slot_id, int x, int y, int w, int h);
+void lgfx_png_slot_release_impl(int slot_id);
+void lgfx_png_slot_release_all_impl(void);
 void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles);
 #ifdef __cplusplus
 }
@@ -453,6 +457,36 @@ static mp_obj_t lgfx_draw_png_file(size_t n_args, const mp_obj_t *args) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_draw_png_file_obj, 5, lgfx_draw_png_file);
 
+static mp_obj_t lgfx_png_slot_load_file(mp_obj_t slot_id_obj, mp_obj_t path_obj) {
+    int slot_id = mp_obj_get_int(slot_id_obj);
+    const char *path = mp_obj_str_get_str(path_obj);
+    return mp_obj_new_bool(lgfx_png_slot_load_file_impl(slot_id, path));
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(lgfx_png_slot_load_file_obj, lgfx_png_slot_load_file);
+
+static mp_obj_t lgfx_png_slot_draw(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
+    int slot_id = mp_obj_get_int(args[0]);
+    int x = mp_obj_get_int(args[1]);
+    int y = mp_obj_get_int(args[2]);
+    int w = mp_obj_get_int(args[3]);
+    int h = mp_obj_get_int(args[4]);
+    return mp_obj_new_bool(lgfx_png_slot_draw_impl(slot_id, x, y, w, h));
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR(lgfx_png_slot_draw_obj, 5, lgfx_png_slot_draw);
+
+static mp_obj_t lgfx_png_slot_release(mp_obj_t slot_id_obj) {
+    lgfx_png_slot_release_impl(mp_obj_get_int(slot_id_obj));
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(lgfx_png_slot_release_obj, lgfx_png_slot_release);
+
+static mp_obj_t lgfx_png_slot_release_all(void) {
+    lgfx_png_slot_release_all_impl();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_png_slot_release_all_obj, lgfx_png_slot_release_all);
+
 static mp_obj_t lgfx_stats(void) {
     uint32_t full_frames = 0;
     uint32_t dirty_frames = 0;
@@ -511,6 +545,10 @@ static const mp_rom_map_elem_t lgfx_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_enemy_sheet_clear), MP_ROM_PTR(&lgfx_enemy_sheet_clear_obj) },
     { MP_ROM_QSTR(MP_QSTR_enemy_draw), MP_ROM_PTR(&lgfx_enemy_draw_obj) },
     { MP_ROM_QSTR(MP_QSTR_draw_png_file), MP_ROM_PTR(&lgfx_draw_png_file_obj) },
+    { MP_ROM_QSTR(MP_QSTR_png_slot_load_file), MP_ROM_PTR(&lgfx_png_slot_load_file_obj) },
+    { MP_ROM_QSTR(MP_QSTR_png_slot_draw), MP_ROM_PTR(&lgfx_png_slot_draw_obj) },
+    { MP_ROM_QSTR(MP_QSTR_png_slot_release), MP_ROM_PTR(&lgfx_png_slot_release_obj) },
+    { MP_ROM_QSTR(MP_QSTR_png_slot_release_all), MP_ROM_PTR(&lgfx_png_slot_release_all_obj) },
     { MP_ROM_QSTR(MP_QSTR_stats), MP_ROM_PTR(&lgfx_stats_obj) },
 };
 static MP_DEFINE_CONST_DICT(lgfx_module_globals, lgfx_module_globals_table);
