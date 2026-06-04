@@ -702,6 +702,7 @@ MODE_BATTLE_FIGHT = 2
 MODE_EXPLORE_INVENTORY = 3
 MODE_BATTLE_ATTACK = 4
 MODE_TITLE_MENU = 5
+MODE_DEATH_SCREEN = 6
 TITLE_COVER_PATHS = (
     config.ui_path("front_cover_320x240.png"),
 )
@@ -729,6 +730,9 @@ BOOT_COMIC_PATHS = (
     config.ui_path("comic_04_320x240.png"),
     config.ui_path("comic_05_320x240.png"),
     config.ui_path("comic_06_320x240.png"),
+)
+DEATH_SCREEN_PATHS = (
+    config.ui_path("death_320x240.png"),
 )
 ENCOUNTER_COOLDOWN_FRAMES = 120
 BATTLE_FRAME_W = 240
@@ -894,7 +898,20 @@ BATTLE_SLOT_FLOWEY_NORMAL = 7
 BATTLE_SLOT_FLOWEY_ANGRY = 8
 BATTLE_SLOT_STORY_FIRE = 9
 BATTLE_SLOT_STORY_TORIEL = 10
+BATTLE_SLOT_DEATH_SCREEN = 11
 BATTLE_SLOT_KIND_PNG = "png_slot"
+DEATH_GLITCH_STEP_MS = 90
+DEATH_FLICKER_STEP_MS = 45
+DEATH_SCANLINE_GAP = 3
+DEATH_BASE_BLUE = 0x0016
+DEATH_SCANLINE_COLOR = 0x0010
+DEATH_BAND_COLORS = (0x01B8, 0x021F, 0x033F)
+DEATH_GLITCH_COLORS = (0xFFFF, 0xF81F, 0x07FF, 0xFD20)
+DEATH_PROGRESS_SLOTS = 10
+DEATH_PROGRESS_STEP_MS = 300
+DEATH_PROGRESS_X = 104
+DEATH_PROGRESS_Y = 112
+DEATH_PROGRESS_GAP_PX = 10
 LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
 MAP1_OPENING_BATTLE_DELAY_MS = 5000
 # Expand to cover the full triple-lamp poles and nearby interaction area.
@@ -2968,6 +2985,9 @@ def _init_runtime_state():
     global portal_transition_switch_fail_count
     global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
+    global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
+    global death_screen_png_loaded, death_screen_path, death_progress_count, death_progress_next_ms, death_title_reset_pending
+    global death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count, death_battle_cleanup_pending
     adc_x = ADC(Pin(JOY_X_PIN))
     adc_y = ADC(Pin(JOY_Y_PIN))
     adc_x.atten(ADC.ATTN_11DB)
@@ -3186,6 +3206,20 @@ def _init_runtime_state():
     map6_boss_battle_active = False
     map6_boss_anim_seq_index = 0
     map6_boss_anim_last_ms = time.ticks_ms()
+    death_screen_started_ms = 0
+    death_screen_dirty = False
+    death_glitch_seed = (time.ticks_ms() | 1) & 0x7FFFFFFF
+    death_glitch_state = []
+    death_glitch_next_ms = 0
+    death_screen_png_loaded = False
+    death_screen_path = _resolve_first_existing_path(DEATH_SCREEN_PATHS)
+    death_progress_count = 0
+    death_progress_next_ms = 0
+    death_title_reset_pending = False
+    death_screen_load_pending = False
+    death_screen_load_retry_ms = 0
+    death_screen_load_fail_count = 0
+    death_battle_cleanup_pending = False
     inventory_portrait_path = _resolve_first_existing_path(INVENTORY_PORTRAIT_PATHS)
     title_cover_path = _resolve_first_existing_path(TITLE_COVER_PATHS)
     title_ui_start_path = _resolve_first_existing_path(TITLE_UI_START_PATHS)
@@ -3990,6 +4024,73 @@ def _draw_title_menu_screen(loop_start, full_redraw):
         _draw_text_in_box(notice_x + 4, notice_y + 2, notice_w - 8, notice_h - 4, title_notice_text, BATTLE_COLOR_WHITE)
 
 
+def _prime_button_edge_state():
+    global interact_sw_prev, btn_fight_prev, btn_act_prev, btn_item_prev, btn_mercy_prev, button_last_edge_ms
+
+    interact_sw_prev = interact_sw.value()
+    btn_fight_prev = btn_fight.value()
+    btn_act_prev = btn_act.value()
+    btn_item_prev = btn_item.value()
+    btn_mercy_prev = btn_mercy.value()
+    button_last_edge_ms = {}
+
+
+def _cleanup_battle_native_assets_after_death():
+    global death_battle_cleanup_pending
+
+    if not death_battle_cleanup_pending:
+        return
+    print("[battle_assets] deferred_cleanup_before mem_free=", gc.mem_free())
+    battle_assets.cleanup()
+    _release_map6_boss_sheet()
+    print("[battle_assets] deferred_cleanup_after mem_free=", gc.mem_free())
+    death_battle_cleanup_pending = False
+
+
+def _death_try_load_png(loop_start):
+    global death_screen_png_loaded, death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count
+
+    if death_screen_png_loaded or (not death_screen_load_pending):
+        return
+    death_screen_png_loaded = False
+    death_screen_load_pending = False
+    death_screen_load_retry_ms = 0
+    death_screen_load_fail_count = 0
+
+
+def _draw_death_progress_star(x, y, color):
+    _fill_rect_solid(x + 4, y, 1, 9, color)
+    _fill_rect_solid(x, y + 4, 9, 1, color)
+    _fill_rect_solid(x + 1, y + 1, 1, 1, color)
+    _fill_rect_solid(x + 7, y + 1, 1, 1, color)
+    _fill_rect_solid(x + 2, y + 2, 1, 1, color)
+    _fill_rect_solid(x + 6, y + 2, 1, 1, color)
+    _fill_rect_solid(x + 2, y + 6, 1, 1, color)
+    _fill_rect_solid(x + 6, y + 6, 1, 1, color)
+    _fill_rect_solid(x + 1, y + 7, 1, 1, color)
+    _fill_rect_solid(x + 7, y + 7, 1, 1, color)
+
+
+def _start_new_game_from_title():
+    global mode, title_dirty, death_title_reset_pending
+    global explore_force_full_redraw, spawn_intro_needs_redraw
+
+    if death_title_reset_pending:
+        _cleanup_battle_native_assets_after_death()
+        _boot_phase_meta_spawn()
+        _boot_phase_tile_and_player()
+        _boot_phase_tile_data()
+        _boot_phase_collision()
+        _boot_phase_finalize_startup()
+        _init_runtime_state()
+        death_title_reset_pending = False
+
+    mode = MODE_EXPLORE
+    explore_force_full_redraw = True
+    spawn_intro_needs_redraw = spawn_intro_active
+    title_dirty = True
+
+
 def update_title_menu(loop_start, interact_pressed):
     global mode, title_menu_index, title_nav_prev_dir, title_nav_next_ms
     global title_notice_until_ms, title_notice_text, title_dirty, title_full_redraw
@@ -4020,10 +4121,7 @@ def update_title_menu(loop_start, interact_pressed):
     if title_menu_index == 0:
         title_notice_text = None
         title_notice_until_ms = 0
-        mode = MODE_EXPLORE
-        explore_force_full_redraw = True
-        spawn_intro_needs_redraw = spawn_intro_active
-        title_dirty = True
+        _start_new_game_from_title()
         return
 
     if title_menu_index == 1:
@@ -4035,6 +4133,84 @@ def update_title_menu(loop_start, interact_pressed):
         title_dirty = True
         title_full_redraw = True
         return
+
+
+def _draw_death_screen(loop_start, full_redraw):
+    if hasattr(lgfx, "set_brightness"):
+        phase = (time.ticks_diff(loop_start, death_screen_started_ms) // DEATH_FLICKER_STEP_MS) % len(SWAY_SIN_TABLE)
+        brightness = 224 + (((SWAY_SIN_TABLE[phase] + SWAY_SIN_SCALE) * 24) // (SWAY_SIN_SCALE * 2))
+        if brightness < 208:
+            brightness = 208
+        elif brightness > 248:
+            brightness = 248
+        lgfx.set_brightness(brightness)
+
+    _fill_rect_solid(0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H, DEATH_BASE_BLUE)
+
+    scan_offset = (time.ticks_diff(loop_start, death_screen_started_ms) // 60) % DEATH_SCANLINE_GAP
+    yy = scan_offset
+    while yy < ACTIVE_VIEW_H:
+        lgfx.draw_rect(0, yy, ACTIVE_VIEW_W, 1, DEATH_SCANLINE_COLOR)
+        yy += DEATH_SCANLINE_GAP
+
+    phase_base = time.ticks_diff(loop_start, death_screen_started_ms) // 40
+    band_count = len(DEATH_BAND_COLORS)
+    for i in range(band_count):
+        band_phase = phase_base + (i * 9)
+        center_y = ((ACTIVE_VIEW_H * (i + 1)) // (band_count + 1)) + _battle_sway_offset_px(18 + (i * 4), band_phase)
+        band_h = 3 + ((band_phase + i) & 0x03)
+        band_y = center_y - (band_h // 2)
+        if band_y < 0:
+            band_h += band_y
+            band_y = 0
+        if band_y + band_h > ACTIVE_VIEW_H:
+            band_h = ACTIVE_VIEW_H - band_y
+        if band_h <= 0:
+            continue
+        _fill_rect_solid(0, band_y, ACTIVE_VIEW_W, band_h, DEATH_BAND_COLORS[i])
+        highlight_y = band_y + band_h - 1
+        if highlight_y >= 0 and highlight_y < ACTIVE_VIEW_H:
+            lgfx.draw_rect(0, highlight_y, ACTIVE_VIEW_W, 1, 0x07FF)
+
+    for x, y, w, h, color in death_glitch_state:
+        if x < 0:
+            w += x
+            x = 0
+        if y < 0:
+            h += y
+            y = 0
+        if x >= ACTIVE_VIEW_W or y >= ACTIVE_VIEW_H:
+            continue
+        if x + w > ACTIVE_VIEW_W:
+            w = ACTIVE_VIEW_W - x
+        if y + h > ACTIVE_VIEW_H:
+            h = ACTIVE_VIEW_H - y
+        if w <= 0 or h <= 0:
+            continue
+        _fill_rect_solid(x, y, w, h, color)
+
+
+    if death_progress_count > 0:
+        _fill_rect_solid(DEATH_PROGRESS_X - 2, DEATH_PROGRESS_Y - 1, (DEATH_PROGRESS_SLOTS * DEATH_PROGRESS_GAP_PX) + 6, 11, DEATH_BASE_BLUE)
+        for i in range(death_progress_count):
+            _draw_death_progress_star(DEATH_PROGRESS_X + (i * DEATH_PROGRESS_GAP_PX), DEATH_PROGRESS_Y, BATTLE_COLOR_WHITE)
+
+
+def update_death_screen(loop_start, exit_pressed):
+    global death_screen_dirty, death_progress_count, death_progress_next_ms, death_battle_cleanup_pending
+
+    if death_battle_cleanup_pending:
+        _cleanup_battle_native_assets_after_death()
+        death_screen_dirty = True
+    else:
+        _death_try_load_png(loop_start)
+    _death_refresh_glitch_state(loop_start)
+    death_screen_dirty = True
+    while death_progress_count < DEATH_PROGRESS_SLOTS and time.ticks_diff(loop_start, death_progress_next_ms) >= 0:
+        death_progress_count += 1
+        death_progress_next_ms = time.ticks_add(death_progress_next_ms, DEATH_PROGRESS_STEP_MS)
+    if death_progress_count >= DEATH_PROGRESS_SLOTS:
+        _return_to_title_from_death()
 
 
 def _open_explore_inventory():
@@ -7335,6 +7511,130 @@ def _reset_battle_state():
     _reset_attack_state()
 
 
+def _release_death_screen_slot():
+    global death_screen_png_loaded
+
+    if death_screen_png_loaded and hasattr(lgfx, "png_slot_release"):
+        try:
+            lgfx.png_slot_release(BATTLE_SLOT_DEATH_SCREEN)
+        except Exception as err:
+            print("death_screen_release_fail:", err)
+    death_screen_png_loaded = False
+
+
+def _death_glitch_rand():
+    global death_glitch_seed
+    death_glitch_seed = ((death_glitch_seed * 1664525) + 1013904223) & 0x7FFFFFFF
+    return death_glitch_seed
+
+
+def _death_refresh_glitch_state(loop_start, force=False):
+    global death_glitch_state, death_glitch_next_ms, death_screen_dirty
+
+    if (not force) and death_glitch_next_ms and time.ticks_diff(loop_start, death_glitch_next_ms) < 0:
+        return
+
+    death_glitch_next_ms = time.ticks_add(loop_start, DEATH_GLITCH_STEP_MS)
+    segments = []
+    count = 4 + (_death_glitch_rand() % 5)
+    color_count = len(DEATH_GLITCH_COLORS)
+    for _ in range(count):
+        x = _death_glitch_rand() % ACTIVE_VIEW_W
+        y = _death_glitch_rand() % ACTIVE_VIEW_H
+        w = 12 + (_death_glitch_rand() % 104)
+        h = 1 + (_death_glitch_rand() % 4)
+        color = DEATH_GLITCH_COLORS[_death_glitch_rand() % color_count]
+        segments.append((x, y, w, h, color))
+        if (_death_glitch_rand() & 0x07) == 0:
+            wide_y = _death_glitch_rand() % ACTIVE_VIEW_H
+            wide_h = 2 + (_death_glitch_rand() % 6)
+            wide_w = 72 + (_death_glitch_rand() % (ACTIVE_VIEW_W - 48))
+            wide_x = _death_glitch_rand() % (ACTIVE_VIEW_W - wide_w + 1)
+            wide_color = DEATH_GLITCH_COLORS[_death_glitch_rand() % color_count]
+            segments.append((wide_x, wide_y, wide_w, wide_h, wide_color))
+    death_glitch_state = segments
+    death_screen_dirty = True
+
+
+def _enter_death_screen(now_ms):
+    global mode, player_hp, mercy_exit_pending, map6_boss_battle_active
+    global battle_menu_dirty, battle_dialog_visible, battle_fight_dirty, battle_status_dirty
+    global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
+    global fight_return_deadline_ms
+    global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
+    global death_screen_path, death_screen_png_loaded, death_progress_count, death_progress_next_ms
+    global death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count, death_battle_cleanup_pending
+
+    player_hp = 0
+    mercy_exit_pending = False
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    battle_fight_dirty = False
+    battle_status_dirty = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_prev_dialog_active = False
+    fight_return_deadline_ms = 0
+    _clear_act_dialog_state(True)
+    _map1_story_reset()
+    _scripted_battle_reset()
+    _reset_battle_state()
+    map6_boss_battle_active = False
+
+    death_screen_started_ms = now_ms
+    death_screen_dirty = True
+    death_glitch_seed = ((_rand_u32() ^ now_ms) | 1) & 0x7FFFFFFF
+    death_glitch_state = []
+    death_glitch_next_ms = 0
+    death_progress_count = 0
+    death_progress_next_ms = time.ticks_add(now_ms, DEATH_PROGRESS_STEP_MS)
+    death_screen_load_pending = False
+    death_screen_load_retry_ms = 0
+    death_screen_load_fail_count = 0
+    death_battle_cleanup_pending = True
+    _prime_button_edge_state()
+    if not death_screen_path:
+        death_screen_path = _resolve_first_existing_path(DEATH_SCREEN_PATHS)
+    _release_death_screen_slot()
+    mode = MODE_DEATH_SCREEN
+    _death_refresh_glitch_state(now_ms, True)
+
+
+def _return_to_title_from_death():
+    global mode, player_hp, title_menu_index, title_nav_prev_dir, title_nav_next_ms
+    global title_notice_until_ms, title_notice_text, title_dirty, title_full_redraw, title_cover_drew_png
+    global explore_force_full_redraw, spawn_intro_needs_redraw
+    global death_screen_dirty, death_glitch_state, death_glitch_next_ms, death_progress_count, death_progress_next_ms
+    global death_title_reset_pending, death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count
+
+    _release_death_screen_slot()
+    if hasattr(lgfx, "set_brightness"):
+        lgfx.set_brightness(255)
+    player_hp = PLAYER_HP_MAX
+    mode = MODE_TITLE_MENU
+    title_menu_index = 0
+    title_nav_prev_dir = 0
+    title_nav_next_ms = 0
+    title_notice_until_ms = 0
+    title_notice_text = None
+    title_dirty = True
+    title_full_redraw = True
+    title_cover_drew_png = False
+    explore_force_full_redraw = False
+    spawn_intro_needs_redraw = False
+    death_screen_dirty = False
+    death_glitch_state = []
+    death_glitch_next_ms = 0
+    death_progress_count = 0
+    death_progress_next_ms = 0
+    death_screen_load_pending = False
+    death_screen_load_retry_ms = 0
+    death_screen_load_fail_count = 0
+    death_title_reset_pending = True
+    _prime_button_edge_state()
+    gc.collect()
+
+
 def _exit_battle_to_explore():
     global mode, encounter_cooldown_frames, mercy_exit_pending, map6_boss_battle_active
     global explore_force_full_redraw
@@ -7613,10 +7913,10 @@ def _battle_try_take_damage(now_ms):
     battle_status_dirty = True
     damage_invuln_until_ms = time.ticks_add(now_ms, DAMAGE_INVULN_MS)
     if player_hp <= 0:
-        player_hp = PLAYER_HP_MAX
+        player_hp = 0
         bullets = []
         battle_lasers = []
-        _exit_battle_to_explore()
+        _enter_death_screen(now_ms)
     return True
 
 
@@ -8729,6 +9029,7 @@ def draw_all(loop_start):
     global explore_force_full_redraw, explore_overlay_dirty
     global spawn_intro_needs_redraw
     global title_dirty, title_full_redraw
+    global death_screen_dirty
     global battle_prev_heart_x, battle_prev_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
     global battle_bullets_dirty, battle_prev_bullet_positions
@@ -8744,6 +9045,11 @@ def draw_all(loop_start):
             _draw_title_menu_screen(loop_start, title_full_redraw)
             title_dirty = False
             title_full_redraw = False
+        return
+
+    if mode == MODE_DEATH_SCREEN:
+        _draw_death_screen(loop_start, death_screen_dirty)
+        death_screen_dirty = False
         return
 
     if mode == MODE_EXPLORE:
@@ -8944,12 +9250,18 @@ def _run_main_loop():
             act_pressed = False
             item_pressed = False
             mercy_pressed = False
+        death_exit_pressed = interact_pressed or fight_pressed or act_pressed or item_pressed or mercy_pressed
 
         if mode == MODE_TITLE_MENU:
             explore_moved = False
             explore_scrolled = False
             explore_anim_changed = False
             update_title_menu(loop_start, interact_pressed)
+        elif mode == MODE_DEATH_SCREEN:
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+            update_death_screen(loop_start, death_exit_pressed)
         elif mode == MODE_EXPLORE:
             if portal_transition_active:
                 explore_moved = False
@@ -9048,7 +9360,8 @@ def _run_main_loop():
             update_battle_fight(loop_start)
 
         draw_all(loop_start)
-        _resident_pump_preload()
+        if mode == MODE_EXPLORE:
+            _resident_pump_preload()
         _maybe_run_deferred_gc(loop_start, explore_moved, explore_scrolled)
 
         if mode == MODE_EXPLORE and not explore_moved and not explore_scrolled:

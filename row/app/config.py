@@ -25,6 +25,7 @@ REQUIRED_UI_FILES = (
     "comic_04_320x240.png",
     "comic_05_320x240.png",
     "comic_06_320x240.png",
+    "death_320x240.png",
     "inventory_portrait.png",
     "heart_clean_18.png",
     "heart.png",
