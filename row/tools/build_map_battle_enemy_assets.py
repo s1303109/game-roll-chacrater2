@@ -12,7 +12,7 @@ CONTENT_X = 21
 CONTENT_Y = 6
 CONTENT_W = 55
 CONTENT_H = 83
-BG_THRESHOLD = 245
+BG_DARK_THRESHOLD = 12
 ROOT = Path("/workspace")
 
 SPECS = (
@@ -25,7 +25,7 @@ SPECS = (
 
 def _is_bg(pixel):
     r, g, b, _ = pixel
-    return r >= BG_THRESHOLD and g >= BG_THRESHOLD and b >= BG_THRESHOLD
+    return r <= BG_DARK_THRESHOLD and g <= BG_DARK_THRESHOLD and b <= BG_DARK_THRESHOLD
 
 
 def _subject_bbox(src):

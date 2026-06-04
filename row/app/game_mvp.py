@@ -818,6 +818,34 @@ MAP3_MIMISTITCH_ACCEPT3_PNG = config.ui_path("map3_mimistitch_accept_03.png")
 MAP3_MIMISTITCH_MERCY1_PNG = config.ui_path("map3_mimistitch_mercy_01.png")
 MAP3_MIMISTITCH_MERCY2_PNG = config.ui_path("map3_mimistitch_mercy_02.png")
 MAP3_MIMISTITCH_MERCY3_PNG = config.ui_path("map3_mimistitch_mercy_03.png")
+MAP4_MUSHMUSE_OPENING1_PNG = config.ui_path("map4_mushmuse_opening_01.png")
+MAP4_MUSHMUSE_OPENING2_PNG = config.ui_path("map4_mushmuse_opening_02.png")
+MAP4_MUSHMUSE_OPENING3_PNG = config.ui_path("map4_mushmuse_opening_03.png")
+MAP4_MUSHMUSE_ACT_HUM_PNG = config.ui_path("map4_mushmuse_act_hum.png")
+MAP4_MUSHMUSE_ACT_BREATH_PNG = config.ui_path("map4_mushmuse_act_breath.png")
+MAP4_MUSHMUSE_ACT_SHARE_PNG = config.ui_path("map4_mushmuse_act_share.png")
+MAP4_MUSHMUSE_HUM1_PNG = config.ui_path("map4_mushmuse_hum_01.png")
+MAP4_MUSHMUSE_BREATH1_PNG = config.ui_path("map4_mushmuse_breath_01.png")
+MAP4_MUSHMUSE_SHARE1_PNG = config.ui_path("map4_mushmuse_share_01.png")
+MAP4_MUSHMUSE_SHARE2_PNG = config.ui_path("map4_mushmuse_share_02.png")
+MAP4_MUSHMUSE_MERCY1_PNG = config.ui_path("map4_mushmuse_mercy_01.png")
+MAP4_MUSHMUSE_MERCY2_PNG = config.ui_path("map4_mushmuse_mercy_02.png")
+MAP4_MUSHMUSE_MERCY3_PNG = config.ui_path("map4_mushmuse_mercy_03.png")
+MAP5_CYCLOBOT_OPENING1_PNG = config.ui_path("map5_cyclobot_opening_01.png")
+MAP5_CYCLOBOT_OPENING2_PNG = config.ui_path("map5_cyclobot_opening_02.png")
+MAP5_CYCLOBOT_OPENING3_PNG = config.ui_path("map5_cyclobot_opening_03.png")
+MAP5_CYCLOBOT_ACT_WAVE_PNG = config.ui_path("map5_cyclobot_act_wave.png")
+MAP5_CYCLOBOT_ACT_EXPLAIN_PNG = config.ui_path("map5_cyclobot_act_explain.png")
+MAP5_CYCLOBOT_ACT_RESET_PNG = config.ui_path("map5_cyclobot_act_reset.png")
+MAP5_CYCLOBOT_WAVE1_PNG = config.ui_path("map5_cyclobot_wave_01.png")
+MAP5_CYCLOBOT_WAVE2_PNG = config.ui_path("map5_cyclobot_wave_02.png")
+MAP5_CYCLOBOT_EXPLAIN1_PNG = config.ui_path("map5_cyclobot_explain_01.png")
+MAP5_CYCLOBOT_EXPLAIN2_PNG = config.ui_path("map5_cyclobot_explain_02.png")
+MAP5_CYCLOBOT_RESET1_PNG = config.ui_path("map5_cyclobot_reset_01.png")
+MAP5_CYCLOBOT_RESET2_PNG = config.ui_path("map5_cyclobot_reset_02.png")
+MAP5_CYCLOBOT_MERCY1_PNG = config.ui_path("map5_cyclobot_mercy_01.png")
+MAP5_CYCLOBOT_MERCY2_PNG = config.ui_path("map5_cyclobot_mercy_02.png")
+MAP5_CYCLOBOT_MERCY3_PNG = config.ui_path("map5_cyclobot_mercy_03.png")
 CMD_ICON_SRC_W = 32
 CMD_ICON_SRC_H = 32
 STAR_ICON_SRC_W = 24
@@ -990,6 +1018,36 @@ BULLET_SPEED_PX = 2
 BULLET_SPAWN_INTERVAL_MS = 300
 DAMAGE_INVULN_MS = 450
 BULLET_FP_SHIFT = 8
+FIGHT_PATTERN_GLOOMBELL = "gloombell"
+FIGHT_PATTERN_MIMISTITCH = "mimistitch"
+FIGHT_PATTERN_MUSHMUSE = "mushmuse"
+FIGHT_PATTERN_CYCLOBOT = "cyclobot"
+PATTERN_GLOOMBELL_SPAWN_MS = 450
+PATTERN_GLOOMBELL_FALL_SPEED_PX = 1
+PATTERN_GLOOMBELL_SWAY_AMPLITUDE_PX = 14
+PATTERN_MIMISTITCH_WAVE_MS = 850
+PATTERN_MIMISTITCH_WAVE_COUNT = 5
+PATTERN_MIMISTITCH_WAVE_SPACING_PX = 24
+PATTERN_MUSHMUSE_SPAWN_MS = 330
+PATTERN_MUSHMUSE_FALL_SPEED_PX = 1
+PATTERN_MUSHMUSE_SWAY_AMPLITUDE_PX = 10
+PATTERN_MUSHMUSE_PAUSE_CHANCE_DENOM = 4
+PATTERN_MUSHMUSE_PAUSE_MIN_MS = 400
+PATTERN_MUSHMUSE_PAUSE_MAX_MS = 900
+PATTERN_CYCLOBOT_SPAWN_MS = 1100
+PATTERN_CYCLOBOT_WARNING_MS = 550
+PATTERN_CYCLOBOT_ACTIVE_MS = 260
+PATTERN_CYCLOBOT_ACTIVE_THICKNESS_PX = 8
+PATTERN_CYCLOBOT_WARNING_THICKNESS_PX = 1
+PATTERN_CYCLOBOT_DIR_HORIZONTAL = 0
+PATTERN_CYCLOBOT_DIR_VERTICAL = 1
+SWAY_SIN_SCALE = 127
+SWAY_SIN_TABLE = (
+    0, 24, 49, 71, 90, 106, 117, 124,
+    127, 124, 117, 106, 90, 71, 49, 24,
+    0, -24, -49, -71, -90, -106, -117, -124,
+    -127, -124, -117, -106, -90, -71, -49, -24,
+)
 BATTLE_STATUS_TO_CMD_GAP = 2
 BATTLE_HP_BAR_W = 36
 BATTLE_HP_BAR_H = 6
@@ -1034,6 +1092,61 @@ MAP_ENCOUNTER_ENTRY_GRACE_MAX_MS = 15000
 MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN = "round_robin"
 DEFAULT_BATTLE_ENEMY_ID = "MAP1_FALLBACK_ENEMY"
 
+MAP4_MUSHMUSE_SCRIPTED_PROFILE = {
+    "script_behavior": "scripted_battle",
+    "fight_pattern": FIGHT_PATTERN_MUSHMUSE,
+    "sprite_paths": MAP4_ENEMY_SPRITE_PATHS,
+    "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+    "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+    "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+    "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+    "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+    "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+    "act_options": (
+        {"png": MAP4_MUSHMUSE_ACT_HUM_PNG, "png_w": 46, "png_h": 18, "text": "哼歌"},
+        {"png": MAP4_MUSHMUSE_ACT_BREATH_PNG, "png_w": 46, "png_h": 18, "text": "呼吸"},
+        {"png": MAP4_MUSHMUSE_ACT_SHARE_PNG, "png_w": 46, "png_h": 18, "text": "分享"},
+    ),
+    "opening_dialog": (
+        {"png": MAP4_MUSHMUSE_OPENING1_PNG, "png_w": 200, "png_h": 72, "text": "你走路的聲音……好輕。"},
+        {"png": MAP4_MUSHMUSE_OPENING2_PNG, "png_w": 200, "png_h": 72, "text": "可是你的心跳，好吵。"},
+        {"png": MAP4_MUSHMUSE_OPENING3_PNG, "png_w": 200, "png_h": 72, "text": "你是不是……在害怕？"},
+    ),
+    "act_sequences": (
+        (
+            {"png": MAP4_MUSHMUSE_HUM1_PNG, "png_w": 200, "png_h": 72, "text": "這不是悲傷……這是歌嗎？"},
+        ),
+        (
+            {"png": MAP4_MUSHMUSE_BREATH1_PNG, "png_w": 200, "png_h": 72, "text": "你的心變安靜了。"},
+        ),
+        (
+            {"png": MAP4_MUSHMUSE_SHARE1_PNG, "png_w": 200, "png_h": 72, "text": "原來情緒不是食物。"},
+            {"png": MAP4_MUSHMUSE_SHARE2_PNG, "png_w": 200, "png_h": 72, "text": "是要被聽見的東西。"},
+        ),
+    ),
+    "act_unlock_order": (0, 1, 2),
+    "mercy_success_sequence": (
+        {"png": MAP4_MUSHMUSE_MERCY1_PNG, "png_w": 200, "png_h": 72, "text": "你的聲音，我會記得。"},
+        {"png": MAP4_MUSHMUSE_MERCY2_PNG, "png_w": 200, "png_h": 72, "text": "但是我不會再把它困住了。"},
+        {"png": MAP4_MUSHMUSE_MERCY3_PNG, "png_w": 200, "png_h": 72, "text": "去吧，孩子。你的心還要往前走。"},
+    ),
+    "opening_delay_ms": SCRIPTED_BATTLE_DIALOG_DELAY_MS,
+    "opening_side_dialog": True,
+    "dialog_line_ms": MAP1_STORY_LINE_MS,
+    "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+    "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+}
+
+
+def _map4_mushmuse_enemy_profile(enemy_id, display_name="Mushmuse"):
+    profile = {}
+    for key in MAP4_MUSHMUSE_SCRIPTED_PROFILE:
+        profile[key] = MAP4_MUSHMUSE_SCRIPTED_PROFILE[key]
+    profile["enemy_id"] = enemy_id
+    profile["display_name"] = display_name
+    return profile
+
+
 ENEMY_REGISTRY = {
     "MAP1_FALLBACK_ENEMY": {
         "enemy_id": "MAP1_FALLBACK_ENEMY",
@@ -1058,6 +1171,7 @@ ENEMY_REGISTRY = {
         "enemy_id": "MAP2_ENEMY1",
         "display_name": "Gloombell",
         "script_behavior": "scripted_battle",
+        "fight_pattern": FIGHT_PATTERN_GLOOMBELL,
         "sprite_paths": MAP2_ENEMY_SPRITE_PATHS,
         "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
         "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
@@ -1106,6 +1220,7 @@ ENEMY_REGISTRY = {
     "MAP2_ENEMY2": {
         "enemy_id": "MAP2_ENEMY2",
         "display_name": "Gloombell",
+        "fight_pattern": FIGHT_PATTERN_GLOOMBELL,
         "sprite_paths": MAP2_ENEMY_SPRITE_PATHS,
         "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
         "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
@@ -1130,6 +1245,7 @@ ENEMY_REGISTRY = {
         "enemy_id": "MAP3_ENEMY1",
         "display_name": "Mimi-Stitch",
         "script_behavior": "scripted_battle",
+        "fight_pattern": FIGHT_PATTERN_MIMISTITCH,
         "sprite_paths": MAP3_ENEMY_SPRITE_PATHS,
         "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
         "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
@@ -1178,6 +1294,7 @@ ENEMY_REGISTRY = {
     "MAP3_ENEMY2": {
         "enemy_id": "MAP3_ENEMY2",
         "display_name": "Mimi-Stitch",
+        "fight_pattern": FIGHT_PATTERN_MIMISTITCH,
         "sprite_paths": MAP3_ENEMY_SPRITE_PATHS,
         "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
         "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
@@ -1198,55 +1315,13 @@ ENEMY_REGISTRY = {
         "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
         "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
     },
-    "MAP4_ENEMY1": {
-        "enemy_id": "MAP4_ENEMY1",
-        "display_name": "Mushmuse",
-        "sprite_paths": MAP4_ENEMY_SPRITE_PATHS,
-        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
-        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
-        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
-        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
-        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
-        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
-        "act_options": (
-            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
-            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
-            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
-        ),
-        "act_replies": (
-            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 1 replies A."},
-            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP4 Enemy 1 replies B."},
-            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 1 replies C."},
-        ),
-        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
-        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
-    },
-    "MAP4_ENEMY2": {
-        "enemy_id": "MAP4_ENEMY2",
-        "display_name": "Mushmuse",
-        "sprite_paths": MAP4_ENEMY_SPRITE_PATHS,
-        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
-        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
-        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
-        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
-        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
-        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
-        "act_options": (
-            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
-            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
-            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
-        ),
-        "act_replies": (
-            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 2 replies A."},
-            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "MAP4 Enemy 2 replies B."},
-            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "MAP4 Enemy 2 replies C."},
-        ),
-        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
-        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
-    },
+    "MAP4_ENEMY1": _map4_mushmuse_enemy_profile("MAP4_ENEMY1"),
+    "MAP4_ENEMY2": _map4_mushmuse_enemy_profile("MAP4_ENEMY2"),
     "MAP5_ENEMY1": {
         "enemy_id": "MAP5_ENEMY1",
         "display_name": "Cyclobot",
+        "script_behavior": "scripted_battle",
+        "fight_pattern": FIGHT_PATTERN_CYCLOBOT,
         "sprite_paths": MAP5_ENEMY_SPRITE_PATHS,
         "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
         "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
@@ -1255,15 +1330,38 @@ ENEMY_REGISTRY = {
         "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
         "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
-            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
-            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
-            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+            {"png": MAP5_CYCLOBOT_ACT_WAVE_PNG, "png_w": 46, "png_h": 18, "text": "揮手"},
+            {"png": MAP5_CYCLOBOT_ACT_EXPLAIN_PNG, "png_w": 46, "png_h": 18, "text": "解釋"},
+            {"png": MAP5_CYCLOBOT_ACT_RESET_PNG, "png_w": 46, "png_h": 18, "text": "重置"},
         ),
-        "act_replies": (
-            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "Cyclobot replies A."},
-            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "Cyclobot replies B."},
-            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "Cyclobot replies C."},
+        "opening_dialog": (
+            {"png": MAP5_CYCLOBOT_OPENING1_PNG, "png_w": 200, "png_h": 72, "text": "掃描完成。"},
+            {"png": MAP5_CYCLOBOT_OPENING2_PNG, "png_w": 200, "png_h": 72, "text": "偵測到未知孩童。"},
+            {"png": MAP5_CYCLOBOT_OPENING3_PNG, "png_w": 200, "png_h": 72, "text": "指令：阻止進入。"},
         ),
+        "act_sequences": (
+            (
+                {"png": MAP5_CYCLOBOT_WAVE1_PNG, "png_w": 200, "png_h": 72, "text": "偵測到友善動作。"},
+                {"png": MAP5_CYCLOBOT_WAVE2_PNG, "png_w": 200, "png_h": 72, "text": "威脅等級……無法判定。"},
+            ),
+            (
+                {"png": MAP5_CYCLOBOT_EXPLAIN1_PNG, "png_w": 200, "png_h": 72, "text": "迷路的孩子……"},
+                {"png": MAP5_CYCLOBOT_EXPLAIN2_PNG, "png_w": 200, "png_h": 72, "text": "資料分類不存在"},
+            ),
+            (
+                {"png": MAP5_CYCLOBOT_RESET1_PNG, "png_w": 200, "png_h": 72, "text": "偵測到管理人權限。"},
+                {"png": MAP5_CYCLOBOT_RESET2_PNG, "png_w": 200, "png_h": 72, "text": "敵對指令暫停。"},
+            ),
+        ),
+        "act_unlock_order": (0, 1, 2),
+        "mercy_success_sequence": (
+            {"png": MAP5_CYCLOBOT_MERCY1_PNG, "png_w": 200, "png_h": 72, "text": "進入狀態已更新。"},
+            {"png": MAP5_CYCLOBOT_MERCY2_PNG, "png_w": 200, "png_h": 72, "text": "孩童：非入侵者。"},
+            {"png": MAP5_CYCLOBOT_MERCY3_PNG, "png_w": 200, "png_h": 72, "text": "請安全通行。"},
+        ),
+        "opening_delay_ms": SCRIPTED_BATTLE_DIALOG_DELAY_MS,
+        "opening_side_dialog": True,
+        "dialog_line_ms": MAP1_STORY_LINE_MS,
         "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
         "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
     },
@@ -2843,6 +2941,7 @@ def _init_runtime_state():
     global act_menu_slot_cache, act_prev_selected_index, act_selection_dirty, item_menu_active, item_choice_index, item_nav_prev_dir, item_menu_slot_cache, item_prev_selected_index
     global item_selection_dirty, item_view_offset, menu_frame_x_used, menu_frame_w_used, menu_cmd_y_used, battle_heart_needs_sprite_refresh, fight_return_deadline_ms, player_hp
     global enemy_hp, bullets, next_bullet_spawn_ms, damage_invuln_until_ms, battle_bullets_dirty, battle_prev_bullet_positions, battle_status_dirty, attack_started_ms
+    global battle_lasers, battle_prev_laser_rects, battle_lasers_dirty, mimistitch_wave_from_left, cyclobot_next_horizontal
     global attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty, attack_prev_cursor_draw_x, mercy_exit_pending, battle_menu_full_clear_pending, battle_menu_static_ready
     global battle_menu_static_frame_x, battle_menu_static_frame_y, battle_menu_static_frame_w, battle_menu_enemy_bottom_used, battle_menu_enemy_x, battle_menu_enemy_y, battle_menu_enemy_w, battle_menu_enemy_h
     global battle_menu_prev_dialog_active, battle_menu_prev_dialog_x, battle_menu_prev_dialog_y, battle_menu_prev_dialog_w, battle_menu_prev_dialog_h, map1_story_active, map1_story_stage, map1_story_line_index
@@ -2960,6 +3059,11 @@ def _init_runtime_state():
     damage_invuln_until_ms = 0
     battle_bullets_dirty = False
     battle_prev_bullet_positions = []
+    battle_lasers = []
+    battle_prev_laser_rects = []
+    battle_lasers_dirty = False
+    mimistitch_wave_from_left = True
+    cyclobot_next_horizontal = True
     battle_status_dirty = True
     attack_started_ms = 0
     attack_cursor_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
@@ -5980,6 +6084,11 @@ def _battle_enemy_profile():
     return ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {})
 
 
+def _battle_enemy_fight_pattern():
+    profile = _battle_enemy_profile()
+    return profile.get("fight_pattern")
+
+
 def _battle_enemy_resolve(enemy_id=None):
     if enemy_id:
         resolved = ENEMY_REGISTRY.get(enemy_id)
@@ -7212,16 +7321,11 @@ def _reset_attack_state():
 
 
 def _reset_battle_state():
-    global bullets, next_bullet_spawn_ms, damage_invuln_until_ms
-    global battle_bullets_dirty, battle_prev_bullet_positions, battle_status_dirty
+    global battle_status_dirty
     global fight_heart_x, fight_heart_y, battle_prev_heart_x, battle_prev_heart_y
     global battle_heart_needs_sprite_refresh
 
-    bullets = []
-    next_bullet_spawn_ms = 0
-    damage_invuln_until_ms = 0
-    battle_bullets_dirty = False
-    battle_prev_bullet_positions = []
+    _clear_battle_projectile_state()
     battle_status_dirty = True
     fight_heart_x = battle_heart_init_x
     fight_heart_y = battle_heart_init_y
@@ -7416,15 +7520,32 @@ def _clear_battle_status_line_menu():
     y = menu_cmd_y_used - (8 + BATTLE_STATUS_TO_CMD_GAP)
     x = menu_frame_x_used + 8
     w = menu_frame_w_used - 16
-    clear_y = y - BATTLE_HP_BAR_H - 3
-    # Clear both enemy HP bar band and status text; never overlap command button row.
-    h = 10 + BATTLE_HP_BAR_H + 3
-    max_h = menu_cmd_y_used - y - 1
-    if max_h < 1:
+    # Enemy HP/status text uses 2x2 overdraw and sits slightly above the bar,
+    # so clear from above the enemy bar all the way down to the command row.
+    clear_y = y - BATTLE_HP_BAR_H - 6
+    clear_bottom = menu_cmd_y_used - 1
+    h = clear_bottom - clear_y + 1
+    if h < 1:
         return
-    if h > (max_h + BATTLE_HP_BAR_H + 3):
-        h = max_h + BATTLE_HP_BAR_H + 3
     _clear_rect_black(x, clear_y, w, h)
+
+
+def _clear_battle_projectile_state():
+    global bullets, next_bullet_spawn_ms, damage_invuln_until_ms
+    global battle_bullets_dirty, battle_prev_bullet_positions
+    global battle_lasers, battle_prev_laser_rects, battle_lasers_dirty
+    global mimistitch_wave_from_left, cyclobot_next_horizontal
+
+    bullets = []
+    next_bullet_spawn_ms = 0
+    damage_invuln_until_ms = 0
+    battle_bullets_dirty = False
+    battle_prev_bullet_positions = []
+    battle_lasers = []
+    battle_prev_laser_rects = []
+    battle_lasers_dirty = False
+    mimistitch_wave_from_left = True
+    cyclobot_next_horizontal = True
 
 
 def _get_bullet_positions():
@@ -7439,19 +7560,73 @@ def _erase_prev_bullets():
         lgfx.draw_circle(x, y, BULLET_R, 0x0000)
 
 
+def _battle_inner_bounds():
+    inner_inset = BATTLE_FRAME_BORDER_THICK
+    if BATTLE_BORDER_THICK > inner_inset:
+        inner_inset = BATTLE_BORDER_THICK
+    min_x = battle_frame_x + inner_inset
+    max_x = battle_frame_x + BATTLE_FRAME_W - inner_inset - 1
+    min_y = battle_frame_y + inner_inset
+    max_y = battle_frame_y + BATTLE_FRAME_H - inner_inset - 1
+    return min_x, max_x, min_y, max_y
+
+
+def _battle_circle_bounds(radius):
+    min_x, max_x, min_y, max_y = _battle_inner_bounds()
+    min_x += radius
+    max_x -= radius
+    min_y += radius
+    max_y -= radius
+    if max_x < min_x:
+        max_x = min_x
+    if max_y < min_y:
+        max_y = min_y
+    return min_x, max_x, min_y, max_y
+
+
+def _battle_sway_offset_px(amplitude, phase):
+    return (amplitude * SWAY_SIN_TABLE[phase % len(SWAY_SIN_TABLE)]) // SWAY_SIN_SCALE
+
+
+def _battle_circle_hits_heart(bx, by, radius):
+    hit_r = BATTLE_HEART_HIT_R + radius
+    dx = bx - fight_heart_x
+    dy = by - fight_heart_y
+    return (dx * dx + dy * dy) <= (hit_r * hit_r)
+
+
+def _battle_rect_hits_heart(x, y, w, h):
+    nearest_x = _clamp(fight_heart_x, x, x + w - 1)
+    nearest_y = _clamp(fight_heart_y, y, y + h - 1)
+    dx = fight_heart_x - nearest_x
+    dy = fight_heart_y - nearest_y
+    return (dx * dx + dy * dy) <= (BATTLE_HEART_HIT_R * BATTLE_HEART_HIT_R)
+
+
+def _battle_try_take_damage(now_ms):
+    global player_hp, damage_invuln_until_ms, battle_status_dirty
+    global bullets, battle_lasers
+
+    if time.ticks_diff(now_ms, damage_invuln_until_ms) < 0:
+        return False
+    player_hp -= 1
+    battle_status_dirty = True
+    damage_invuln_until_ms = time.ticks_add(now_ms, DAMAGE_INVULN_MS)
+    if player_hp <= 0:
+        player_hp = PLAYER_HP_MAX
+        bullets = []
+        battle_lasers = []
+        _exit_battle_to_explore()
+    return True
+
+
 def _spawn_bullet_random_edge(now_ms):
     global next_bullet_spawn_ms, bullets
 
     if time.ticks_diff(now_ms, next_bullet_spawn_ms) < 0:
         return False
 
-    inner_inset = BATTLE_FRAME_BORDER_THICK
-    if BATTLE_BORDER_THICK > inner_inset:
-        inner_inset = BATTLE_BORDER_THICK
-    inner_min_x = battle_frame_x + inner_inset + BULLET_R
-    inner_max_x = battle_frame_x + BATTLE_FRAME_W - inner_inset - BULLET_R - 1
-    inner_min_y = battle_frame_y + inner_inset + BULLET_R
-    inner_max_y = battle_frame_y + BATTLE_FRAME_H - inner_inset - BULLET_R - 1
+    inner_min_x, inner_max_x, inner_min_y, inner_max_y = _battle_circle_bounds(BULLET_R)
 
     edge = _rand_u32() & 0x03
     if edge == 0:
@@ -7489,21 +7664,9 @@ def _spawn_bullet_random_edge(now_ms):
 
 
 def _update_bullets_and_collisions(now_ms):
-    global bullets, player_hp, damage_invuln_until_ms
-    global mode, encounter_cooldown_frames, act_dialog_until_ms, explore_force_full_redraw
-    global battle_menu_dirty, battle_dialog_visible, battle_status_dirty
-    global battle_dialog_mode, mercy_exit_pending
+    global bullets
 
-    inner_inset = BATTLE_FRAME_BORDER_THICK
-    if BATTLE_BORDER_THICK > inner_inset:
-        inner_inset = BATTLE_BORDER_THICK
-    inner_min_x = battle_frame_x + inner_inset + BULLET_R
-    inner_max_x = battle_frame_x + BATTLE_FRAME_W - inner_inset - BULLET_R - 1
-    inner_min_y = battle_frame_y + inner_inset + BULLET_R
-    inner_max_y = battle_frame_y + BATTLE_FRAME_H - inner_inset - BULLET_R - 1
-    hit_r = BATTLE_HEART_HIT_R + BULLET_R
-    hit_r2 = hit_r * hit_r
-    can_take_damage = time.ticks_diff(now_ms, damage_invuln_until_ms) >= 0
+    inner_min_x, inner_max_x, inner_min_y, inner_max_y = _battle_circle_bounds(BULLET_R)
     changed = False
     kept = []
 
@@ -7516,19 +7679,14 @@ def _update_bullets_and_collisions(now_ms):
             changed = True
             continue
 
-        dx = bx - fight_heart_x
-        dy = by - fight_heart_y
-        if can_take_damage and (dx * dx + dy * dy) <= hit_r2:
-            player_hp -= 1
-            battle_status_dirty = True
-            damage_invuln_until_ms = time.ticks_add(now_ms, DAMAGE_INVULN_MS)
-            can_take_damage = False
-            changed = True
-            if player_hp <= 0:
-                player_hp = PLAYER_HP_MAX
-                bullets = []
-                _exit_battle_to_explore()
-                return True
+        if _battle_circle_hits_heart(bx, by, BULLET_R):
+            if _battle_try_take_damage(now_ms):
+                changed = True
+                if mode != MODE_BATTLE_FIGHT:
+                    return True
+            else:
+                kept.append(b)
+                changed = True
             continue
 
         kept.append(b)
@@ -7538,6 +7696,272 @@ def _update_bullets_and_collisions(now_ms):
         changed = True
     bullets = kept
     return changed
+
+
+def _spawn_gloombell_bullet(now_ms):
+    global next_bullet_spawn_ms, bullets
+
+    if time.ticks_diff(now_ms, next_bullet_spawn_ms) < 0:
+        return False
+
+    min_x, max_x, min_y, _ = _battle_circle_bounds(BULLET_R)
+    sx = _rand_range(min_x, max_x)
+    bullets.append([sx << BULLET_FP_SHIFT, min_y << BULLET_FP_SHIFT, sx << BULLET_FP_SHIFT, _rand_u32() & 0x1F])
+    next_bullet_spawn_ms = time.ticks_add(now_ms, PATTERN_GLOOMBELL_SPAWN_MS)
+    return True
+
+
+def _update_gloombell_bullets(now_ms):
+    global bullets
+
+    min_x, max_x, _, max_y = _battle_circle_bounds(BULLET_R)
+    changed = False
+    kept = []
+
+    for b in bullets:
+        b[1] += PATTERN_GLOOMBELL_FALL_SPEED_PX << BULLET_FP_SHIFT
+        b[3] = (b[3] + 1) & 0x1F
+        bx = (b[2] >> BULLET_FP_SHIFT) + _battle_sway_offset_px(PATTERN_GLOOMBELL_SWAY_AMPLITUDE_PX, b[3])
+        bx = _clamp(bx, min_x, max_x)
+        by = b[1] >> BULLET_FP_SHIFT
+        b[0] = bx << BULLET_FP_SHIFT
+        if by > max_y:
+            changed = True
+            continue
+
+        if _battle_circle_hits_heart(bx, by, BULLET_R):
+            if _battle_try_take_damage(now_ms):
+                changed = True
+                if mode != MODE_BATTLE_FIGHT:
+                    return True
+            else:
+                kept.append(b)
+                changed = True
+            continue
+
+        kept.append(b)
+        changed = True
+
+    if len(kept) != len(bullets):
+        changed = True
+    bullets = kept
+    return changed
+
+
+def _spawn_mimistitch_wave(now_ms):
+    global next_bullet_spawn_ms, bullets, mimistitch_wave_from_left
+
+    if time.ticks_diff(now_ms, next_bullet_spawn_ms) < 0:
+        return False
+
+    min_x, max_x, min_y, max_y = _battle_circle_bounds(BULLET_R)
+    span = (PATTERN_MIMISTITCH_WAVE_COUNT - 1) * PATTERN_MIMISTITCH_WAVE_SPACING_PX
+    start_y = ((min_y + max_y) // 2) - (span // 2)
+    vx_fp = 1 << BULLET_FP_SHIFT
+    if not mimistitch_wave_from_left:
+        vx_fp = -vx_fp
+    vy_fp = 1 << BULLET_FP_SHIFT
+    sx = min_x if mimistitch_wave_from_left else max_x
+
+    for i in range(PATTERN_MIMISTITCH_WAVE_COUNT):
+        sy = start_y + (i * PATTERN_MIMISTITCH_WAVE_SPACING_PX)
+        sy = _clamp(sy, min_y, max_y)
+        bullets.append([sx << BULLET_FP_SHIFT, sy << BULLET_FP_SHIFT, vx_fp, vy_fp])
+
+    mimistitch_wave_from_left = not mimistitch_wave_from_left
+    next_bullet_spawn_ms = time.ticks_add(now_ms, PATTERN_MIMISTITCH_WAVE_MS)
+    return True
+
+
+def _spawn_mushmuse_bullet(now_ms):
+    global next_bullet_spawn_ms, bullets
+
+    if time.ticks_diff(now_ms, next_bullet_spawn_ms) < 0:
+        return False
+
+    min_x, max_x, min_y, max_y = _battle_circle_bounds(BULLET_R)
+    sx = _rand_range(min_x, max_x)
+    pause_trigger_y = 0
+    pause_locked = 1
+    if (_rand_u32() % PATTERN_MUSHMUSE_PAUSE_CHANCE_DENOM) == 0:
+        trigger_lo = min_y + 24
+        trigger_hi = max_y - 40
+        if trigger_hi < trigger_lo:
+            trigger_hi = trigger_lo
+        pause_trigger_y = _rand_range(trigger_lo, trigger_hi)
+        pause_locked = 0
+    bullets.append(
+        [
+            sx << BULLET_FP_SHIFT,
+            min_y << BULLET_FP_SHIFT,
+            sx << BULLET_FP_SHIFT,
+            _rand_u32() & 0x1F,
+            0,
+            pause_trigger_y,
+            0,
+            0,
+            pause_locked,
+        ]
+    )
+    next_bullet_spawn_ms = time.ticks_add(now_ms, PATTERN_MUSHMUSE_SPAWN_MS)
+    return True
+
+
+def _update_mushmuse_bullets(now_ms):
+    global bullets
+
+    min_x, max_x, _, max_y = _battle_circle_bounds(BULLET_R)
+    changed = False
+    kept = []
+
+    for b in bullets:
+        if b[7]:
+            if time.ticks_diff(now_ms, b[6]) >= 0:
+                b[7] = 0
+            else:
+                kept.append(b)
+                changed = True
+                continue
+        elif (not b[8]) and b[5] and ((b[1] >> BULLET_FP_SHIFT) >= b[5]):
+            b[6] = time.ticks_add(now_ms, _rand_range(PATTERN_MUSHMUSE_PAUSE_MIN_MS, PATTERN_MUSHMUSE_PAUSE_MAX_MS))
+            b[7] = 1
+            b[8] = 1
+            kept.append(b)
+            changed = True
+            continue
+        else:
+            b[1] += PATTERN_MUSHMUSE_FALL_SPEED_PX << BULLET_FP_SHIFT
+            b[4] += 1
+            if b[4] >= 2:
+                b[4] = 0
+                b[3] = (b[3] + 1) & 0x1F
+
+        bx = (b[2] >> BULLET_FP_SHIFT) + _battle_sway_offset_px(PATTERN_MUSHMUSE_SWAY_AMPLITUDE_PX, b[3])
+        bx = _clamp(bx, min_x, max_x)
+        by = b[1] >> BULLET_FP_SHIFT
+        b[0] = bx << BULLET_FP_SHIFT
+        if by > max_y:
+            changed = True
+            continue
+
+        if _battle_circle_hits_heart(bx, by, BULLET_R):
+            if _battle_try_take_damage(now_ms):
+                changed = True
+                if mode != MODE_BATTLE_FIGHT:
+                    return True
+            else:
+                kept.append(b)
+                changed = True
+            continue
+
+        kept.append(b)
+        changed = True
+
+    if len(kept) != len(bullets):
+        changed = True
+    bullets = kept
+    return changed
+
+
+def _spawn_cyclobot_laser(now_ms):
+    global next_bullet_spawn_ms, battle_lasers, cyclobot_next_horizontal
+
+    if time.ticks_diff(now_ms, next_bullet_spawn_ms) < 0:
+        return False
+
+    min_x, max_x, min_y, max_y = _battle_inner_bounds()
+    half_thickness = PATTERN_CYCLOBOT_ACTIVE_THICKNESS_PX // 2
+    if cyclobot_next_horizontal:
+        lo = min_y + half_thickness
+        hi = max_y - half_thickness
+        pos = _rand_range(lo, hi if hi >= lo else lo)
+        orient = PATTERN_CYCLOBOT_DIR_HORIZONTAL
+    else:
+        lo = min_x + half_thickness
+        hi = max_x - half_thickness
+        pos = _rand_range(lo, hi if hi >= lo else lo)
+        orient = PATTERN_CYCLOBOT_DIR_VERTICAL
+
+    active_at_ms = time.ticks_add(now_ms, PATTERN_CYCLOBOT_WARNING_MS)
+    expire_ms = time.ticks_add(active_at_ms, PATTERN_CYCLOBOT_ACTIVE_MS)
+    battle_lasers.append([orient, pos, active_at_ms, expire_ms, 0])
+    cyclobot_next_horizontal = not cyclobot_next_horizontal
+    next_bullet_spawn_ms = time.ticks_add(now_ms, PATTERN_CYCLOBOT_SPAWN_MS)
+    return True
+
+
+def _laser_draw_rect(laser):
+    min_x, max_x, min_y, max_y = _battle_inner_bounds()
+    thickness = PATTERN_CYCLOBOT_WARNING_THICKNESS_PX
+    if laser[4]:
+        thickness = PATTERN_CYCLOBOT_ACTIVE_THICKNESS_PX
+    half = thickness // 2
+    if laser[0] == PATTERN_CYCLOBOT_DIR_HORIZONTAL:
+        return min_x, laser[1] - half, max_x - min_x + 1, thickness
+    return laser[1] - half, min_y, thickness, max_y - min_y + 1
+
+
+def _get_laser_draw_rects():
+    out = []
+    for laser in battle_lasers:
+        out.append(_laser_draw_rect(laser))
+    return out
+
+
+def _erase_prev_lasers():
+    for x, y, w, h in battle_prev_laser_rects:
+        _fill_rect_solid(x, y, w, h, 0x0000)
+
+
+def _draw_battle_lasers():
+    for laser in battle_lasers:
+        color = BATTLE_COLOR_WHITE
+        if laser[4]:
+            color = BATTLE_COLOR_RED
+        x, y, w, h = _laser_draw_rect(laser)
+        _fill_rect_solid(x, y, w, h, color)
+
+
+def _update_cyclobot_lasers(now_ms):
+    global battle_lasers
+
+    changed = False
+    kept = []
+
+    for laser in battle_lasers:
+        if time.ticks_diff(now_ms, laser[3]) >= 0:
+            changed = True
+            continue
+        if (not laser[4]) and time.ticks_diff(now_ms, laser[2]) >= 0:
+            laser[4] = 1
+            changed = True
+        if laser[4]:
+            x, y, w, h = _laser_draw_rect(laser)
+            if _battle_rect_hits_heart(x, y, w, h):
+                _battle_try_take_damage(now_ms)
+                if mode != MODE_BATTLE_FIGHT:
+                    return True
+        kept.append(laser)
+
+    if len(kept) != len(battle_lasers):
+        changed = True
+    battle_lasers = kept
+    return changed
+
+
+def _update_enemy_fight_pattern(now_ms):
+    pattern = _battle_enemy_fight_pattern()
+    if pattern == FIGHT_PATTERN_GLOOMBELL:
+        return _spawn_gloombell_bullet(now_ms), _update_gloombell_bullets(now_ms), False
+    if pattern == FIGHT_PATTERN_MIMISTITCH:
+        return _spawn_mimistitch_wave(now_ms), _update_bullets_and_collisions(now_ms), False
+    if pattern == FIGHT_PATTERN_MUSHMUSE:
+        return _spawn_mushmuse_bullet(now_ms), _update_mushmuse_bullets(now_ms), False
+    if pattern == FIGHT_PATTERN_CYCLOBOT:
+        spawned = _spawn_cyclobot_laser(now_ms)
+        changed = _update_cyclobot_lasers(now_ms)
+        return False, False, spawned or changed
+    return _spawn_bullet_random_edge(now_ms), _update_bullets_and_collisions(now_ms), False
 
 
 def _draw_bullets():
@@ -8245,12 +8669,12 @@ def update_battle_attack(loop_start, fight_pressed):
 def update_battle_fight(loop_start):
     global mode, fight_heart_x, fight_heart_y
     global battle_menu_dirty, battle_dialog_visible, fight_return_deadline_ms
-    global battle_fight_dirty, battle_bullets_dirty, battle_status_dirty
+    global battle_fight_dirty, battle_bullets_dirty, battle_lasers_dirty, battle_status_dirty
     global battle_dialog_mode, mercy_exit_pending, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms
     global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
     global act_menu_active, act_nav_prev_dir
     global item_menu_active, item_nav_prev_dir
-    global bullets, next_bullet_spawn_ms, damage_invuln_until_ms, battle_prev_bullet_positions
+    global battle_prev_bullet_positions, battle_prev_laser_rects
 
     if _map1_story_is_active():
         _map1_story_update_fight(loop_start)
@@ -8263,11 +8687,9 @@ def update_battle_fight(loop_start):
         battle_menu_full_clear_pending = True
         battle_menu_static_ready = False
         battle_menu_prev_dialog_active = False
-        bullets = []
-        next_bullet_spawn_ms = 0
-        damage_invuln_until_ms = 0
+        _clear_battle_projectile_state()
         battle_prev_bullet_positions = []
-        battle_bullets_dirty = False
+        battle_prev_laser_rects = []
         battle_status_dirty = True
         battle_dialog_mode = BATTLE_DIALOG_NONE
         _battle_clear_dialog_image()
@@ -8295,11 +8717,11 @@ def update_battle_fight(loop_start):
     fight_heart_x = _clamp(fight_heart_x, battle_heart_min_x, battle_heart_max_x)
     fight_heart_y = _clamp(fight_heart_y, battle_heart_min_y, battle_heart_max_y)
 
-    spawned = _spawn_bullet_random_edge(loop_start)
-    changed = _update_bullets_and_collisions(loop_start)
+    spawned, changed, laser_changed = _update_enemy_fight_pattern(loop_start)
     if mode != MODE_BATTLE_FIGHT:
         return
     battle_bullets_dirty = spawned or changed or bool(bullets)
+    battle_lasers_dirty = laser_changed
 
 
 def draw_all(loop_start):
@@ -8310,6 +8732,7 @@ def draw_all(loop_start):
     global battle_prev_heart_x, battle_prev_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
     global battle_bullets_dirty, battle_prev_bullet_positions
+    global battle_lasers_dirty, battle_prev_laser_rects
     global battle_status_dirty, battle_attack_dirty
     global act_selection_dirty, act_prev_selected_index
     global item_selection_dirty
@@ -8421,18 +8844,24 @@ def draw_all(loop_start):
     moved = (fight_heart_x != battle_prev_heart_x) or (fight_heart_y != battle_prev_heart_y)
     can_draw_png = hasattr(lgfx, "draw_png_file")
 
-    if not battle_fight_dirty and not moved and not battle_bullets_dirty and not battle_status_dirty:
+    if not battle_fight_dirty and not moved and not battle_bullets_dirty and not battle_lasers_dirty and not battle_status_dirty:
         return
 
     if battle_fight_dirty:
         _draw_battle_fight_background()
         _draw_bullets()
+        _draw_battle_lasers()
     else:
+        redraw_projectiles = battle_bullets_dirty or battle_lasers_dirty or moved
+        if battle_lasers_dirty:
+            _erase_prev_lasers()
         if battle_bullets_dirty:
             _erase_prev_bullets()
-            _draw_bullets()
         if moved:
             lgfx.draw_circle(battle_prev_heart_x, battle_prev_heart_y, BATTLE_HEART_ERASE_R, 0x0000)
+        if redraw_projectiles:
+            _draw_bullets()
+            _draw_battle_lasers()
 
     # Keep one rendering path in fight mode to avoid rapid visual toggling.
     use_png_heart = can_draw_png and BATTLE_HEART_USE_PNG_ON_MOVE
@@ -8453,7 +8882,9 @@ def draw_all(loop_start):
     battle_prev_heart_x = fight_heart_x
     battle_prev_heart_y = fight_heart_y
     battle_prev_bullet_positions = _get_bullet_positions()
+    battle_prev_laser_rects = _get_laser_draw_rects()
     battle_bullets_dirty = False
+    battle_lasers_dirty = False
     battle_fight_dirty = False
 
 def _run_main_loop():
