@@ -907,11 +907,12 @@ DEATH_BASE_BLUE = 0x0016
 DEATH_SCANLINE_COLOR = 0x0010
 DEATH_BAND_COLORS = (0x01B8, 0x021F, 0x033F)
 DEATH_GLITCH_COLORS = (0xFFFF, 0xF81F, 0x07FF, 0xFD20)
+DEATH_RENDER_STEP_MS = 90
 DEATH_PROGRESS_SLOTS = 10
 DEATH_PROGRESS_STEP_MS = 300
-DEATH_PROGRESS_X = 104
-DEATH_PROGRESS_Y = 112
-DEATH_PROGRESS_GAP_PX = 10
+DEATH_PROGRESS_X = 98
+DEATH_PROGRESS_Y = 137
+DEATH_PROGRESS_GAP_PX = 8
 LEAF_BATTLE_RECT_PX = (128, 304, 96, 64)
 MAP1_OPENING_BATTLE_DELAY_MS = 5000
 # Expand to cover the full triple-lamp poles and nearby interaction area.
@@ -2986,6 +2987,8 @@ def _init_runtime_state():
     global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
     global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
+    global death_screen_full_redraw
+    global death_render_tick
     global death_screen_png_loaded, death_screen_path, death_progress_count, death_progress_next_ms, death_title_reset_pending
     global death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count, death_battle_cleanup_pending
     adc_x = ADC(Pin(JOY_X_PIN))
@@ -3211,6 +3214,8 @@ def _init_runtime_state():
     death_glitch_seed = (time.ticks_ms() | 1) & 0x7FFFFFFF
     death_glitch_state = []
     death_glitch_next_ms = 0
+    death_screen_full_redraw = False
+    death_render_tick = -1
     death_screen_png_loaded = False
     death_screen_path = _resolve_first_existing_path(DEATH_SCREEN_PATHS)
     death_progress_count = 0
@@ -4049,13 +4054,29 @@ def _cleanup_battle_native_assets_after_death():
 
 def _death_try_load_png(loop_start):
     global death_screen_png_loaded, death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count
+    global death_screen_dirty
 
     if death_screen_png_loaded or (not death_screen_load_pending):
         return
-    death_screen_png_loaded = False
     death_screen_load_pending = False
     death_screen_load_retry_ms = 0
     death_screen_load_fail_count = 0
+    if (not death_screen_path) or (not _path_exists(death_screen_path)):
+        death_screen_png_loaded = False
+        return
+    if not (
+        hasattr(lgfx, "png_slot_load_file")
+        and hasattr(lgfx, "png_slot_draw")
+        and hasattr(lgfx, "png_slot_release")
+    ):
+        death_screen_png_loaded = False
+        return
+    try:
+        death_screen_png_loaded = bool(lgfx.png_slot_load_file(BATTLE_SLOT_DEATH_SCREEN, death_screen_path))
+    except Exception as err:
+        print("death_screen_load_fail:", err)
+        death_screen_png_loaded = False
+    death_screen_dirty = True
 
 
 def _draw_death_progress_star(x, y, color):
@@ -4069,6 +4090,23 @@ def _draw_death_progress_star(x, y, color):
     _fill_rect_solid(x + 6, y + 6, 1, 1, color)
     _fill_rect_solid(x + 1, y + 7, 1, 1, color)
     _fill_rect_solid(x + 7, y + 7, 1, 1, color)
+
+
+def _death_progress_count_for_time(loop_start):
+    elapsed_ms = time.ticks_diff(loop_start, death_screen_started_ms)
+    if elapsed_ms <= 0:
+        return 0
+    count = elapsed_ms // DEATH_PROGRESS_STEP_MS
+    if count >= DEATH_PROGRESS_SLOTS:
+        return DEATH_PROGRESS_SLOTS
+    return count
+
+
+def _death_render_tick_for_time(loop_start):
+    elapsed_ms = time.ticks_diff(loop_start, death_screen_started_ms)
+    if elapsed_ms <= 0:
+        return 0
+    return elapsed_ms // DEATH_RENDER_STEP_MS
 
 
 def _start_new_game_from_title():
@@ -4136,79 +4174,90 @@ def update_title_menu(loop_start, interact_pressed):
 
 
 def _draw_death_screen(loop_start, full_redraw):
+    global death_screen_png_loaded
+
     if hasattr(lgfx, "set_brightness"):
-        phase = (time.ticks_diff(loop_start, death_screen_started_ms) // DEATH_FLICKER_STEP_MS) % len(SWAY_SIN_TABLE)
-        brightness = 224 + (((SWAY_SIN_TABLE[phase] + SWAY_SIN_SCALE) * 24) // (SWAY_SIN_SCALE * 2))
-        if brightness < 208:
-            brightness = 208
-        elif brightness > 248:
-            brightness = 248
-        lgfx.set_brightness(brightness)
+        lgfx.set_brightness(255)
 
-    _fill_rect_solid(0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H, DEATH_BASE_BLUE)
+    if full_redraw:
+        render_tick = death_render_tick
+        if render_tick < 0:
+            render_tick = 0
+        drew_png = False
+        if death_screen_png_loaded and hasattr(lgfx, "png_slot_draw"):
+            try:
+                drew_png = bool(lgfx.png_slot_draw(BATTLE_SLOT_DEATH_SCREEN, 0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H))
+            except Exception as err:
+                print("death_screen_draw_fail:", err)
+                death_screen_png_loaded = False
+                drew_png = False
+        if not drew_png:
+            _fill_rect_solid(0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H, DEATH_BASE_BLUE)
+            yy = render_tick % DEATH_SCANLINE_GAP
+            while yy < ACTIVE_VIEW_H:
+                lgfx.draw_rect(0, yy, ACTIVE_VIEW_W, 1, DEATH_SCANLINE_COLOR)
+                yy += DEATH_SCANLINE_GAP
 
-    scan_offset = (time.ticks_diff(loop_start, death_screen_started_ms) // 60) % DEATH_SCANLINE_GAP
-    yy = scan_offset
-    while yy < ACTIVE_VIEW_H:
-        lgfx.draw_rect(0, yy, ACTIVE_VIEW_W, 1, DEATH_SCANLINE_COLOR)
-        yy += DEATH_SCANLINE_GAP
+            flow_base_y = (
+                26 + ((render_tick * 3) % 28),
+                96 + ((render_tick * 2) % 32),
+                168 + ((render_tick * 4) % 24),
+            )
+            for i in range(len(flow_base_y)):
+                band_y = flow_base_y[i]
+                band_h = 2 + ((render_tick + i) % 3)
+                band_color = DEATH_BAND_COLORS[i % len(DEATH_BAND_COLORS)]
+                if band_y < ACTIVE_VIEW_H:
+                    _fill_rect_solid(0, band_y, ACTIVE_VIEW_W, band_h, band_color)
+                    lgfx.draw_rect(0, band_y + band_h - 1, ACTIVE_VIEW_W, 1, 0x07FF)
+                echo_y = band_y - 34
+                if echo_y >= 0:
+                    lgfx.draw_rect(0, echo_y, ACTIVE_VIEW_W, 1, DEATH_SCANLINE_COLOR)
 
-    phase_base = time.ticks_diff(loop_start, death_screen_started_ms) // 40
-    band_count = len(DEATH_BAND_COLORS)
-    for i in range(band_count):
-        band_phase = phase_base + (i * 9)
-        center_y = ((ACTIVE_VIEW_H * (i + 1)) // (band_count + 1)) + _battle_sway_offset_px(18 + (i * 4), band_phase)
-        band_h = 3 + ((band_phase + i) & 0x03)
-        band_y = center_y - (band_h // 2)
-        if band_y < 0:
-            band_h += band_y
-            band_y = 0
-        if band_y + band_h > ACTIVE_VIEW_H:
-            band_h = ACTIVE_VIEW_H - band_y
-        if band_h <= 0:
-            continue
-        _fill_rect_solid(0, band_y, ACTIVE_VIEW_W, band_h, DEATH_BAND_COLORS[i])
-        highlight_y = band_y + band_h - 1
-        if highlight_y >= 0 and highlight_y < ACTIVE_VIEW_H:
-            lgfx.draw_rect(0, highlight_y, ACTIVE_VIEW_W, 1, 0x07FF)
-
-    for x, y, w, h, color in death_glitch_state:
-        if x < 0:
-            w += x
-            x = 0
-        if y < 0:
-            h += y
-            y = 0
-        if x >= ACTIVE_VIEW_W or y >= ACTIVE_VIEW_H:
-            continue
-        if x + w > ACTIVE_VIEW_W:
-            w = ACTIVE_VIEW_W - x
-        if y + h > ACTIVE_VIEW_H:
-            h = ACTIVE_VIEW_H - y
-        if w <= 0 or h <= 0:
-            continue
-        _fill_rect_solid(x, y, w, h, color)
-
+        for segment in death_glitch_state:
+            gx, gy, gw, gh, gcolor = segment
+            if gw <= 0 or gh <= 0 or gy >= ACTIVE_VIEW_H:
+                continue
+            if gx < 0:
+                gw += gx
+                gx = 0
+            if gx >= ACTIVE_VIEW_W or gw <= 0:
+                continue
+            if gx + gw > ACTIVE_VIEW_W:
+                gw = ACTIVE_VIEW_W - gx
+            y_end = gy + gh
+            if y_end > ACTIVE_VIEW_H:
+                y_end = ACTIVE_VIEW_H
+            if gy < 0:
+                gy = 0
+            while gy < y_end:
+                lgfx.draw_rect(gx, gy, gw, 1, gcolor)
+                gy += 1
 
     if death_progress_count > 0:
-        _fill_rect_solid(DEATH_PROGRESS_X - 2, DEATH_PROGRESS_Y - 1, (DEATH_PROGRESS_SLOTS * DEATH_PROGRESS_GAP_PX) + 6, 11, DEATH_BASE_BLUE)
         for i in range(death_progress_count):
             _draw_death_progress_star(DEATH_PROGRESS_X + (i * DEATH_PROGRESS_GAP_PX), DEATH_PROGRESS_Y, BATTLE_COLOR_WHITE)
 
 
 def update_death_screen(loop_start, exit_pressed):
-    global death_screen_dirty, death_progress_count, death_progress_next_ms, death_battle_cleanup_pending
+    global death_screen_dirty, death_progress_count, death_progress_next_ms, death_render_tick
 
-    if death_battle_cleanup_pending:
-        _cleanup_battle_native_assets_after_death()
-        death_screen_dirty = True
-    else:
-        _death_try_load_png(loop_start)
-    _death_refresh_glitch_state(loop_start)
-    death_screen_dirty = True
-    while death_progress_count < DEATH_PROGRESS_SLOTS and time.ticks_diff(loop_start, death_progress_next_ms) >= 0:
-        death_progress_count += 1
-        death_progress_next_ms = time.ticks_add(death_progress_next_ms, DEATH_PROGRESS_STEP_MS)
+    _death_try_load_png(loop_start)
+    redraw_needed = False
+    render_tick = _death_render_tick_for_time(loop_start)
+    if render_tick != death_render_tick:
+        death_render_tick = render_tick
+        _death_refresh_glitch_state(loop_start)
+        redraw_needed = True
+    progress_count = _death_progress_count_for_time(loop_start)
+    if progress_count != death_progress_count:
+        death_progress_count = progress_count
+        death_progress_next_ms = time.ticks_add(
+            death_screen_started_ms,
+            (death_progress_count + 1) * DEATH_PROGRESS_STEP_MS,
+        )
+        redraw_needed = True
+    death_screen_dirty = redraw_needed
     if death_progress_count >= DEATH_PROGRESS_SLOTS:
         _return_to_title_from_death()
 
@@ -7562,6 +7611,7 @@ def _enter_death_screen(now_ms):
     global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
     global fight_return_deadline_ms
     global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
+    global death_render_tick
     global death_screen_path, death_screen_png_loaded, death_progress_count, death_progress_next_ms
     global death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count, death_battle_cleanup_pending
 
@@ -7586,9 +7636,10 @@ def _enter_death_screen(now_ms):
     death_glitch_seed = ((_rand_u32() ^ now_ms) | 1) & 0x7FFFFFFF
     death_glitch_state = []
     death_glitch_next_ms = 0
+    death_render_tick = -1
     death_progress_count = 0
     death_progress_next_ms = time.ticks_add(now_ms, DEATH_PROGRESS_STEP_MS)
-    death_screen_load_pending = False
+    death_screen_load_pending = True
     death_screen_load_retry_ms = 0
     death_screen_load_fail_count = 0
     death_battle_cleanup_pending = True
@@ -7605,9 +7656,13 @@ def _return_to_title_from_death():
     global title_notice_until_ms, title_notice_text, title_dirty, title_full_redraw, title_cover_drew_png
     global explore_force_full_redraw, spawn_intro_needs_redraw
     global death_screen_dirty, death_glitch_state, death_glitch_next_ms, death_progress_count, death_progress_next_ms
+    global death_render_tick
     global death_title_reset_pending, death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count
+    global death_battle_cleanup_pending
 
     _release_death_screen_slot()
+    _cleanup_battle_native_assets_after_death()
+    death_battle_cleanup_pending = False
     if hasattr(lgfx, "set_brightness"):
         lgfx.set_brightness(255)
     player_hp = PLAYER_HP_MAX
@@ -7625,6 +7680,7 @@ def _return_to_title_from_death():
     death_screen_dirty = False
     death_glitch_state = []
     death_glitch_next_ms = 0
+    death_render_tick = -1
     death_progress_count = 0
     death_progress_next_ms = 0
     death_screen_load_pending = False
@@ -9048,8 +9104,9 @@ def draw_all(loop_start):
         return
 
     if mode == MODE_DEATH_SCREEN:
-        _draw_death_screen(loop_start, death_screen_dirty)
-        death_screen_dirty = False
+        if death_screen_dirty:
+            _draw_death_screen(loop_start, True)
+            death_screen_dirty = False
         return
 
     if mode == MODE_EXPLORE:
