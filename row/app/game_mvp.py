@@ -1586,6 +1586,8 @@ portal_transition_rearm_portal_ref = None
 gc_pending = False
 gc_last_run_ms = 0
 gc_suspend_until_ms = 0
+interact_hint_prev_signature = None
+interact_hint_prev_phase = -1
 
 SLOT_ROLE_NONE = 0
 SLOT_ROLE_BACK = 1
@@ -1631,6 +1633,11 @@ ITEM_HEAL_TEST = {
 WOOD_RIGHT_WEAPON_PICKUP_RADIUS = 18
 GROUND_WEAPON_PICKUP_RADIUS = 10
 GROUND_DROP_MARKER_R = 2
+INTERACT_HINT_PHASE_MS = 120
+INTERACT_HINT_PHASE_STEPS = 8
+INTERACT_HINT_RECT_PAD_PX = 48
+INTERACT_HINT_CIRCLE_PAD_PX = 32
+INTERACT_HINT_MAX = 6
 
 WEAPON_KNIFE = {
     "id": "weapon_knife",
@@ -2689,6 +2696,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     }
     fail_stage = None
     total_start = time.ticks_ms()
+    _clear_interact_hints()
 
     def _print_switch_timings():
         print("resolve_base_ms:", phase["resolve_base_ms"])
@@ -2986,6 +2994,7 @@ def _init_runtime_state():
     global portal_transition_switch_fail_count
     global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
+    global interact_hint_prev_signature, interact_hint_prev_phase
     global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
     global death_screen_full_redraw
     global death_render_tick
@@ -3209,6 +3218,8 @@ def _init_runtime_state():
     map6_boss_battle_active = False
     map6_boss_anim_seq_index = 0
     map6_boss_anim_last_ms = time.ticks_ms()
+    interact_hint_prev_signature = None
+    interact_hint_prev_phase = -1
     death_screen_started_ms = 0
     death_screen_dirty = False
     death_glitch_seed = (time.ticks_ms() | 1) & 0x7FFFFFFF
@@ -3457,6 +3468,7 @@ def _portal_transition_start(portal):
     preload_release_due_ms = 0
     preload_last_build_ms = 0
     preload_suspend_until_ms = 0
+    _clear_interact_hints()
     portal_transition_active = True
     portal_transition_started_ms = time.ticks_ms()
     portal_transition_stage = "shrink"
@@ -4123,6 +4135,7 @@ def _start_new_game_from_title():
         _init_runtime_state()
         death_title_reset_pending = False
 
+    _clear_interact_hints()
     mode = MODE_EXPLORE
     explore_force_full_redraw = True
     spawn_intro_needs_redraw = spawn_intro_active
@@ -4268,6 +4281,7 @@ def _open_explore_inventory():
     global inv_tab_index, inv_tab_active, inv_tab_nav_prev_dir
     global inv_focus_side, inv_focus_nav_prev_dir
 
+    _clear_interact_hints()
     mode = MODE_EXPLORE_INVENTORY
     inv_choice_index = inventory_clamp_index(inv_choice_index)
     inv_nav_prev_dir = 0
@@ -4300,6 +4314,7 @@ def _close_explore_inventory():
     inv_focus_side = INV_FOCUS_LEFT
     inv_focus_nav_prev_dir = 0
     inv_screen_dirty = True
+    _reset_interact_hint_state()
 
 
 def _draw_explore_inventory_screen():
@@ -4656,6 +4671,182 @@ def _player_touches_rect(rect, pad=0):
     return _rects_intersect(px, py, pw, ph, rx, ry, rw, rh)
 
 
+def _has_interact_hint_api():
+    return (
+        hasattr(lgfx, "interact_hint_begin")
+        and hasattr(lgfx, "interact_hint_rect")
+        and hasattr(lgfx, "interact_hint_circle")
+        and hasattr(lgfx, "interact_hint_end")
+        and hasattr(lgfx, "interact_hint_clear")
+    )
+
+
+def _reset_interact_hint_state():
+    global interact_hint_prev_signature, interact_hint_prev_phase
+    interact_hint_prev_signature = None
+    interact_hint_prev_phase = -1
+
+
+def _clear_interact_hints():
+    if _has_interact_hint_api():
+        try:
+            lgfx.interact_hint_clear()
+        except Exception as err:
+            print("interact_hint_clear_fail:", err)
+    _reset_interact_hint_state()
+
+
+def _interact_hint_circle_contains(px, py, cx, cy, r):
+    dx = cx - px
+    dy = cy - py
+    return (dx * dx) + (dy * dy) <= (r * r)
+
+
+def _collect_interact_hints():
+    hints = []
+
+    if current_map_id == MAP1_ID and _in_rect(player_x, player_y, _expand_rect(LAMP_INTERACT_RECT_PX, INTERACT_HINT_RECT_PAD_PX)):
+        x, y, w, h = LAMP_INTERACT_RECT_PX
+        hints.append(
+            {
+                "kind": "rect",
+                "slot_key": "lamp_map1",
+                "world_x": x,
+                "world_y": y,
+                "world_w": w,
+                "world_h": h,
+            }
+        )
+
+    if current_map_id == WOOD_RIGHT_ID:
+        for rack in WOOD_RIGHT_WEAPON_RACKS:
+            pickup_id = rack.get("pickup_id")
+            if rack_pickup_taken.get(pickup_id):
+                continue
+            rect = rack.get("rect", (0, 0, 0, 0))
+            if not _in_rect(player_x, player_y, _expand_rect(rect, INTERACT_HINT_RECT_PAD_PX)):
+                continue
+            x, y, w, h = rect
+            hints.append(
+                {
+                    "kind": "rect",
+                    "slot_key": "rack:%s" % pickup_id,
+                    "world_x": x,
+                    "world_y": y,
+                    "world_w": w,
+                    "world_h": h,
+                }
+            )
+
+    show_radius = GROUND_WEAPON_PICKUP_RADIUS + INTERACT_HINT_CIRCLE_PAD_PX
+    for drop in ground_weapon_drops:
+        if drop.get("map_id") != current_map_id:
+            continue
+        cx = int(drop.get("x", 0))
+        cy = int(drop.get("y", 0))
+        if not _interact_hint_circle_contains(player_x, player_y, cx, cy, show_radius):
+            continue
+        hints.append(
+            {
+                "kind": "circle",
+                "slot_key": "ground:%s" % drop.get("id"),
+                "world_cx": cx,
+                "world_cy": cy,
+                "world_r": GROUND_WEAPON_PICKUP_RADIUS,
+            }
+        )
+
+    hints.sort(key=lambda hint: hint["slot_key"])
+    if len(hints) > INTERACT_HINT_MAX:
+        hints = hints[:INTERACT_HINT_MAX]
+    return hints
+
+
+def _interact_hints_paused(loop_start):
+    if mode != MODE_EXPLORE:
+        return True
+    if spawn_intro_active or portal_transition_active or weapon_pickup_dialog_active:
+        return True
+    return time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0
+
+
+def _update_interact_hint_overlay(loop_start, scene_redrawn, player_redrawn):
+    global interact_hint_prev_signature, interact_hint_prev_phase
+
+    if not _has_interact_hint_api():
+        _reset_interact_hint_state()
+        return False
+
+    if _interact_hints_paused(loop_start):
+        if interact_hint_prev_signature is not None:
+            _clear_interact_hints()
+        return False
+
+    hints = _collect_interact_hints()
+    if not hints:
+        if interact_hint_prev_signature is not None:
+            _clear_interact_hints()
+        return False
+
+    phase = (loop_start // INTERACT_HINT_PHASE_MS) % INTERACT_HINT_PHASE_STEPS
+    screen_hints = []
+    for hint in hints:
+        kind = hint["kind"]
+        if kind == "rect":
+            screen_hints.append(
+                (
+                    kind,
+                    hint["slot_key"],
+                    hint["world_x"] - scroll_x,
+                    hint["world_y"] - scroll_y,
+                    hint["world_w"],
+                    hint["world_h"],
+                )
+            )
+        else:
+            screen_hints.append(
+                (
+                    kind,
+                    hint["slot_key"],
+                    hint["world_cx"] - scroll_x,
+                    hint["world_cy"] - scroll_y,
+                    hint["world_r"],
+                )
+            )
+    signature = tuple(screen_hints)
+    if (not scene_redrawn) and (not player_redrawn) and phase == interact_hint_prev_phase and signature == interact_hint_prev_signature:
+        return False
+
+    try:
+        lgfx.interact_hint_begin()
+        for slot_id, hint in enumerate(hints):
+            if hint["kind"] == "rect":
+                lgfx.interact_hint_rect(
+                    slot_id,
+                    hint["world_x"] - scroll_x,
+                    hint["world_y"] - scroll_y,
+                    hint["world_w"],
+                    hint["world_h"],
+                    phase,
+                )
+            else:
+                lgfx.interact_hint_circle(
+                    slot_id,
+                    hint["world_cx"] - scroll_x,
+                    hint["world_cy"] - scroll_y,
+                    hint["world_r"],
+                    phase,
+                )
+        lgfx.interact_hint_end()
+        interact_hint_prev_signature = signature
+        interact_hint_prev_phase = phase
+        return True
+    except Exception as err:
+        print("interact_hint_update_fail:", err)
+        _clear_interact_hints()
+        return False
+
+
 def _find_nearby_ground_weapon_drop():
     radius2 = GROUND_WEAPON_PICKUP_RADIUS * GROUND_WEAPON_PICKUP_RADIUS
     for i, drop in enumerate(ground_weapon_drops):
@@ -4709,6 +4900,7 @@ def _try_open_weapon_pickup_dialog():
                 "drop_id": drop.get("id"),
                 "item": item,
             }
+            _clear_interact_hints()
             weapon_pickup_dialog_active = True
             weapon_pickup_choice_index = 0
             weapon_pickup_nav_prev_dir = 0
@@ -4726,6 +4918,7 @@ def _try_open_weapon_pickup_dialog():
                 "pickup_id": rack.get("pickup_id"),
                 "item": item,
             }
+            _clear_interact_hints()
             weapon_pickup_dialog_active = True
             weapon_pickup_choice_index = 0
             weapon_pickup_nav_prev_dir = 0
@@ -4785,6 +4978,8 @@ def update_weapon_pickup_dialog(interact_pressed):
 
 
 def _draw_ground_weapon_drops():
+    if _has_interact_hint_api():
+        return
     for drop in ground_weapon_drops:
         if drop.get("map_id") != current_map_id:
             continue
@@ -7647,6 +7842,7 @@ def _enter_death_screen(now_ms):
     if not death_screen_path:
         death_screen_path = _resolve_first_existing_path(DEATH_SCREEN_PATHS)
     _release_death_screen_slot()
+    _clear_interact_hints()
     mode = MODE_DEATH_SCREEN
     _death_refresh_glitch_state(now_ms, True)
 
@@ -7687,6 +7883,7 @@ def _return_to_title_from_death():
     death_screen_load_retry_ms = 0
     death_screen_load_fail_count = 0
     death_title_reset_pending = True
+    _clear_interact_hints()
     _prime_button_edge_state()
     gc.collect()
 
@@ -7715,6 +7912,7 @@ def _exit_battle_to_explore():
     _scripted_battle_reset()
     _reset_battle_state()
     map6_boss_battle_active = False
+    _reset_interact_hint_state()
 
 
 def _clear_act_dialog_state(reset_sequence):
@@ -7759,6 +7957,7 @@ def _start_battle_from_explore(enemy_id=None):
     battle_menu_prev_dialog_active = False
     lamp_dialog_until_ms = 0
     explore_overlay_dirty = False
+    _clear_interact_hints()
     map6_boss_battle_active = enemy_id == "MAP6_BOSS"
     _set_current_battle_enemy(enemy_id)
     battle_assets.begin(_battle_enemy_id())
@@ -9095,8 +9294,11 @@ def draw_all(loop_start):
     global item_selection_dirty
     global inv_screen_dirty
     global weapon_pickup_dialog_active, weapon_pickup_dialog_dirty
+    global interact_hint_prev_signature
 
     if mode == MODE_TITLE_MENU:
+        if interact_hint_prev_signature is not None:
+            _clear_interact_hints()
         if title_dirty:
             _draw_title_menu_screen(loop_start, title_full_redraw)
             title_dirty = False
@@ -9104,6 +9306,8 @@ def draw_all(loop_start):
         return
 
     if mode == MODE_DEATH_SCREEN:
+        if interact_hint_prev_signature is not None:
+            _clear_interact_hints()
         if death_screen_dirty:
             _draw_death_screen(loop_start, True)
             death_screen_dirty = False
@@ -9160,6 +9364,7 @@ def draw_all(loop_start):
                 spawn_intro_needs_redraw = False
         _draw_ground_weapon_drops()
         _draw_map6_boss(loop_start, scene_redrawn, player_redrawn)
+        _update_interact_hint_overlay(loop_start, scene_redrawn, player_redrawn)
         if weapon_pickup_dialog_active:
             if weapon_pickup_dialog_dirty or scene_redrawn or player_redrawn:
                 _draw_weapon_pickup_dialog()
@@ -9392,6 +9597,7 @@ def _run_main_loop():
                         if _try_open_weapon_pickup_dialog():
                             pass
                         elif current_map_id == MAP1_ID and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
+                            _clear_interact_hints()
                             lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)
                             # Mark as not drawn yet so the dialog appears immediately this frame.
                             explore_overlay_dirty = False

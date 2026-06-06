@@ -218,6 +218,24 @@ extern "C" void lgfx_enemy_draw_impl(int x, int y) {
   (void)x;
   (void)y;
 }
+extern "C" void lgfx_interact_hint_begin_impl(void) {}
+extern "C" void lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, int h, int phase_step) {
+  (void)slot_id;
+  (void)x;
+  (void)y;
+  (void)w;
+  (void)h;
+  (void)phase_step;
+}
+extern "C" void lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int r, int phase_step) {
+  (void)slot_id;
+  (void)cx;
+  (void)cy;
+  (void)r;
+  (void)phase_step;
+}
+extern "C" void lgfx_interact_hint_end_impl(void) {}
+extern "C" void lgfx_interact_hint_clear_impl(void) {}
 extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
   (void)path;
   (void)x;
@@ -507,6 +525,37 @@ static int render_compose_player_x = 0;
 static int render_compose_player_y = 0;
 static uint16_t render_compose_player_color = 0xF800;
 static int render_compose_player_radius = 3;
+
+constexpr int MAX_INTERACT_HINTS = 6;
+
+enum InteractHintShape {
+  INTERACT_HINT_SHAPE_NONE = 0,
+  INTERACT_HINT_SHAPE_RECT = 1,
+  INTERACT_HINT_SHAPE_CIRCLE = 2,
+};
+
+struct InteractHintState {
+  bool valid = false;
+  int slot_id = -1;
+  int shape = INTERACT_HINT_SHAPE_NONE;
+  int x = 0;
+  int y = 0;
+  int w = 0;
+  int h = 0;
+  int p0 = 0;
+  int p1 = 0;
+  int p2 = 0;
+  int p3 = 0;
+  int phase = 0;
+  uint32_t scene_epoch = 0;
+};
+
+static InteractHintState interact_hint_prev[MAX_INTERACT_HINTS];
+static InteractHintState interact_hint_pending[MAX_INTERACT_HINTS];
+static int interact_hint_prev_count = 0;
+static int interact_hint_pending_count = 0;
+static uint32_t interact_hint_prev_scene_epoch = 0;
+static bool interact_hint_write_active = false;
 
 struct PlayerSpriteState {
   uint16_t *pixels = nullptr;
@@ -1300,6 +1349,7 @@ static void tile_free_buffers(void) {
   tile_state.active_slot_id = -1;
   player_overlay.valid = false;
   enemy_overlay.valid = false;
+  interact_hint_reset_storage();
 }
 
 static bool ensure_sprite_size(int w, int h, bool use_psram) {
@@ -1419,6 +1469,184 @@ static inline bool rect_intersects(int x0, int y0, int x1, int y1, int rx, int r
   int rx1 = rx + rw;
   int ry1 = ry + rh;
   return x0 < rx1 && x1 > rx && y0 < ry1 && y1 > ry;
+}
+
+static void push_rect_from_sprite_to_lcd_locked(int x, int y, int w, int h);
+static bool enemy_draw_sheet_frame(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h, bool has_active_write);
+static bool player_draw_sheet_frame(int center_x, int center_y, int *out_x, int *out_y, int *out_w, int *out_h, bool has_active_write);
+
+static void interact_hint_reset_storage(void) {
+  interact_hint_prev_count = 0;
+  interact_hint_pending_count = 0;
+  interact_hint_prev_scene_epoch = scene_epoch;
+  interact_hint_write_active = false;
+  for (int i = 0; i < MAX_INTERACT_HINTS; ++i) {
+    interact_hint_prev[i].valid = false;
+    interact_hint_pending[i].valid = false;
+  }
+}
+
+static int interact_hint_phase_wave(int phase_step) {
+  int phase = phase_step & 7;
+  return phase < 4 ? phase : 7 - phase;
+}
+
+static bool clip_rect_to_view(int *x, int *y, int *w, int *h) {
+  if (!x || !y || !w || !h) {
+    return false;
+  }
+  int nx = *x;
+  int ny = *y;
+  int nw = *w;
+  int nh = *h;
+  if (nw <= 0 || nh <= 0) {
+    return false;
+  }
+  if (nx < 0) {
+    nw += nx;
+    nx = 0;
+  }
+  if (ny < 0) {
+    nh += ny;
+    ny = 0;
+  }
+  if (nx + nw > tile_state.view_w) {
+    nw = tile_state.view_w - nx;
+  }
+  if (ny + nh > tile_state.view_h) {
+    nh = tile_state.view_h - ny;
+  }
+  if (nw <= 0 || nh <= 0) {
+    return false;
+  }
+  *x = nx;
+  *y = ny;
+  *w = nw;
+  *h = nh;
+  return true;
+}
+
+static void redraw_player_overlay_locked(void) {
+  if (!player_overlay.valid || player_overlay.scene_epoch != scene_epoch) {
+    return;
+  }
+  int draw_x = 0;
+  int draw_y = 0;
+  int draw_w = 0;
+  int draw_h = 0;
+  if (!player_draw_sheet_frame(player_overlay.center_x, player_overlay.center_y, &draw_x, &draw_y, &draw_w, &draw_h, true)) {
+    lcd.fillCircle(player_overlay.center_x, player_overlay.center_y, player_overlay.radius, player_overlay.color);
+  }
+}
+
+static void redraw_enemy_overlay_locked(void) {
+  if (!enemy_overlay.valid || enemy_overlay.scene_epoch != scene_epoch) {
+    return;
+  }
+  int draw_x = 0;
+  int draw_y = 0;
+  int draw_w = 0;
+  int draw_h = 0;
+  enemy_draw_sheet_frame(enemy_overlay.center_x, enemy_overlay.center_y, &draw_x, &draw_y, &draw_w, &draw_h, true);
+}
+
+static void interact_hint_restore_previous_locked(void) {
+  if (interact_hint_prev_count <= 0 || interact_hint_prev_scene_epoch != scene_epoch) {
+    interact_hint_prev_count = 0;
+    return;
+  }
+  bool redraw_player = false;
+  bool redraw_enemy = false;
+  for (int i = 0; i < interact_hint_prev_count; ++i) {
+    InteractHintState *hint = &interact_hint_prev[i];
+    if (!hint->valid) {
+      continue;
+    }
+    push_rect_from_sprite_to_lcd_locked(hint->x, hint->y, hint->w, hint->h);
+    if (
+      player_overlay.valid &&
+      player_overlay.scene_epoch == scene_epoch &&
+      rect_intersects(
+        hint->x, hint->y, hint->x + hint->w, hint->y + hint->h,
+        player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h
+      )
+    ) {
+      redraw_player = true;
+    }
+    if (
+      enemy_overlay.valid &&
+      enemy_overlay.scene_epoch == scene_epoch &&
+      rect_intersects(
+        hint->x, hint->y, hint->x + hint->w, hint->y + hint->h,
+        enemy_overlay.x, enemy_overlay.y, enemy_overlay.w, enemy_overlay.h
+      )
+    ) {
+      redraw_enemy = true;
+    }
+  }
+  if (redraw_player) {
+    redraw_player_overlay_locked();
+  }
+  if (redraw_enemy) {
+    redraw_enemy_overlay_locked();
+  }
+}
+
+static void interact_hint_ensure_write(void) {
+  if (interact_hint_write_active) {
+    return;
+  }
+  lcd.startWrite();
+  interact_hint_write_active = true;
+}
+
+static void interact_hint_finish_write(void) {
+  if (!interact_hint_write_active) {
+    return;
+  }
+  lcd.endWrite();
+  interact_hint_write_active = false;
+}
+
+static void interact_hint_draw_corner(int x, int y, int dx, int dy, int len, uint16_t color) {
+  if (len <= 0) {
+    return;
+  }
+  int hx = dx < 0 ? x - len + 1 : x;
+  int vy = dy < 0 ? y - len + 1 : y;
+  lcd.fillRect(hx, y, len, 1, color);
+  lcd.fillRect(x, vy, 1, len, color);
+}
+
+static void interact_hint_draw_sparkle(int cx, int cy, int arm, uint16_t color) {
+  if (arm <= 0) {
+    arm = 1;
+  }
+  lcd.fillRect(cx - arm, cy, arm * 2 + 1, 1, color);
+  lcd.fillRect(cx, cy - arm, 1, arm * 2 + 1, color);
+}
+
+static void interact_hint_store_pending(
+  int slot_id, int shape, int x, int y, int w, int h,
+  int p0, int p1, int p2, int p3, int phase_step
+) {
+  if (interact_hint_pending_count < 0 || interact_hint_pending_count >= MAX_INTERACT_HINTS) {
+    return;
+  }
+  InteractHintState *hint = &interact_hint_pending[interact_hint_pending_count++];
+  hint->valid = true;
+  hint->slot_id = slot_id;
+  hint->shape = shape;
+  hint->x = x;
+  hint->y = y;
+  hint->w = w;
+  hint->h = h;
+  hint->p0 = p0;
+  hint->p1 = p1;
+  hint->p2 = p2;
+  hint->p3 = p3;
+  hint->phase = phase_step & 7;
+  hint->scene_epoch = scene_epoch;
 }
 
 static inline int iabs(int v) {
@@ -2368,6 +2596,7 @@ extern "C" void lgfx_init_impl(void) {
   player_overlay.valid = false;
   enemy_overlay.valid = false;
   scene_epoch = 0;
+  interact_hint_reset_storage();
 }
 
 extern "C" void lgfx_fill_impl(uint16_t color) {
@@ -3391,6 +3620,130 @@ extern "C" void lgfx_enemy_draw_impl(int x, int y) {
   enemy_overlay.used_sprite = can_use_sprite;
   enemy_overlay.frame_index = frame_index;
   enemy_overlay.scene_epoch = scene_epoch;
+}
+
+extern "C" void lgfx_interact_hint_begin_impl(void) {
+  interact_hint_finish_write();
+  interact_hint_pending_count = 0;
+  for (int i = 0; i < MAX_INTERACT_HINTS; ++i) {
+    interact_hint_pending[i].valid = false;
+  }
+  if (!tile_state.loaded || !sprite_ready) {
+    interact_hint_prev_count = 0;
+    interact_hint_prev_scene_epoch = scene_epoch;
+    return;
+  }
+  interact_hint_ensure_write();
+  interact_hint_restore_previous_locked();
+}
+
+extern "C" void lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, int h, int phase_step) {
+  if (!tile_state.loaded || !sprite_ready || slot_id < 0 || slot_id >= MAX_INTERACT_HINTS || w <= 0 || h <= 0) {
+    return;
+  }
+  if (interact_hint_pending_count >= MAX_INTERACT_HINTS) {
+    return;
+  }
+  interact_hint_ensure_write();
+
+  int pulse = interact_hint_phase_wave(phase_step);
+  int outer_inset = 2 + (pulse / 2);
+  int outer_x = x - outer_inset;
+  int outer_y = y - outer_inset;
+  int outer_w = w + outer_inset * 2;
+  int outer_h = h + outer_inset * 2;
+  int store_x = outer_x - 1;
+  int store_y = outer_y - 1;
+  int store_w = outer_w + 2;
+  int store_h = outer_h + 2;
+  if (!clip_rect_to_view(&store_x, &store_y, &store_w, &store_h)) {
+    return;
+  }
+
+  const uint16_t gold_outer = 0xA3A0;
+  const uint16_t gold_main = 0xFEA0;
+  const uint16_t gold_inner = 0xFF6C;
+  int corner_len = (w < h ? w : h) / 4;
+  if (corner_len < 6) {
+    corner_len = 6;
+  }
+  if (corner_len > 16) {
+    corner_len = 16;
+  }
+
+  lcd.drawRect(outer_x, outer_y, outer_w, outer_h, gold_outer);
+  lcd.drawRect(x, y, w, h, gold_main);
+  if ((pulse & 1) == 1 && w > 4 && h > 4) {
+    lcd.drawRect(x + 1, y + 1, w - 2, h - 2, gold_inner);
+  }
+  interact_hint_draw_corner(x, y, 1, 1, corner_len, gold_inner);
+  interact_hint_draw_corner(x + w - 1, y, -1, 1, corner_len, gold_inner);
+  interact_hint_draw_corner(x, y + h - 1, 1, -1, corner_len, gold_inner);
+  interact_hint_draw_corner(x + w - 1, y + h - 1, -1, -1, corner_len, gold_inner);
+
+  interact_hint_store_pending(slot_id, INTERACT_HINT_SHAPE_RECT, store_x, store_y, store_w, store_h, x, y, w, h, phase_step);
+}
+
+extern "C" void lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int r, int phase_step) {
+  if (!tile_state.loaded || !sprite_ready || slot_id < 0 || slot_id >= MAX_INTERACT_HINTS || r <= 0) {
+    return;
+  }
+  if (interact_hint_pending_count >= MAX_INTERACT_HINTS) {
+    return;
+  }
+  interact_hint_ensure_write();
+
+  int pulse = interact_hint_phase_wave(phase_step);
+  int inner_r = r + 1;
+  int outer_r = r + 3 + (pulse / 2);
+  int sparkle_gap = outer_r + 4;
+  int sparkle_arm = 1 + (pulse / 2);
+  int bbox_r = sparkle_gap + sparkle_arm + 1;
+  int store_x = cx - bbox_r;
+  int store_y = cy - bbox_r;
+  int store_w = bbox_r * 2 + 1;
+  int store_h = bbox_r * 2 + 1;
+  if (!clip_rect_to_view(&store_x, &store_y, &store_w, &store_h)) {
+    return;
+  }
+
+  const uint16_t gold_outer = 0xA3A0;
+  const uint16_t gold_main = 0xFEA0;
+  const uint16_t gold_inner = 0xFF6C;
+  lcd.drawCircle(cx, cy, outer_r, gold_outer);
+  lcd.drawCircle(cx, cy, inner_r, gold_main);
+  if ((pulse & 1) == 0) {
+    lcd.drawCircle(cx, cy, r, gold_inner);
+  }
+  interact_hint_draw_sparkle(cx, cy - sparkle_gap, sparkle_arm, gold_inner);
+  interact_hint_draw_sparkle(cx + sparkle_gap, cy, sparkle_arm, gold_inner);
+  interact_hint_draw_sparkle(cx, cy + sparkle_gap, sparkle_arm, gold_inner);
+  interact_hint_draw_sparkle(cx - sparkle_gap, cy, sparkle_arm, gold_inner);
+
+  interact_hint_store_pending(slot_id, INTERACT_HINT_SHAPE_CIRCLE, store_x, store_y, store_w, store_h, cx, cy, r, outer_r, phase_step);
+}
+
+extern "C" void lgfx_interact_hint_end_impl(void) {
+  interact_hint_finish_write();
+  interact_hint_prev_count = interact_hint_pending_count;
+  interact_hint_prev_scene_epoch = scene_epoch;
+  for (int i = 0; i < MAX_INTERACT_HINTS; ++i) {
+    interact_hint_prev[i].valid = false;
+  }
+  for (int i = 0; i < interact_hint_pending_count; ++i) {
+    interact_hint_prev[i] = interact_hint_pending[i];
+  }
+}
+
+extern "C" void lgfx_interact_hint_clear_impl(void) {
+  interact_hint_finish_write();
+  if (tile_state.loaded && sprite_ready && interact_hint_prev_count > 0) {
+    lcd.startWrite();
+    interact_hint_write_active = true;
+    interact_hint_restore_previous_locked();
+    interact_hint_finish_write();
+  }
+  interact_hint_reset_storage();
 }
 
 extern "C" void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
