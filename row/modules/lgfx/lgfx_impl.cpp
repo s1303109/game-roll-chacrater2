@@ -605,6 +605,7 @@ static bool tile_fail(int code) {
 static mp_obj_t vfs_open_rb(const char *path);
 static void vfs_close_quiet(mp_obj_t file);
 static bool vfs_read_exact(mp_obj_t file, void *dst, size_t len);
+static void interact_hint_reset_storage(void);
 
 static void *lgfx_alloc(size_t size, bool use_psram) {
   if (size == 0) {
