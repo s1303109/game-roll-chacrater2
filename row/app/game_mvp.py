@@ -340,6 +340,7 @@ def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spaw
     global player_x, player_y, scroll_x, scroll_y
     global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
     global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
+    global wood_up_dialog_until_ms, wood_up_dialog_active_id
     global explore_force_full_redraw, teleport_cooldown_frames
     global tile, map_w, map_h, world_w, world_h, runtime_endian
     global move_carry_x, move_carry_y, prev_input_x, prev_input_y
@@ -403,6 +404,7 @@ def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spaw
     leaf_zone_prev_inside = False
     explore_overlay_dirty = False
     lamp_dialog_until_ms = 0
+    _clear_wood_up_dialog()
     explore_force_full_redraw = True
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     current_map_id = target_map_id
@@ -435,6 +437,7 @@ def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_
     global player_x, player_y, scroll_x, scroll_y
     global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
     global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
+    global wood_up_dialog_until_ms, wood_up_dialog_active_id
     global explore_force_full_redraw, teleport_cooldown_frames
     global move_carry_x, move_carry_y, prev_input_x, prev_input_y
     global preload_suspend_until_ms, gc_suspend_until_ms, gc_pending
@@ -482,6 +485,7 @@ def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_
     leaf_zone_prev_inside = False
     explore_overlay_dirty = False
     lamp_dialog_until_ms = 0
+    _clear_wood_up_dialog()
     explore_force_full_redraw = True
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     current_map_id = target_map_id
@@ -781,6 +785,12 @@ MAP6_BOSS_ANIM_SEQUENCE = (0, 1, 2, 3, 4, 5, 6, 7, 8)
 ACT_DIALOG_TEXT_PATH = config.ui_path("act_dialog_text.png")
 MERCY_DIALOG_TEXT_PATH = config.ui_path("mercy_dialog_text.png")
 LAMP_DIALOG_TEXT_PATH = config.ui_path("lamp_dialog_text.png")
+WOOD_UP_BED_DIALOG_PATH = config.ui_path("wood_up_bed_dialog.png")
+WOOD_UP_MIRROR_DIALOG_PATH = config.ui_path("wood_up_mirror_dialog.png")
+WOOD_UP_BOOKSHELF_DIALOG_PATH = config.ui_path("wood_up_bookshelf_dialog.png")
+WOOD_LEFT_BATHTUB_DIALOG_PATH = config.ui_path("wood_left_bathtub_dialog.png")
+WOOD_LEFT_TOILET_DIALOG_PATH = config.ui_path("wood_left_toilet_dialog.png")
+WOOD_LEFT_PLANT_DIALOG_PATH = config.ui_path("wood_left_plant_dialog.png")
 ACT_OPT1_PNG = config.ui_path("act_opt1_text.png")
 ACT_OPT2_PNG = config.ui_path("act_opt2_text.png")
 ACT_OPT3_PNG = config.ui_path("act_opt3_text.png")
@@ -899,6 +909,7 @@ BATTLE_SLOT_FLOWEY_ANGRY = 8
 BATTLE_SLOT_STORY_FIRE = 9
 BATTLE_SLOT_STORY_TORIEL = 10
 BATTLE_SLOT_DEATH_SCREEN = 11
+WOOD_UP_DIALOG_SLOT_ID = 12
 BATTLE_SLOT_KIND_PNG = "png_slot"
 DEATH_GLITCH_STEP_MS = 90
 DEATH_FLICKER_STEP_MS = 45
@@ -939,7 +950,14 @@ LAMP_DIALOG_TEXT_H = 27
 ACT_DIALOG_MS = 1000
 MERCY_DIALOG_MS = 2500
 LAMP_DIALOG_MS = 2000
+WOOD_UP_DIALOG_MS = 3000
 ITEM_REPLY_MS = 1000
+WOOD_UP_DIALOG_TEXT_W = 214
+WOOD_UP_DIALOG_TEXT_H = 27
+WOOD_UP_DIALOG_FRAME_PAD_X = 6
+WOOD_UP_DIALOG_FRAME_PAD_Y = 4
+WOOD_UP_DIALOG_TRIGGER_RADIUS_PAD = 14
+WOOD_UP_DIALOG_TRIGGER_TOUCH_PAD = 12
 MAP1_STORY_LINE_MS = 4000
 MAP1_STORY_ENEMY_SLIDE_MS = 300
 MAP1_STORY_STAGE_NONE = 0
@@ -1675,6 +1693,90 @@ WOOD_RIGHT_WEAPON_RACKS = (
         "interact_x": 214,
         "interact_y": 92,
         "item": WEAPON_SWORD,
+    },
+)
+WOOD_UP_INSPECT_OBJECTS = (
+    {
+        "inspect_id": "bookshelf",
+        "map_id": WOOD_UP_ID,
+        "rect": (16, 32, 64, 48),
+        "interact_x": 48,
+        "interact_y": 84,
+        "detect_radius": 18,
+        "hint_radius": 10,
+        "png_path": WOOD_UP_BOOKSHELF_DIALOG_PATH,
+        "draw_w": 214,
+        "draw_h": 27,
+    },
+    {
+        "inspect_id": "mirror",
+        "map_id": WOOD_UP_ID,
+        "rect": (136, 16, 48, 40),
+        "interact_x": 160,
+        "interact_y": 64,
+        "detect_radius": 16,
+        "hint_radius": 10,
+        "png_path": WOOD_UP_MIRROR_DIALOG_PATH,
+        "draw_w": 214,
+        "draw_h": 27,
+    },
+    {
+        "inspect_id": "bed",
+        "map_id": WOOD_UP_ID,
+        "rect": (224, 16, 80, 80),
+        "interact_x": 264,
+        "interact_y": 96,
+        "hint_x": 236,
+        "hint_y": 96,
+        "detect_radius": 18,
+        "hint_radius": 10,
+        "png_path": WOOD_UP_BED_DIALOG_PATH,
+        "draw_w": 214,
+        "draw_h": 27,
+    },
+)
+WOOD_LEFT_INSPECT_OBJECTS = (
+    {
+        "inspect_id": "bathtub",
+        "map_id": WOOD_LEFT_ID,
+        "rect": (20, 74, 56, 88),
+        "interact_x": 76,
+        "interact_y": 118,
+        "hint_x": 60,
+        "hint_y": 118,
+        "detect_radius": 20,
+        "hint_radius": 10,
+        "png_path": WOOD_LEFT_BATHTUB_DIALOG_PATH,
+        "draw_w": 214,
+        "draw_h": 27,
+    },
+    {
+        "inspect_id": "toilet",
+        "map_id": WOOD_LEFT_ID,
+        "rect": (114, 54, 36, 54),
+        "interact_x": 132,
+        "interact_y": 110,
+        "hint_x": 132,
+        "hint_y": 92,
+        "detect_radius": 16,
+        "hint_radius": 10,
+        "png_path": WOOD_LEFT_TOILET_DIALOG_PATH,
+        "draw_w": 214,
+        "draw_h": 27,
+    },
+    {
+        "inspect_id": "plant",
+        "map_id": WOOD_LEFT_ID,
+        "rect": (188, 164, 36, 48),
+        "interact_x": 206,
+        "interact_y": 190,
+        "hint_x": 206,
+        "hint_y": 190,
+        "detect_radius": 18,
+        "hint_radius": 10,
+        "png_path": WOOD_LEFT_PLANT_DIALOG_PATH,
+        "draw_w": 214,
+        "draw_h": 27,
     },
 )
 rack_pickup_taken = {
@@ -2678,6 +2780,8 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     global player_x, player_y, scroll_x, scroll_y
     global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
     global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
+    global wood_up_dialog_until_ms, wood_up_dialog_active_id
+    global wood_up_dialog_draw_w, wood_up_dialog_draw_h
     global explore_force_full_redraw, teleport_cooldown_frames
     global tile, map_w, map_h, world_w, world_h, runtime_endian
     global move_carry_x, move_carry_y, prev_input_x, prev_input_y
@@ -2697,6 +2801,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     fail_stage = None
     total_start = time.ticks_ms()
     _clear_interact_hints()
+    _clear_wood_up_dialog()
 
     def _print_switch_timings():
         print("resolve_base_ms:", phase["resolve_base_ms"])
@@ -2909,6 +3014,10 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     leaf_zone_prev_inside = False
     explore_overlay_dirty = False
     lamp_dialog_until_ms = 0
+    wood_up_dialog_until_ms = 0
+    wood_up_dialog_active_id = None
+    wood_up_dialog_draw_w = WOOD_UP_DIALOG_TEXT_W
+    wood_up_dialog_draw_h = WOOD_UP_DIALOG_TEXT_H
     # Keep startup-only intro effect; do not re-enable it on map switches.
     explore_force_full_redraw = True
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
@@ -2953,6 +3062,12 @@ btn_act = None
 btn_item = None
 btn_mercy = None
 button_last_edge_ms = {}
+wood_up_dialog_until_ms = 0
+wood_up_dialog_active_id = None
+wood_up_dialog_loaded = False
+wood_up_dialog_path = None
+wood_up_dialog_draw_w = WOOD_UP_DIALOG_TEXT_W
+wood_up_dialog_draw_h = WOOD_UP_DIALOG_TEXT_H
 
 
 def _init_runtime_state():
@@ -2982,7 +3097,9 @@ def _init_runtime_state():
     global scripted_battle_side_dialog, scripted_battle_return_to_act, scripted_battle_pending_exit
     global _rng_state, interact_sw_prev
     global btn_fight_prev, btn_act_prev, btn_item_prev, btn_mercy_prev, leaf_zone_prev_inside, map1_opening_battle_timer_started, map1_opening_battle_due_ms, map1_opening_battle_done
-    global lamp_dialog_until_ms, explore_overlay_dirty, current_map_id, teleport_cooldown_frames, inv_choice_index, inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index
+    global lamp_dialog_until_ms, wood_up_dialog_until_ms, wood_up_dialog_active_id, wood_up_dialog_loaded, wood_up_dialog_path
+    global wood_up_dialog_draw_w, wood_up_dialog_draw_h
+    global explore_overlay_dirty, current_map_id, teleport_cooldown_frames, inv_choice_index, inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index
     global inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty, INV_TAB_ITEM, INV_TAB_STAT, INV_FOCUS_LEFT, INV_FOCUS_RIGHT, inv_tab_index
     global inv_tab_active, inv_tab_nav_prev_dir, inv_focus_side, inv_focus_nav_prev_dir, weapon_pickup_dialog_active, weapon_pickup_choice_index, weapon_pickup_nav_prev_dir, weapon_pickup_target
     global weapon_pickup_dialog_dirty, spawn_intro_cleared_once, spawn_intro_active, spawn_intro_overlay_path, spawn_intro_needs_redraw, inventory_portrait_path, title_cover_path, title_ui_start_path
@@ -3010,6 +3127,7 @@ def _init_runtime_state():
     btn_item = Pin(BTN_ITEM_PIN, Pin.IN, Pin.PULL_UP)
     btn_mercy = Pin(BTN_MERCY_PIN, Pin.IN, Pin.PULL_UP)
     button_last_edge_ms = {}
+    _release_wood_up_dialog_slot()
     cx, cy, axis_max = _calibrate_center()
     print("joystick center:", cx, cy, "max:", axis_max)
     print("controls: move joystick, Ctrl-C to stop")
@@ -3170,6 +3288,12 @@ def _init_runtime_state():
     map1_opening_battle_due_ms = 0
     map1_opening_battle_done = False
     lamp_dialog_until_ms = 0
+    wood_up_dialog_until_ms = 0
+    wood_up_dialog_active_id = None
+    wood_up_dialog_loaded = False
+    wood_up_dialog_path = None
+    wood_up_dialog_draw_w = WOOD_UP_DIALOG_TEXT_W
+    wood_up_dialog_draw_h = WOOD_UP_DIALOG_TEXT_H
     explore_overlay_dirty = False
     current_map_id = MAP1_ID
     teleport_cooldown_frames = 0
@@ -3553,6 +3677,7 @@ def _portal_transition_update(loop_start):
 def _update_preload_for_player(px, py):
     global preload_zone_target_map_id, preload_zone_enter_ms
     global preload_last_build_ms, preload_release_due_ms, preload_suspend_until_ms
+    global explore_overlay_dirty
 
     if resident_transition_active:
         return
@@ -3620,6 +3745,14 @@ def _update_preload_for_player(px, py):
 
     if preload_last_build_ms and time.ticks_diff(now, preload_last_build_ms) < PRELOAD_COOLDOWN_MS:
         return
+
+    # Release the wood-room dialog PNG before starting a background preload.
+    # Map8's first load is especially sensitive to PSRAM peaks, and the dialog
+    # slot is otherwise only cleared later in switch_map().
+    if _wood_up_dialog_is_active(now):
+        _clear_wood_up_dialog()
+        explore_overlay_dirty = False
+        gc.collect()
 
     _release_preload_cache("retarget_preload")
     _build_preload_cache(current_map_id, preload_portal)
@@ -4136,6 +4269,7 @@ def _start_new_game_from_title():
         death_title_reset_pending = False
 
     _clear_interact_hints()
+    _clear_wood_up_dialog()
     mode = MODE_EXPLORE
     explore_force_full_redraw = True
     spawn_intro_needs_redraw = spawn_intro_active
@@ -4648,6 +4782,24 @@ def _lamp_dialog_rect():
     return dialog_x, dialog_y, dialog_w, dialog_h
 
 
+def _wood_up_dialog_rect():
+    draw_w = wood_up_dialog_draw_w if wood_up_dialog_draw_w > 0 else WOOD_UP_DIALOG_TEXT_W
+    draw_h = wood_up_dialog_draw_h if wood_up_dialog_draw_h > 0 else WOOD_UP_DIALOG_TEXT_H
+    dialog_w = draw_w + (WOOD_UP_DIALOG_FRAME_PAD_X * 2)
+    dialog_h = draw_h + (WOOD_UP_DIALOG_FRAME_PAD_Y * 2)
+    max_w = ACTIVE_VIEW_W - 8
+    max_h = ACTIVE_VIEW_H - 8
+    if dialog_w > max_w:
+        dialog_w = max_w
+    if dialog_h > max_h:
+        dialog_h = max_h
+    dialog_x = (ACTIVE_VIEW_W - dialog_w) // 2
+    dialog_y = ACTIVE_VIEW_H - dialog_h - 8
+    if dialog_y < 4:
+        dialog_y = 4
+    return dialog_x, dialog_y, dialog_w, dialog_h
+
+
 def _rects_intersect(ax, ay, aw, ah, bx, by, bw, bh):
     if aw <= 0 or ah <= 0 or bw <= 0 or bh <= 0:
         return False
@@ -4669,6 +4821,107 @@ def _player_touches_rect(rect, pad=0):
     pw = pr * 2 + 1
     ph = pr * 2 + 1
     return _rects_intersect(px, py, pw, ph, rx, ry, rw, rh)
+
+
+def _wood_up_dialog_is_active(loop_start):
+    return bool(time.ticks_diff(wood_up_dialog_until_ms, loop_start) > 0 and wood_up_dialog_loaded)
+
+
+def _release_wood_up_dialog_slot():
+    global wood_up_dialog_loaded, wood_up_dialog_path
+    if wood_up_dialog_loaded and hasattr(lgfx, "png_slot_release"):
+        try:
+            lgfx.png_slot_release(WOOD_UP_DIALOG_SLOT_ID)
+        except Exception as err:
+            print("wood_up_dialog_release_fail:", err)
+    wood_up_dialog_loaded = False
+    wood_up_dialog_path = None
+
+
+def _clear_wood_up_dialog():
+    global wood_up_dialog_until_ms, wood_up_dialog_active_id
+    global wood_up_dialog_draw_w, wood_up_dialog_draw_h
+    _release_wood_up_dialog_slot()
+    wood_up_dialog_until_ms = 0
+    wood_up_dialog_active_id = None
+    wood_up_dialog_draw_w = WOOD_UP_DIALOG_TEXT_W
+    wood_up_dialog_draw_h = WOOD_UP_DIALOG_TEXT_H
+
+
+def _update_wood_up_dialog_timeout(loop_start):
+    if wood_up_dialog_loaded and time.ticks_diff(wood_up_dialog_until_ms, loop_start) <= 0:
+        _clear_wood_up_dialog()
+        return True
+    return False
+
+
+def _wood_room_inspect_objects():
+    if current_map_id == WOOD_UP_ID:
+        return WOOD_UP_INSPECT_OBJECTS
+    if current_map_id == WOOD_LEFT_ID:
+        return WOOD_LEFT_INSPECT_OBJECTS
+    return ()
+
+
+def _find_wood_up_inspect_target():
+    best_obj = None
+    best_d2 = 0
+    for obj in _wood_room_inspect_objects():
+        if obj.get("map_id") != current_map_id:
+            continue
+        rx = int(obj.get("interact_x", 0))
+        ry = int(obj.get("interact_y", 0))
+        radius = int(obj.get("detect_radius", 0))
+        if radius > 0:
+            radius += WOOD_UP_DIALOG_TRIGGER_RADIUS_PAD
+            dx = rx - player_x
+            dy = ry - player_y
+            d2 = (dx * dx) + (dy * dy)
+            if d2 <= (radius * radius):
+                if (best_obj is None) or (d2 < best_d2):
+                    best_obj = obj
+                    best_d2 = d2
+        rect = obj.get("rect", (0, 0, 0, 0))
+        if _player_touches_rect(rect, WOOD_UP_DIALOG_TRIGGER_TOUCH_PAD) or _in_rect(player_x, player_y, rect):
+            return obj
+    return best_obj
+
+
+def _try_open_wood_up_dialog(loop_start):
+    global wood_up_dialog_until_ms, wood_up_dialog_active_id
+    global wood_up_dialog_loaded, wood_up_dialog_path
+    global wood_up_dialog_draw_w, wood_up_dialog_draw_h
+
+    target = _find_wood_up_inspect_target()
+    if not target:
+        return False
+    path = target.get("png_path")
+    if not path:
+        return False
+    _release_wood_up_dialog_slot()
+    loaded = False
+    if hasattr(lgfx, "png_slot_load_file"):
+        try:
+            loaded = bool(lgfx.png_slot_load_file(WOOD_UP_DIALOG_SLOT_ID, path))
+        except Exception as err:
+            print("wood_up_dialog_load_fail:", path, err)
+            loaded = False
+    if not loaded:
+        wood_up_dialog_loaded = False
+        wood_up_dialog_path = None
+        wood_up_dialog_until_ms = 0
+        wood_up_dialog_active_id = None
+        wood_up_dialog_draw_w = WOOD_UP_DIALOG_TEXT_W
+        wood_up_dialog_draw_h = WOOD_UP_DIALOG_TEXT_H
+        return False
+    _clear_interact_hints()
+    wood_up_dialog_loaded = True
+    wood_up_dialog_path = path
+    wood_up_dialog_until_ms = time.ticks_add(loop_start, WOOD_UP_DIALOG_MS)
+    wood_up_dialog_active_id = target.get("inspect_id")
+    wood_up_dialog_draw_w = int(target.get("draw_w", WOOD_UP_DIALOG_TEXT_W))
+    wood_up_dialog_draw_h = int(target.get("draw_h", WOOD_UP_DIALOG_TEXT_H))
+    return True
 
 
 def _has_interact_hint_api():
@@ -4705,16 +4958,15 @@ def _interact_hint_circle_contains(px, py, cx, cy, r):
 def _collect_interact_hints():
     hints = []
 
-    if current_map_id == MAP1_ID and _in_rect(player_x, player_y, _expand_rect(LAMP_INTERACT_RECT_PX, INTERACT_HINT_RECT_PAD_PX)):
+    if current_map_id == MAP1_ID:
         x, y, w, h = LAMP_INTERACT_RECT_PX
         hints.append(
             {
-                "kind": "rect",
+                "kind": "circle",
                 "slot_key": "lamp_map1",
-                "world_x": x,
-                "world_y": y,
-                "world_w": w,
-                "world_h": h,
+                "world_cx": x + (w // 2),
+                "world_cy": y + (h // 2),
+                "world_r": GROUND_WEAPON_PICKUP_RADIUS,
             }
         )
 
@@ -4724,37 +4976,30 @@ def _collect_interact_hints():
             if rack_pickup_taken.get(pickup_id):
                 continue
             rect = rack.get("rect", (0, 0, 0, 0))
-            if not _in_rect(player_x, player_y, _expand_rect(rect, INTERACT_HINT_RECT_PAD_PX)):
-                continue
             x, y, w, h = rect
             hints.append(
                 {
-                    "kind": "rect",
+                    "kind": "circle",
                     "slot_key": "rack:%s" % pickup_id,
-                    "world_x": x,
-                    "world_y": y,
-                    "world_w": w,
-                    "world_h": h,
+                    "world_cx": int(rack.get("interact_x", x + (w // 2))),
+                    "world_cy": int(rack.get("interact_y", y + h)),
+                    "world_r": GROUND_WEAPON_PICKUP_RADIUS,
                 }
             )
 
-    show_radius = GROUND_WEAPON_PICKUP_RADIUS + INTERACT_HINT_CIRCLE_PAD_PX
-    for drop in ground_weapon_drops:
-        if drop.get("map_id") != current_map_id:
-            continue
-        cx = int(drop.get("x", 0))
-        cy = int(drop.get("y", 0))
-        if not _interact_hint_circle_contains(player_x, player_y, cx, cy, show_radius):
-            continue
-        hints.append(
-            {
-                "kind": "circle",
-                "slot_key": "ground:%s" % drop.get("id"),
-                "world_cx": cx,
-                "world_cy": cy,
-                "world_r": GROUND_WEAPON_PICKUP_RADIUS,
-            }
-        )
+    if current_map_id == WOOD_UP_ID or current_map_id == WOOD_LEFT_ID:
+        for obj in _wood_room_inspect_objects():
+            if obj.get("map_id") != current_map_id:
+                continue
+            hints.append(
+                {
+                    "kind": "circle",
+                    "slot_key": "wood_up:%s" % obj.get("inspect_id", "inspect"),
+                    "world_cx": int(obj.get("hint_x", obj.get("interact_x", 0))),
+                    "world_cy": int(obj.get("hint_y", obj.get("interact_y", 0))),
+                    "world_r": int(obj.get("hint_radius", 0)),
+                }
+            )
 
     hints.sort(key=lambda hint: hint["slot_key"])
     if len(hints) > INTERACT_HINT_MAX:
@@ -4767,7 +5012,9 @@ def _interact_hints_paused(loop_start):
         return True
     if spawn_intro_active or portal_transition_active or weapon_pickup_dialog_active:
         return True
-    return time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0
+    if time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0:
+        return True
+    return _wood_up_dialog_is_active(loop_start)
 
 
 def _update_interact_hint_overlay(loop_start, scene_redrawn, player_redrawn):
@@ -4978,8 +5225,6 @@ def update_weapon_pickup_dialog(interact_pressed):
 
 
 def _draw_ground_weapon_drops():
-    if _has_interact_hint_api():
-        return
     for drop in ground_weapon_drops:
         if drop.get("map_id") != current_map_id:
             continue
@@ -5154,6 +5399,32 @@ def _draw_explore_lamp_dialog(loop_start):
     if not text_drawn and hasattr(lgfx, "draw_text"):
         _draw_text_in_box(dialog_x + 4, dialog_y + 8, dialog_w - 8, dialog_h - 16, "三盞路燈合在一起真詭異")
     return True
+
+
+def _draw_wood_up_dialog(loop_start):
+    if not _wood_up_dialog_is_active(loop_start):
+        return False
+    dialog_x, dialog_y, dialog_w, dialog_h = _wood_up_dialog_rect()
+    _fill_rect_solid(dialog_x, dialog_y, dialog_w, dialog_h, 0x0000)
+    _draw_rect_thick(dialog_x, dialog_y, dialog_w, dialog_h, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
+    if hasattr(lgfx, "png_slot_draw"):
+        try:
+            draw_w = wood_up_dialog_draw_w if wood_up_dialog_draw_w > 0 else WOOD_UP_DIALOG_TEXT_W
+            draw_h = wood_up_dialog_draw_h if wood_up_dialog_draw_h > 0 else WOOD_UP_DIALOG_TEXT_H
+            draw_x = dialog_x + ((dialog_w - draw_w) // 2)
+            draw_y = dialog_y + ((dialog_h - draw_h) // 2)
+            return bool(
+                lgfx.png_slot_draw(
+                    WOOD_UP_DIALOG_SLOT_ID,
+                    draw_x,
+                    draw_y,
+                    draw_w,
+                    draw_h,
+                )
+            )
+        except Exception as err:
+            print("wood_up_dialog_draw_fail:", err)
+    return False
 
 
 def _draw_battle_frame(frame_x=None, frame_y=None, frame_w=None, frame_h=None):
@@ -7883,6 +8154,7 @@ def _return_to_title_from_death():
     death_screen_load_retry_ms = 0
     death_screen_load_fail_count = 0
     death_title_reset_pending = True
+    _clear_wood_up_dialog()
     _clear_interact_hints()
     _prime_button_edge_state()
     gc.collect()
@@ -7912,6 +8184,7 @@ def _exit_battle_to_explore():
     _scripted_battle_reset()
     _reset_battle_state()
     map6_boss_battle_active = False
+    _clear_wood_up_dialog()
     _reset_interact_hint_state()
 
 
@@ -7944,7 +8217,7 @@ def _start_battle_from_explore(enemy_id=None):
     global battle_menu_full_clear_pending
     global battle_menu_static_ready, battle_menu_prev_dialog_active
     global explore_moved, explore_scrolled, explore_anim_changed
-    global lamp_dialog_until_ms, explore_overlay_dirty
+    global lamp_dialog_until_ms, wood_up_dialog_until_ms, wood_up_dialog_active_id, explore_overlay_dirty
     global map6_boss_battle_active, scripted_battle_opening_pending, scripted_battle_opening_due_ms
 
     mode = MODE_BATTLE_MENU
@@ -7956,6 +8229,9 @@ def _start_battle_from_explore(enemy_id=None):
     battle_menu_static_ready = False
     battle_menu_prev_dialog_active = False
     lamp_dialog_until_ms = 0
+    _clear_wood_up_dialog()
+    wood_up_dialog_until_ms = 0
+    wood_up_dialog_active_id = None
     explore_overlay_dirty = False
     _clear_interact_hints()
     map6_boss_battle_active = enemy_id == "MAP6_BOSS"
@@ -9314,6 +9590,7 @@ def draw_all(loop_start):
         return
 
     if mode == MODE_EXPLORE:
+        wood_up_dialog_ended = _update_wood_up_dialog_timeout(loop_start)
         scene_redrawn = False
         player_redrawn = False
         if explore_force_full_redraw:
@@ -9327,15 +9604,22 @@ def draw_all(loop_start):
             lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
             player_redrawn = True
 
-        dialog_active = time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0
+        lamp_dialog_active = time.ticks_diff(lamp_dialog_until_ms, loop_start) > 0
+        wood_up_dialog_active = _wood_up_dialog_is_active(loop_start)
+        dialog_active = lamp_dialog_active or wood_up_dialog_active
         dialog_needs_redraw = False
         if dialog_active:
-            if not explore_overlay_dirty:
+            if wood_up_dialog_ended:
+                dialog_needs_redraw = False
+            elif not explore_overlay_dirty:
                 dialog_needs_redraw = True
             elif scene_redrawn:
                 dialog_needs_redraw = True
             elif player_redrawn:
-                dialog_x, dialog_y, dialog_w, dialog_h = _lamp_dialog_rect()
+                if lamp_dialog_active:
+                    dialog_x, dialog_y, dialog_w, dialog_h = _lamp_dialog_rect()
+                else:
+                    dialog_x, dialog_y, dialog_w, dialog_h = _wood_up_dialog_rect()
                 if player_sheet_enabled:
                     half_w = PLAYER_FRAME_W // 2
                     half_h = PLAYER_FRAME_H // 2
@@ -9350,7 +9634,9 @@ def draw_all(loop_start):
                     dialog_needs_redraw = True
 
         if dialog_needs_redraw:
-            if _draw_explore_lamp_dialog(loop_start):
+            if lamp_dialog_active and _draw_explore_lamp_dialog(loop_start):
+                explore_overlay_dirty = True
+            elif wood_up_dialog_active and _draw_wood_up_dialog(loop_start):
                 explore_overlay_dirty = True
         elif not dialog_active and explore_overlay_dirty:
             # Dialog just ended; redraw scene next frame to clear overlay remnants.
@@ -9462,6 +9748,7 @@ def _run_main_loop():
     global fight_pressed, btn_act_prev, act_pressed, btn_item_prev, item_pressed, btn_mercy_prev, mercy_pressed, explore_moved
     global explore_scrolled, explore_anim_changed, move_dx, move_dy, active_portal, target_spawn, moved_since_last_map1, map1_opening_battle_timer_started
     global map1_opening_battle_due_ms, map1_opening_battle_done, move_dx_for_encounter, move_dy_for_encounter, move_dist_for_encounter, moved_since_last, encounter_enemy_id, lamp_dialog_until_ms
+    global wood_up_dialog_until_ms
     global explore_overlay_dirty, map6_boss_battle_active
     while True:
         loop_start = time.ticks_ms()
@@ -9596,6 +9883,8 @@ def _run_main_loop():
                     if mode == MODE_EXPLORE and interact_pressed:
                         if _try_open_weapon_pickup_dialog():
                             pass
+                        elif _try_open_wood_up_dialog(loop_start):
+                            explore_overlay_dirty = False
                         elif current_map_id == MAP1_ID and _in_rect(player_x, player_y, LAMP_INTERACT_RECT_PX):
                             _clear_interact_hints()
                             lamp_dialog_until_ms = time.ticks_add(loop_start, LAMP_DIALOG_MS)

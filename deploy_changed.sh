@@ -162,6 +162,12 @@ UI_FILE_MAP=(
   "act_dialog_text.png|act_dialog_text.png"
   "mercy_dialog_text.png|mercy_dialog_text.png"
   "lamp_dialog_text.png|lamp_dialog_text.png"
+  "wood_up_bed_dialog.png|wood_up_bed_dialog.png"
+  "wood_up_mirror_dialog.png|wood_up_mirror_dialog.png"
+  "wood_up_bookshelf_dialog.png|wood_up_bookshelf_dialog.png"
+  "wood_left_bathtub_dialog.png|wood_left_bathtub_dialog.png"
+  "wood_left_toilet_dialog.png|wood_left_toilet_dialog.png"
+  "wood_left_plant_dialog.png|wood_left_plant_dialog.png"
   "act_opt1_text.png|act_opt1_text.png"
   "act_opt2_text.png|act_opt2_text.png"
   "act_opt3_text.png|act_opt3_text.png"
@@ -471,6 +477,12 @@ STALE_FLASH_FILES = (
     "/act_dialog_text.png",
     "/mercy_dialog_text.png",
     "/lamp_dialog_text.png",
+    "/wood_up_bed_dialog.png",
+    "/wood_up_mirror_dialog.png",
+    "/wood_up_bookshelf_dialog.png",
+    "/wood_left_bathtub_dialog.png",
+    "/wood_left_toilet_dialog.png",
+    "/wood_left_plant_dialog.png",
     "/act_opt1_text.png",
     "/act_opt2_text.png",
     "/act_opt3_text.png",
