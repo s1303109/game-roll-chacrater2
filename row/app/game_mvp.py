@@ -793,6 +793,13 @@ WOOD_MAIN_TABLE_DIALOG_PATHS = (
     config.ui_path("wood_main_table_dialog_02.png"),
     config.ui_path("wood_main_table_dialog_03.png"),
 )
+MAP3_BOOK_DIALOG_PATHS = (
+    config.ui_path("map3_book_dialog_01.png"),
+    config.ui_path("map3_book_dialog_02.png"),
+    config.ui_path("map3_book_dialog_03.png"),
+    config.ui_path("map3_book_dialog_04.png"),
+)
+MAP5_MAP6_DOOR_LOCKED_DIALOG_PATH = config.ui_path("map5_map6_door_locked_dialog.png")
 WOOD_LEFT_BATHTUB_DIALOG_PATH = config.ui_path("wood_left_bathtub_dialog.png")
 WOOD_LEFT_TOILET_DIALOG_PATH = config.ui_path("wood_left_toilet_dialog.png")
 WOOD_LEFT_PLANT_DIALOG_PATH = config.ui_path("wood_left_plant_dialog.png")
@@ -1682,6 +1689,56 @@ WEAPON_SWORD = {
     "heal_amount": 0,
     "consumable": False,
 }
+ITEM_RED_POTION = {
+    "id": "item_red_potion",
+    "name": "Red Potion",
+    "item_type": "consumable",
+    "equip_slot": "none",
+    "at_bonus": 0,
+    "df_bonus": 0,
+    "heal_amount": 15,
+    "consumable": True,
+}
+ARMOR_MAP3 = {
+    "id": "armor_map3",
+    "name": "Armor",
+    "item_type": "armor",
+    "equip_slot": "armor",
+    "at_bonus": 0,
+    "df_bonus": 2,
+    "heal_amount": 0,
+    "consumable": False,
+}
+ITEM_MAP4_GREAT_SWORD = {
+    "id": "weapon_great_sword",
+    "name": "Great Sword",
+    "item_type": "weapon",
+    "equip_slot": "weapon",
+    "at_bonus": 3,
+    "df_bonus": 0,
+    "heal_amount": 0,
+    "consumable": False,
+}
+ITEM_MAP4_SMALL_RED_POTION = {
+    "id": "item_small_red_potion",
+    "name": "Small Red Potion",
+    "item_type": "consumable",
+    "equip_slot": "none",
+    "at_bonus": 0,
+    "df_bonus": 0,
+    "heal_amount": 5,
+    "consumable": True,
+}
+ITEM_MAP4_KEY = {
+    "id": "item_map5_door_key",
+    "name": "Key",
+    "item_type": "key",
+    "equip_slot": "none",
+    "at_bonus": 0,
+    "df_bonus": 0,
+    "heal_amount": 0,
+    "consumable": False,
+}
 WOOD_RIGHT_WEAPON_RACKS = (
     {
         "pickup_id": "wood_right_rack_knife",
@@ -1698,6 +1755,87 @@ WOOD_RIGHT_WEAPON_RACKS = (
         "interact_x": 214,
         "interact_y": 92,
         "item": WEAPON_SWORD,
+    },
+)
+MAP3_PICKUP_OBJECTS = (
+    {
+        "pickup_id": "map3_red_potion",
+        "map_id": MAP3_ID,
+        "rect": (196, 284, 16, 24),
+        "interact_x": 203,
+        "interact_y": 296,
+        "hint_x": 203,
+        "hint_y": 296,
+        "detect_radius": 16,
+        "hint_radius": 10,
+        "item": ITEM_RED_POTION,
+    },
+    {
+        "pickup_id": "map3_chest_armor",
+        "map_id": MAP3_ID,
+        "rect": (16, 272, 80, 64),
+        "interact_x": 48,
+        "interact_y": 320,
+        "hint_x": 69,
+        "hint_y": 292,
+        "detect_radius": 18,
+        "hint_radius": 10,
+        "item": ARMOR_MAP3,
+    },
+)
+MAP4_PICKUP_OBJECTS = (
+    {
+        "pickup_id": "map4_great_sword",
+        "map_id": MAP4_ID,
+        "rect": (456, 248, 48, 72),
+        "interact_x": 480,
+        "interact_y": 304,
+        "hint_x": 480,
+        "hint_y": 205,
+        "detect_radius": 18,
+        "hint_radius": 10,
+        "item": ITEM_MAP4_GREAT_SWORD,
+    },
+    {
+        "pickup_id": "map4_small_red_potion",
+        "map_id": MAP4_ID,
+        "rect": (332, 134, 24, 38),
+        "interact_x": 344,
+        "interact_y": 154,
+        "hint_x": 344,
+        "hint_y": 154,
+        "detect_radius": 16,
+        "hint_radius": 10,
+        "item": ITEM_MAP4_SMALL_RED_POTION,
+    },
+    {
+        "pickup_id": "map4_key",
+        "map_id": MAP4_ID,
+        "rect": (576, 100, 30, 54),
+        "interact_x": 591,
+        "interact_y": 127,
+        "hint_x": 591,
+        "hint_y": 127,
+        "detect_radius": 16,
+        "hint_radius": 10,
+        "item": ITEM_MAP4_KEY,
+    },
+)
+MAP3_INSPECT_OBJECTS = (
+    {
+        "inspect_id": "map3_book",
+        "map_id": MAP3_ID,
+        "rect": (704, 144, 64, 48),
+        "interact_x": 736,
+        "interact_y": 224,
+        "hint_x": 736,
+        "hint_y": 176,
+        "detect_radius": 22,
+        "hint_radius": 10,
+        "png_paths": MAP3_BOOK_DIALOG_PATHS,
+        "line_ms": 3000,
+        "draw_w": 224,
+        "draw_h": 27,
     },
 )
 WOOD_MAIN_INSPECT_OBJECTS = (
@@ -1805,6 +1943,16 @@ rack_pickup_taken = {
     "wood_right_rack_knife": False,
     "wood_right_rack_sword": False,
 }
+map3_pickup_taken = {
+    "map3_red_potion": False,
+    "map3_chest_armor": False,
+}
+map4_pickup_taken = {
+    "map4_great_sword": False,
+    "map4_small_red_potion": False,
+    "map4_key": False,
+}
+map5_map6_door_unlocked = False
 ground_weapon_drops = []
 ground_weapon_drop_seq = 0
 equipped_weapon_item_id = None
@@ -1817,6 +1965,24 @@ def _is_weapon_item(item):
     if not item:
         return False
     return item.get("item_type") == "weapon" or item.get("equip_slot") == "weapon"
+
+
+def _is_equippable_item(item):
+    if not item:
+        return False
+    slot = item.get("equip_slot")
+    if slot == "weapon" or slot == "armor":
+        return True
+    item_type = item.get("item_type")
+    return item_type == "weapon" or item_type == "armor"
+
+
+def _is_consumable_item(item):
+    if not item:
+        return False
+    if _is_equippable_item(item):
+        return False
+    return bool(item.get("consumable", False))
 
 
 def _sync_equipment_state_from_inventory():
@@ -1846,14 +2012,13 @@ def _sync_equipment_state_from_inventory():
         PLAYER_DF_BONUS = int(armor_item.get("df_bonus", 0))
     else:
         equipped_armor_item_id = None
+        PLAYER_ARMOR = "None"
         PLAYER_DF_BONUS = 0
 
 
 def _spawn_ground_drop_from_item(item, drop_map_id, px, py):
     global ground_weapon_drop_seq
     if not item:
-        return False
-    if not _is_weapon_item(item):
         return False
     # Randomly scatter drop around player feet instead of fixed side offset.
     safe_x = px
@@ -1896,8 +2061,7 @@ def _drop_inventory_item_at(index):
     item = inventory_remove_at(index)
     if not item:
         return False
-    if _is_weapon_item(item):
-        _spawn_ground_drop_from_item(item, current_map_id, player_x, player_y)
+    _spawn_ground_drop_from_item(item, current_map_id, player_x, player_y)
     _sync_equipment_state_from_inventory()
     return True
 
@@ -1948,6 +2112,26 @@ def inventory_try_add(item):
     return True
 
 
+def _inventory_find_first_index_by_id(item_id):
+    if not item_id:
+        return -1
+    for i, item in enumerate(inventory_items):
+        if item and item.get("id") == item_id:
+            return i
+    return -1
+
+
+def _inventory_has_item_id(item_id):
+    return _inventory_find_first_index_by_id(item_id) >= 0
+
+
+def _inventory_remove_first_by_id(item_id):
+    index = _inventory_find_first_index_by_id(item_id)
+    if index < 0:
+        return None
+    return inventory_remove_at(index)
+
+
 def inventory_remove_at(index):
     if index < 0 or index >= len(inventory_items):
         return None
@@ -1958,6 +2142,59 @@ def inventory_remove_at(index):
 
 def inventory_clamp_index(index):
     count = len(inventory_items)
+    if count <= 0:
+        return 0
+    if index < 0:
+        return 0
+    if index >= count:
+        return count - 1
+    return index
+
+
+def _use_inventory_item_at(index):
+    global player_hp, battle_status_dirty
+
+    if index < 0 or index >= len(inventory_items):
+        return "No items"
+    item = inventory_items[index]
+    if not item:
+        return "No items"
+    if not _is_consumable_item(item):
+        return "%s cannot be used" % item.get("name", "Item")
+
+    item = inventory_remove_at(index)
+    if not item:
+        return "No items"
+
+    name = item.get("name", "Item")
+    heal_amount = int(item.get("heal_amount", 0))
+    if heal_amount > 0:
+        before = player_hp
+        player_hp += heal_amount
+        if player_hp > PLAYER_HP_MAX:
+            player_hp = PLAYER_HP_MAX
+        gain = player_hp - before
+        if gain < 0:
+            gain = 0
+        battle_status_dirty = True
+        return "Used %s  HP +%d" % (name, gain)
+    return "Used %s" % name
+
+
+def _battle_usable_inventory_indices():
+    indices = []
+    for i, item in enumerate(inventory_items):
+        if _is_consumable_item(item):
+            indices.append(i)
+    return indices
+
+
+def _battle_has_usable_items():
+    return len(_battle_usable_inventory_indices()) > 0
+
+
+def _battle_item_clamp_index(index):
+    count = len(_battle_usable_inventory_indices())
     if count <= 0:
         return 0
     if index < 0:
@@ -3140,6 +3377,7 @@ def _init_runtime_state():
     global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
     global interact_hint_prev_signature, interact_hint_prev_phase
+    global map5_map6_door_unlocked
     global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
     global death_screen_full_redraw
     global death_render_tick
@@ -3375,6 +3613,7 @@ def _init_runtime_state():
     map6_boss_anim_last_ms = time.ticks_ms()
     interact_hint_prev_signature = None
     interact_hint_prev_phase = -1
+    map5_map6_door_unlocked = False
     death_screen_started_ms = 0
     death_screen_dirty = False
     death_glitch_seed = (time.ticks_ms() | 1) & 0x7FFFFFFF
@@ -4620,8 +4859,10 @@ def _draw_explore_inventory_screen():
     selected_item = None
     if inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
         selected_item = inventory_items[inv_choice_index]
-    if _is_weapon_item(selected_item):
+    if _is_equippable_item(selected_item):
         labels = ("EQUIP", "DROP", "KEEP")
+    elif _is_consumable_item(selected_item):
+        labels = ("USE", "DROP", "KEEP")
     else:
         labels = ("KEEP", "DROP")
     row_h = 20
@@ -4659,9 +4900,14 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
             return
         if inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
             selected_item = inventory_items[inv_choice_index]
-            if _is_weapon_item(selected_item):
+            if _is_equippable_item(selected_item):
                 if inv_drop_choice_index == 0:
                     _equip_inventory_item(selected_item)
+                elif inv_drop_choice_index == 1:
+                    _drop_inventory_item_at(inv_choice_index)
+            elif _is_consumable_item(selected_item):
+                if inv_drop_choice_index == 0:
+                    _use_inventory_item_at(inv_choice_index)
                 elif inv_drop_choice_index == 1:
                     _drop_inventory_item_at(inv_choice_index)
             else:
@@ -4733,7 +4979,7 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
         if not inventory_is_empty():
             selected_item = inventory_items[inv_choice_index] if inv_choice_index < len(inventory_items) else None
             inv_drop_active = True
-            if _is_weapon_item(selected_item):
+            if _is_equippable_item(selected_item) or _is_consumable_item(selected_item):
                 inv_drop_choice_count = 3
                 inv_drop_choice_index = 2  # KEEP
             else:
@@ -4952,6 +5198,8 @@ def _update_wood_up_dialog_timeout(loop_start):
 
 
 def _wood_room_inspect_objects():
+    if current_map_id == MAP3_ID:
+        return MAP3_INSPECT_OBJECTS
     if current_map_id == WOOD_MAIN_ID:
         return WOOD_MAIN_INSPECT_OBJECTS
     if current_map_id == WOOD_UP_ID:
@@ -5022,6 +5270,103 @@ def _try_open_wood_up_dialog(loop_start):
     return True
 
 
+def _open_single_png_notice_dialog(loop_start, dialog_id, path, line_ms=WOOD_UP_DIALOG_MS, draw_w=WOOD_UP_DIALOG_TEXT_W, draw_h=WOOD_UP_DIALOG_TEXT_H):
+    global wood_up_dialog_until_ms, wood_up_dialog_active_id
+    global wood_up_dialog_paths, wood_up_dialog_path_index, wood_up_dialog_line_ms
+    global wood_up_dialog_draw_w, wood_up_dialog_draw_h
+
+    if not path:
+        return False
+    if not _load_wood_up_dialog_path(path):
+        _clear_wood_up_dialog()
+        return False
+
+    if line_ms <= 0:
+        line_ms = WOOD_UP_DIALOG_MS
+    _clear_interact_hints()
+    wood_up_dialog_paths = None
+    wood_up_dialog_path_index = 0
+    wood_up_dialog_line_ms = line_ms
+    wood_up_dialog_until_ms = time.ticks_add(loop_start, line_ms)
+    wood_up_dialog_active_id = dialog_id
+    wood_up_dialog_draw_w = int(draw_w)
+    wood_up_dialog_draw_h = int(draw_h)
+    return True
+
+
+def _is_map5_map6_portal(portal):
+    return bool(
+        portal
+        and current_map_id == MAP5_ID
+        and portal.get("target_map_id") == MAP6_ID
+    )
+
+
+def _find_map5_map6_door_portal():
+    if current_map_id != MAP5_ID:
+        return None
+    config = MAP_REGISTRY.get(current_map_id)
+    if not config:
+        return None
+    best_portal = None
+    best_d2 = 0
+    for portal in config.get("portals", ()):
+        if portal.get("target_map_id") != MAP6_ID:
+            continue
+        rect = portal.get("rect", (0, 0, 0, 0))
+        x, y, w, h = rect
+        rx = x + (w // 2)
+        ry = y + h
+        radius = 28
+        dx = rx - player_x
+        dy = ry - player_y
+        d2 = (dx * dx) + (dy * dy)
+        if d2 <= (radius * radius):
+            if (best_portal is None) or (d2 < best_d2):
+                best_portal = portal
+                best_d2 = d2
+        interact_rect = (x - 12, y - 8, w + 24, h + 20)
+        if _player_touches_rect(interact_rect, 2) or _in_rect(player_x, player_y, interact_rect):
+            return portal
+    return best_portal
+
+
+def _try_handle_map5_map6_door_interact(loop_start):
+    global weapon_pickup_dialog_active, weapon_pickup_choice_index
+    global weapon_pickup_nav_prev_dir, weapon_pickup_target
+    global weapon_pickup_dialog_dirty
+
+    portal = _find_map5_map6_door_portal()
+    if not portal:
+        return False
+
+    if map5_map6_door_unlocked:
+        target_spawn = portal.get("target_spawn")
+        if target_spawn and len(target_spawn) >= 2:
+            return bool(switch_map(MAP6_ID, target_spawn[0], target_spawn[1]))
+        return bool(switch_map(MAP6_ID))
+
+    if not _inventory_has_item_id(ITEM_MAP4_KEY["id"]):
+        return _open_single_png_notice_dialog(
+            loop_start,
+            "map5_map6_locked",
+            MAP5_MAP6_DOOR_LOCKED_DIALOG_PATH,
+        )
+
+    _clear_interact_hints()
+    weapon_pickup_dialog_active = True
+    weapon_pickup_choice_index = 0
+    weapon_pickup_nav_prev_dir = 0
+    weapon_pickup_target = {
+        "source": "map5_door",
+        "prompt": "Use Key?",
+        "portal": portal,
+        "item": ITEM_MAP4_KEY,
+    }
+    weapon_pickup_dialog_dirty = True
+    return True
+
+
 def _has_interact_hint_api():
     return (
         hasattr(lgfx, "interact_hint_begin")
@@ -5085,6 +5430,36 @@ def _collect_interact_hints():
                 }
             )
 
+    if current_map_id == MAP3_ID:
+        for pickup in MAP3_PICKUP_OBJECTS:
+            pickup_id = pickup.get("pickup_id")
+            if map3_pickup_taken.get(pickup_id):
+                continue
+            hints.append(
+                {
+                    "kind": "circle",
+                    "slot_key": "map3_pickup:%s" % pickup_id,
+                    "world_cx": int(pickup.get("hint_x", pickup.get("interact_x", 0))),
+                    "world_cy": int(pickup.get("hint_y", pickup.get("interact_y", 0))),
+                    "world_r": int(pickup.get("hint_radius", 0)),
+                }
+            )
+
+    if current_map_id == MAP4_ID:
+        for pickup in MAP4_PICKUP_OBJECTS:
+            pickup_id = pickup.get("pickup_id")
+            if map4_pickup_taken.get(pickup_id):
+                continue
+            hints.append(
+                {
+                    "kind": "circle",
+                    "slot_key": "map4_pickup:%s" % pickup_id,
+                    "world_cx": int(pickup.get("hint_x", pickup.get("interact_x", 0))),
+                    "world_cy": int(pickup.get("hint_y", pickup.get("interact_y", 0))),
+                    "world_r": int(pickup.get("hint_radius", 0)),
+                }
+            )
+
     if current_map_id == WOOD_MAIN_ID or current_map_id == WOOD_UP_ID or current_map_id == WOOD_LEFT_ID:
         for obj in _wood_room_inspect_objects():
             if obj.get("map_id") != current_map_id:
@@ -5093,6 +5468,17 @@ def _collect_interact_hints():
                 {
                     "kind": "circle",
                     "slot_key": "wood_up:%s" % obj.get("inspect_id", "inspect"),
+                    "world_cx": int(obj.get("hint_x", obj.get("interact_x", 0))),
+                    "world_cy": int(obj.get("hint_y", obj.get("interact_y", 0))),
+                    "world_r": int(obj.get("hint_radius", 0)),
+                }
+            )
+    elif current_map_id == MAP3_ID:
+        for obj in _wood_room_inspect_objects():
+            hints.append(
+                {
+                    "kind": "circle",
+                    "slot_key": "map3_inspect:%s" % obj.get("inspect_id", "inspect"),
                     "world_cx": int(obj.get("hint_x", obj.get("interact_x", 0))),
                     "world_cy": int(obj.get("hint_y", obj.get("interact_y", 0))),
                     "world_r": int(obj.get("hint_radius", 0)),
@@ -5230,6 +5616,58 @@ def _find_wood_right_rack_pickup():
     return best_rack
 
 
+def _find_map3_pickup():
+    if current_map_id != MAP3_ID:
+        return None
+    best_pickup = None
+    best_d2 = 0
+    for pickup in MAP3_PICKUP_OBJECTS:
+        pickup_id = pickup.get("pickup_id")
+        if map3_pickup_taken.get(pickup_id):
+            continue
+        rx = int(pickup.get("interact_x", 0))
+        ry = int(pickup.get("interact_y", 0))
+        radius = int(pickup.get("detect_radius", 0))
+        if radius > 0:
+            dx = rx - player_x
+            dy = ry - player_y
+            d2 = (dx * dx) + (dy * dy)
+            if d2 <= (radius * radius):
+                if (best_pickup is None) or (d2 < best_d2):
+                    best_pickup = pickup
+                    best_d2 = d2
+        pickup_rect = pickup.get("rect", (0, 0, 0, 0))
+        if _player_touches_rect(pickup_rect, 2) or _in_rect(player_x, player_y, pickup_rect):
+            return pickup
+    return best_pickup
+
+
+def _find_map4_pickup():
+    if current_map_id != MAP4_ID:
+        return None
+    best_pickup = None
+    best_d2 = 0
+    for pickup in MAP4_PICKUP_OBJECTS:
+        pickup_id = pickup.get("pickup_id")
+        if map4_pickup_taken.get(pickup_id):
+            continue
+        rx = int(pickup.get("interact_x", 0))
+        ry = int(pickup.get("interact_y", 0))
+        radius = int(pickup.get("detect_radius", 0))
+        if radius > 0:
+            dx = rx - player_x
+            dy = ry - player_y
+            d2 = (dx * dx) + (dy * dy)
+            if d2 <= (radius * radius):
+                if (best_pickup is None) or (d2 < best_d2):
+                    best_pickup = pickup
+                    best_d2 = d2
+        pickup_rect = pickup.get("rect", (0, 0, 0, 0))
+        if _player_touches_rect(pickup_rect, 2) or _in_rect(player_x, player_y, pickup_rect):
+            return pickup
+    return best_pickup
+
+
 def _try_open_weapon_pickup_dialog():
     global weapon_pickup_dialog_active, weapon_pickup_choice_index
     global weapon_pickup_nav_prev_dir, weapon_pickup_target
@@ -5269,6 +5707,42 @@ def _try_open_weapon_pickup_dialog():
             weapon_pickup_nav_prev_dir = 0
             weapon_pickup_dialog_dirty = True
             return True
+
+    pickup = _find_map3_pickup()
+    if pickup:
+        base_item = pickup.get("item")
+        item = _inventory_clone_item(base_item) if base_item else None
+        if item:
+            item["origin_pickup_id"] = pickup.get("pickup_id")
+            weapon_pickup_target = {
+                "source": "map3",
+                "pickup_id": pickup.get("pickup_id"),
+                "item": item,
+            }
+            _clear_interact_hints()
+            weapon_pickup_dialog_active = True
+            weapon_pickup_choice_index = 0
+            weapon_pickup_nav_prev_dir = 0
+            weapon_pickup_dialog_dirty = True
+            return True
+
+    pickup = _find_map4_pickup()
+    if pickup:
+        base_item = pickup.get("item")
+        item = _inventory_clone_item(base_item) if base_item else None
+        if item:
+            item["origin_pickup_id"] = pickup.get("pickup_id")
+            weapon_pickup_target = {
+                "source": "map4",
+                "pickup_id": pickup.get("pickup_id"),
+                "item": item,
+            }
+            _clear_interact_hints()
+            weapon_pickup_dialog_active = True
+            weapon_pickup_choice_index = 0
+            weapon_pickup_nav_prev_dir = 0
+            weapon_pickup_dialog_dirty = True
+            return True
     return False
 
 
@@ -5276,6 +5750,7 @@ def _resolve_weapon_pickup_confirm():
     global weapon_pickup_dialog_active, weapon_pickup_choice_index
     global weapon_pickup_nav_prev_dir, weapon_pickup_target
     global explore_force_full_redraw, weapon_pickup_dialog_dirty
+    global map5_map6_door_unlocked
 
     target = weapon_pickup_target
     if weapon_pickup_choice_index != 0 or not target:
@@ -5287,12 +5762,39 @@ def _resolve_weapon_pickup_confirm():
         explore_force_full_redraw = True
         return
 
-    if inventory_try_add(target.get("item")):
-        source = target.get("source")
+    source = target.get("source")
+    should_process = False
+    if source == "map5_door":
+        should_process = True
+    elif inventory_try_add(target.get("item")):
+        should_process = True
+
+    if should_process:
         if source == "rack":
             pickup_id = target.get("pickup_id")
             if pickup_id:
                 rack_pickup_taken[pickup_id] = True
+        elif source == "map3":
+            pickup_id = target.get("pickup_id")
+            if pickup_id:
+                map3_pickup_taken[pickup_id] = True
+        elif source == "map4":
+            pickup_id = target.get("pickup_id")
+            if pickup_id:
+                map4_pickup_taken[pickup_id] = True
+        elif source == "map5_door":
+            portal = target.get("portal")
+            target_map_id = portal.get("target_map_id") if portal else 0
+            target_spawn = portal.get("target_spawn") if portal else None
+            ok = False
+            if target_map_id:
+                if target_spawn and len(target_spawn) >= 2:
+                    ok = bool(switch_map(target_map_id, target_spawn[0], target_spawn[1]))
+                else:
+                    ok = bool(switch_map(target_map_id))
+            if ok:
+                _inventory_remove_first_by_id(ITEM_MAP4_KEY["id"])
+                map5_map6_door_unlocked = True
         elif source == "ground":
             drop_id = target.get("drop_id")
             if drop_id:
@@ -5426,6 +5928,7 @@ def _draw_weapon_pickup_dialog():
     target = weapon_pickup_target if weapon_pickup_target else {}
     item = target.get("item", {})
     item_name = item.get("name", "Weapon")
+    prompt = target.get("prompt")
     dialog_w = 280
     if dialog_w > ACTIVE_VIEW_W - 8:
         dialog_w = ACTIVE_VIEW_W - 8
@@ -5437,7 +5940,9 @@ def _draw_weapon_pickup_dialog():
 
     _fill_rect_solid(dialog_x, dialog_y, dialog_w, dialog_h, 0x0000)
     _draw_rect_thick(dialog_x, dialog_y, dialog_w, dialog_h, BATTLE_COLOR_WHITE, BATTLE_CMD_BORDER_THICK)
-    _draw_text_in_box(dialog_x + 8, dialog_y + 8, dialog_w - 16, 16, "Pick up %s?" % item_name, BATTLE_COLOR_WHITE)
+    if not prompt:
+        prompt = "Pick up %s?" % item_name
+    _draw_text_in_box(dialog_x + 8, dialog_y + 8, dialog_w - 16, 16, prompt, BATTLE_COLOR_WHITE)
 
     yes_text = ">YES" if weapon_pickup_choice_index == 0 else " YES"
     no_text = ">NO" if weapon_pickup_choice_index == 1 else " NO"
@@ -6423,33 +6928,10 @@ def _reset_item_menu_state():
 
 
 def _use_battle_item_at(index):
-    global player_hp, battle_status_dirty
-
-    if index < 0 or index >= len(inventory_items):
+    usable_indices = _battle_usable_inventory_indices()
+    if index < 0 or index >= len(usable_indices):
         return "No items"
-    item = inventory_items[index]
-    if not item:
-        return "No items"
-    if _is_weapon_item(item):
-        return "%s cannot be used" % item.get("name", "Weapon")
-
-    item = inventory_remove_at(index)
-    if not item:
-        return "No items"
-
-    name = item.get("name", "Item")
-    heal_amount = int(item.get("heal_amount", 0))
-    if heal_amount > 0:
-        before = player_hp
-        player_hp += heal_amount
-        if player_hp > PLAYER_HP_MAX:
-            player_hp = PLAYER_HP_MAX
-        gain = player_hp - before
-        if gain < 0:
-            gain = 0
-        battle_status_dirty = True
-        return "Used %s  HP +%d" % (name, gain)
-    return "Used %s" % name
+    return _use_inventory_item_at(usable_indices[index])
 
 
 def _act_slots_for_layout(mode, inner_x, inner_y, inner_w, inner_h):
@@ -6709,14 +7191,15 @@ def _draw_battle_menu_screen(dialog_active):
     if item_menu_active and item_slots:
         item_menu_slot_cache = item_slots
         item_prev_selected_index = item_choice_index
-        total = len(inventory_items)
+        usable_indices = _battle_usable_inventory_indices()
+        total = len(usable_indices)
         if total <= 0:
             _draw_text_in_box(dialog_x, dialog_render_y, dialog_w, dialog_h, "No items", BATTLE_COLOR_WHITE)
             return
         rows = len(item_slots)
         if rows < 1:
             rows = 1
-        item_choice = inventory_clamp_index(item_choice_index)
+        item_choice = _battle_item_clamp_index(item_choice_index)
         if item_choice < item_view_offset:
             item_view_offset = item_choice
         if item_choice >= item_view_offset + rows:
@@ -6736,7 +7219,7 @@ def _draw_battle_menu_screen(dialog_active):
             if item_i == item_choice:
                 lgfx.draw_rect(slot[0], slot[1] + slot[3] - 1, slot[2], 1, BATTLE_COLOR_RED)
             _draw_star_line_with_text(
-                inventory_items[item_i].get("name", "Item"),
+                inventory_items[usable_indices[item_i]].get("name", "Item"),
                 slot[0],
                 slot[1],
                 slot[2],
@@ -9307,7 +9790,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             battle_menu_dirty = True
             return
 
-        if inventory_is_empty():
+        if not _battle_has_usable_items():
             _reset_item_menu_state()
             battle_dialog_mode = BATTLE_DIALOG_ITEM_RESULT
             _battle_clear_dialog_image()
@@ -9320,7 +9803,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         nav_dir = _menu_nav_dir_vertical()
         if nav_dir != 0 and nav_dir != item_nav_prev_dir:
             prev_choice = item_choice_index
-            count = len(inventory_items)
+            count = len(_battle_usable_inventory_indices())
             if nav_dir > 0:
                 item_choice_index = (item_choice_index + 1) % count
             else:
@@ -9330,10 +9813,10 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
                 battle_menu_dirty = True
         item_nav_prev_dir = nav_dir
         if item_pressed:
-            item_choice_index = inventory_clamp_index(item_choice_index)
+            item_choice_index = _battle_item_clamp_index(item_choice_index)
             result_text = _use_battle_item_at(item_choice_index)
             _reset_item_menu_state()
-            item_choice_index = inventory_clamp_index(item_choice_index)
+            item_choice_index = _battle_item_clamp_index(item_choice_index)
             item_view_offset = 0
             battle_dialog_mode = BATTLE_DIALOG_ITEM_RESULT
             _battle_clear_dialog_image()
@@ -9369,7 +9852,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             act_menu_slot_cache = None
             act_prev_selected_index = -1
             act_selection_dirty = False
-            if inventory_is_empty():
+            if not _battle_has_usable_items():
                 _reset_item_menu_state()
                 battle_dialog_mode = BATTLE_DIALOG_ITEM_RESULT
                 _battle_clear_dialog_image()
@@ -9378,7 +9861,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
                 battle_dialog_started_ms = loop_start
             else:
                 item_menu_active = True
-                item_choice_index = inventory_clamp_index(item_choice_index)
+                item_choice_index = _battle_item_clamp_index(item_choice_index)
                 item_nav_prev_dir = 0
                 item_menu_slot_cache = None
                 item_prev_selected_index = -1
@@ -9488,7 +9971,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         battle_menu_dirty = True
         return
     if item_pressed:
-        if inventory_is_empty():
+        if not _battle_has_usable_items():
             battle_dialog_mode = BATTLE_DIALOG_ITEM_RESULT
             _battle_clear_dialog_image()
             battle_dialog_text = "No items"
@@ -9498,7 +9981,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             return
         _reset_item_menu_state()
         item_menu_active = True
-        item_choice_index = inventory_clamp_index(item_choice_index)
+        item_choice_index = _battle_item_clamp_index(item_choice_index)
         item_nav_prev_dir = 0
         item_view_offset = 0
         battle_dialog_mode = BATTLE_DIALOG_NONE
@@ -9934,6 +10417,8 @@ def _run_main_loop():
                         move_dx = player_x - prev_player_x
                         move_dy = player_y - prev_player_y
                         active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
+                        if _is_map5_map6_portal(active_portal):
+                            active_portal = None
                         if active_portal:
                             if active_portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
                                 if not _portal_transition_rearm_blocked(active_portal):
@@ -9980,6 +10465,8 @@ def _run_main_loop():
 
                     if mode == MODE_EXPLORE and interact_pressed:
                         if _try_open_weapon_pickup_dialog():
+                            pass
+                        elif _try_handle_map5_map6_door_interact(loop_start):
                             pass
                         elif _try_open_wood_up_dialog(loop_start):
                             explore_overlay_dirty = False
