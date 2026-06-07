@@ -617,6 +617,8 @@ def _ensure_map6_boss_sheet_loaded():
     )
     if ok:
         lgfx.enemy_frame_set(0)
+        if hasattr(lgfx, "enemy_overlay_clear"):
+            lgfx.enemy_overlay_clear()
         map6_boss_sheet_loaded = True
         print("map6_boss_sheet_loaded:", path)
         return True
@@ -1590,6 +1592,10 @@ map6_boss_anim_last_ms = 0
 map6_boss_last_draw_frame = -1
 map6_boss_last_draw_sx = -99999
 map6_boss_last_draw_sy = -99999
+map6_boss_scene_composed = False
+map6_boss_scene_frame = -1
+map6_boss_scene_sx = -99999
+map6_boss_scene_sy = -99999
 
 preload_zone_target_map_id = None
 preload_zone_enter_ms = 0
@@ -2319,8 +2325,45 @@ def _tile_setup_with_fallback():
     raise RuntimeError("TILE_SETUP_FAIL")
 
 
-def _render_scene(scroll_x, scroll_y, player_x, player_y, force_full):
-    if USE_TILE_RENDER_PLAYER_COMPOSE and hasattr(lgfx, "tile_render_player"):
+def _map6_boss_scene_state(loop_start):
+    if not _map6_boss_should_draw():
+        return None
+    _map6_boss_update_anim(loop_start)
+    frame_index = MAP6_BOSS_ANIM_SEQUENCE[map6_boss_anim_seq_index]
+    sx = MAP6_BOSS_CENTER_X - scroll_x
+    sy = MAP6_BOSS_CENTER_Y - scroll_y
+    return frame_index, sx, sy
+
+
+def _render_scene(scroll_x, scroll_y, player_x, player_y, force_full, loop_start=None):
+    global map6_boss_scene_composed, map6_boss_scene_frame, map6_boss_scene_sx, map6_boss_scene_sy
+    map6_boss_scene_composed = False
+    map6_boss_scene_frame = -1
+    map6_boss_scene_sx = -99999
+    map6_boss_scene_sy = -99999
+    boss_state = None
+    if loop_start is not None and hasattr(lgfx, "tile_render_player_enemy"):
+        boss_state = _map6_boss_scene_state(loop_start)
+    if boss_state and USE_TILE_RENDER_PLAYER_COMPOSE:
+        frame_index, boss_sx, boss_sy = boss_state
+        lgfx.tile_render_player_enemy(
+            scroll_x,
+            scroll_y,
+            player_x - scroll_x,
+            player_y - scroll_y,
+            PLAYER_COLOR,
+            PLAYER_R,
+            boss_sx,
+            boss_sy,
+            frame_index,
+            True,
+            force_full,
+        )
+        map6_boss_scene_composed = True
+        map6_boss_scene_frame = frame_index
+        map6_boss_scene_sx = boss_sx
+        map6_boss_scene_sy = boss_sy
+    elif USE_TILE_RENDER_PLAYER_COMPOSE and hasattr(lgfx, "tile_render_player"):
         lgfx.tile_render_player(scroll_x, scroll_y, player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R, force_full)
     else:
         lgfx.tile_render(scroll_x, scroll_y, force_full)
@@ -3061,6 +3104,8 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     total_start = time.ticks_ms()
     _clear_interact_hints()
     _clear_wood_up_dialog()
+    if hasattr(lgfx, "enemy_overlay_clear"):
+        lgfx.enemy_overlay_clear()
 
     def _print_switch_timings():
         print("resolve_base_ms:", phase["resolve_base_ms"])
@@ -3376,6 +3421,7 @@ def _init_runtime_state():
     global portal_transition_switch_fail_count
     global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
+    global map6_boss_scene_composed, map6_boss_scene_frame, map6_boss_scene_sx, map6_boss_scene_sy
     global interact_hint_prev_signature, interact_hint_prev_phase
     global map5_map6_door_unlocked
     global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
@@ -3383,6 +3429,8 @@ def _init_runtime_state():
     global death_render_tick
     global death_screen_png_loaded, death_screen_path, death_progress_count, death_progress_next_ms, death_title_reset_pending
     global death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count, death_battle_cleanup_pending
+    if hasattr(lgfx, "enemy_overlay_clear"):
+        lgfx.enemy_overlay_clear()
     adc_x = ADC(Pin(JOY_X_PIN))
     adc_y = ADC(Pin(JOY_Y_PIN))
     adc_x.atten(ADC.ATTN_11DB)
@@ -3611,6 +3659,10 @@ def _init_runtime_state():
     map6_boss_battle_active = False
     map6_boss_anim_seq_index = 0
     map6_boss_anim_last_ms = time.ticks_ms()
+    map6_boss_scene_composed = False
+    map6_boss_scene_frame = -1
+    map6_boss_scene_sx = -99999
+    map6_boss_scene_sy = -99999
     interact_hint_prev_signature = None
     interact_hint_prev_phase = -1
     map5_map6_door_unlocked = False
@@ -5889,6 +5941,11 @@ def _draw_map6_boss(loop_start, scene_redrawn=False, player_redrawn=False):
     if not _map6_boss_should_draw():
         map6_boss_last_draw_frame = -1
         return
+    if scene_redrawn and map6_boss_scene_composed:
+        map6_boss_last_draw_frame = map6_boss_scene_frame
+        map6_boss_last_draw_sx = map6_boss_scene_sx
+        map6_boss_last_draw_sy = map6_boss_scene_sy
+        return
     _map6_boss_update_anim(loop_start)
     frame_index = MAP6_BOSS_ANIM_SEQUENCE[map6_boss_anim_seq_index]
     sx = MAP6_BOSS_CENTER_X - scroll_x
@@ -5916,6 +5973,8 @@ def _map6_boss_trigger_hit(px, py):
 
 def _map6_boss_mark_defeated():
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_last_draw_frame
+    if hasattr(lgfx, "enemy_overlay_clear"):
+        lgfx.enemy_overlay_clear()
     map6_boss_defeated = True
     map6_boss_battle_active = False
     map6_boss_last_draw_frame = -1
@@ -10152,6 +10211,12 @@ def draw_all(loop_start):
     global inv_screen_dirty
     global weapon_pickup_dialog_active, weapon_pickup_dialog_dirty
     global interact_hint_prev_signature
+    global map6_boss_scene_composed, map6_boss_scene_frame, map6_boss_scene_sx, map6_boss_scene_sy
+
+    map6_boss_scene_composed = False
+    map6_boss_scene_frame = -1
+    map6_boss_scene_sx = -99999
+    map6_boss_scene_sy = -99999
 
     if mode == MODE_TITLE_MENU:
         if interact_hint_prev_signature is not None:
@@ -10175,11 +10240,11 @@ def draw_all(loop_start):
         scene_redrawn = False
         player_redrawn = False
         if explore_force_full_redraw:
-            _render_scene(scroll_x, scroll_y, player_x, player_y, True)
+            _render_scene(scroll_x, scroll_y, player_x, player_y, True, loop_start)
             explore_force_full_redraw = False
             scene_redrawn = True
         elif explore_scrolled:
-            _render_scene(scroll_x, scroll_y, player_x, player_y, FORCE_FULL_REDRAW_WHEN_SCROLLED)
+            _render_scene(scroll_x, scroll_y, player_x, player_y, FORCE_FULL_REDRAW_WHEN_SCROLLED, loop_start)
             scene_redrawn = True
         elif explore_moved or explore_anim_changed:
             lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)

@@ -35,6 +35,8 @@ void lgfx_display_wait_idle_impl(void);
 bool lgfx_tile_set_impl(int tx, int ty, int tile_index);
 int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full);
 int lgfx_tile_render_player_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius, bool force_full);
+int lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius,
+                                       int enemy_x, int enemy_y, int enemy_frame, bool enemy_enabled, bool force_full);
 void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius);
 bool lgfx_player_sheet_load_impl(const uint8_t *sheet_data, size_t sheet_len, int sheet_w, int sheet_h, int frame_w, int frame_h);
 bool lgfx_player_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h);
@@ -45,6 +47,7 @@ bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sh
 void lgfx_enemy_frame_set_impl(int frame_index);
 void lgfx_enemy_sheet_clear_impl(void);
 void lgfx_enemy_draw_impl(int x, int y);
+void lgfx_enemy_overlay_clear_impl(void);
 void lgfx_interact_hint_begin_impl(void);
 void lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, int h, int phase_step);
 void lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int r, int phase_step);
@@ -353,6 +356,26 @@ static mp_obj_t lgfx_tile_render_player(size_t n_args, const mp_obj_t *args) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lgfx_tile_render_player_obj, 4, 7, lgfx_tile_render_player);
 
+static mp_obj_t lgfx_tile_render_player_enemy(size_t n_args, const mp_obj_t *args) {
+    int scroll_x = mp_obj_get_int(args[0]);
+    int scroll_y = mp_obj_get_int(args[1]);
+    int player_x = mp_obj_get_int(args[2]);
+    int player_y = mp_obj_get_int(args[3]);
+    uint16_t color = (uint16_t)mp_obj_get_int(args[4]);
+    int radius = mp_obj_get_int(args[5]);
+    int enemy_x = mp_obj_get_int(args[6]);
+    int enemy_y = mp_obj_get_int(args[7]);
+    int enemy_frame = mp_obj_get_int(args[8]);
+    bool enemy_enabled = mp_obj_is_true(args[9]);
+    bool force_full = mp_obj_is_true(args[10]);
+    int mode = lgfx_tile_render_player_enemy_impl(
+        scroll_x, scroll_y, player_x, player_y, color, radius,
+        enemy_x, enemy_y, enemy_frame, enemy_enabled, force_full
+    );
+    return mp_obj_new_int(mode);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lgfx_tile_render_player_enemy_obj, 11, 11, lgfx_tile_render_player_enemy);
+
 static mp_obj_t lgfx_draw_player(size_t n_args, const mp_obj_t *args) {
     int x = mp_obj_get_int(args[0]);
     int y = mp_obj_get_int(args[1]);
@@ -450,6 +473,12 @@ static mp_obj_t lgfx_enemy_draw(mp_obj_t x_obj, mp_obj_t y_obj) {
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_2(lgfx_enemy_draw_obj, lgfx_enemy_draw);
+
+static mp_obj_t lgfx_enemy_overlay_clear(void) {
+    lgfx_enemy_overlay_clear_impl();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_enemy_overlay_clear_obj, lgfx_enemy_overlay_clear);
 
 static mp_obj_t lgfx_interact_hint_begin(void) {
     lgfx_interact_hint_begin_impl();
@@ -582,6 +611,7 @@ static const mp_rom_map_elem_t lgfx_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_tile_set), MP_ROM_PTR(&lgfx_tile_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_tile_render), MP_ROM_PTR(&lgfx_tile_render_obj) },
     { MP_ROM_QSTR(MP_QSTR_tile_render_player), MP_ROM_PTR(&lgfx_tile_render_player_obj) },
+    { MP_ROM_QSTR(MP_QSTR_tile_render_player_enemy), MP_ROM_PTR(&lgfx_tile_render_player_enemy_obj) },
     { MP_ROM_QSTR(MP_QSTR_draw_player), MP_ROM_PTR(&lgfx_draw_player_obj) },
     { MP_ROM_QSTR(MP_QSTR_player_sheet_load), MP_ROM_PTR(&lgfx_player_sheet_load_obj) },
     { MP_ROM_QSTR(MP_QSTR_player_sheet_load_file), MP_ROM_PTR(&lgfx_player_sheet_load_file_obj) },
@@ -592,6 +622,7 @@ static const mp_rom_map_elem_t lgfx_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_enemy_frame_set), MP_ROM_PTR(&lgfx_enemy_frame_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_enemy_sheet_clear), MP_ROM_PTR(&lgfx_enemy_sheet_clear_obj) },
     { MP_ROM_QSTR(MP_QSTR_enemy_draw), MP_ROM_PTR(&lgfx_enemy_draw_obj) },
+    { MP_ROM_QSTR(MP_QSTR_enemy_overlay_clear), MP_ROM_PTR(&lgfx_enemy_overlay_clear_obj) },
     { MP_ROM_QSTR(MP_QSTR_interact_hint_begin), MP_ROM_PTR(&lgfx_interact_hint_begin_obj) },
     { MP_ROM_QSTR(MP_QSTR_interact_hint_rect), MP_ROM_PTR(&lgfx_interact_hint_rect_obj) },
     { MP_ROM_QSTR(MP_QSTR_interact_hint_circle), MP_ROM_PTR(&lgfx_interact_hint_circle_obj) },
