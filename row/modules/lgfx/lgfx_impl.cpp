@@ -1572,6 +1572,18 @@ static void redraw_enemy_overlay_locked(void) {
   enemy_draw_sheet_frame(enemy_overlay.center_x, enemy_overlay.center_y, &draw_x, &draw_y, &draw_w, &draw_h, true);
 }
 
+static inline bool player_overlay_intersects_rect(int x, int y, int w, int h) {
+  return player_overlay.valid &&
+         player_overlay.scene_epoch == scene_epoch &&
+         rect_intersects(x, y, x + w, y + h, player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h);
+}
+
+static inline bool enemy_overlay_intersects_rect(int x, int y, int w, int h) {
+  return enemy_overlay.valid &&
+         enemy_overlay.scene_epoch == scene_epoch &&
+         rect_intersects(x, y, x + w, y + h, enemy_overlay.x, enemy_overlay.y, enemy_overlay.w, enemy_overlay.h);
+}
+
 static void interact_hint_restore_previous_locked(void) {
   if (interact_hint_prev_count <= 0 || interact_hint_prev_scene_epoch != scene_epoch) {
     interact_hint_prev_count = 0;
@@ -1606,11 +1618,11 @@ static void interact_hint_restore_previous_locked(void) {
       redraw_enemy = true;
     }
   }
-  if (redraw_player) {
-    redraw_player_overlay_locked();
-  }
   if (redraw_enemy) {
     redraw_enemy_overlay_locked();
+  }
+  if (redraw_player) {
+    redraw_player_overlay_locked();
   }
 }
 
@@ -3510,14 +3522,14 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
         render_stats.last_tiles += 1;
       }
     }
+    if (compose_enemy) {
+      render_compose_enemy_applied = enemy_draw_to_sprite(render_compose_enemy_x, render_compose_enemy_y, render_compose_enemy_frame,
+                                                          &compose_enemy_rect_x, &compose_enemy_rect_y, &compose_enemy_rect_w, &compose_enemy_rect_h);
+    }
     if (compose_player) {
       player_draw_to_sprite(render_compose_player_x, render_compose_player_y, render_compose_player_color, render_compose_player_radius,
                             &compose_rect_x, &compose_rect_y, &compose_rect_w, &compose_rect_h);
       render_compose_applied = true;
-    }
-    if (compose_enemy) {
-      render_compose_enemy_applied = enemy_draw_to_sprite(render_compose_enemy_x, render_compose_enemy_y, render_compose_enemy_frame,
-                                                          &compose_enemy_rect_x, &compose_enemy_rect_y, &compose_enemy_rect_w, &compose_enemy_rect_h);
     }
     sprite.pushSprite(0, 0);
     if (render_compose_applied) {
@@ -3590,14 +3602,14 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
         }
       }
     }
+    if (compose_enemy) {
+      render_compose_enemy_applied = enemy_draw_to_sprite(render_compose_enemy_x, render_compose_enemy_y, render_compose_enemy_frame,
+                                                          &compose_enemy_rect_x, &compose_enemy_rect_y, &compose_enemy_rect_w, &compose_enemy_rect_h);
+    }
     if (compose_player) {
       player_draw_to_sprite(render_compose_player_x, render_compose_player_y, render_compose_player_color, render_compose_player_radius,
                             &compose_rect_x, &compose_rect_y, &compose_rect_w, &compose_rect_h);
       render_compose_applied = true;
-    }
-    if (compose_enemy) {
-      render_compose_enemy_applied = enemy_draw_to_sprite(render_compose_enemy_x, render_compose_enemy_y, render_compose_enemy_frame,
-                                                          &compose_enemy_rect_x, &compose_enemy_rect_y, &compose_enemy_rect_w, &compose_enemy_rect_h);
     }
     sprite.pushSprite(0, 0);
     if (render_compose_applied) {
@@ -3750,7 +3762,11 @@ extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) 
   }
   lcd.startWrite();
   if (player_overlay.valid) {
+    bool redraw_enemy = enemy_overlay_intersects_rect(player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h);
     push_rect_from_sprite_to_lcd_locked(player_overlay.x, player_overlay.y, player_overlay.w, player_overlay.h);
+    if (redraw_enemy) {
+      redraw_enemy_overlay_locked();
+    }
   }
 
   int new_x = 0;
@@ -3785,6 +3801,11 @@ extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) 
 extern "C" void lgfx_enemy_draw_impl(int x, int y) {
   bool can_use_sprite = enemy_sprite.enabled && enemy_sprite.pixels && enemy_sprite.frame_count > 0;
   int frame_index = enemy_sprite.current_frame;
+  bool had_overlay = enemy_overlay.valid && enemy_overlay.scene_epoch == scene_epoch;
+  int prev_x = enemy_overlay.x;
+  int prev_y = enemy_overlay.y;
+  int prev_w = enemy_overlay.w;
+  int prev_h = enemy_overlay.h;
   if (enemy_overlay.valid &&
       enemy_overlay.center_x == x &&
       enemy_overlay.center_y == y &&
@@ -3816,6 +3837,16 @@ extern "C" void lgfx_enemy_draw_impl(int x, int y) {
     lcd.endWrite();
     enemy_overlay.valid = false;
     return;
+  }
+  bool redraw_player = false;
+  if (had_overlay && player_overlay_intersects_rect(prev_x, prev_y, prev_w, prev_h)) {
+    redraw_player = true;
+  }
+  if (player_overlay_intersects_rect(new_x, new_y, new_w, new_h)) {
+    redraw_player = true;
+  }
+  if (redraw_player) {
+    redraw_player_overlay_locked();
   }
   lcd.endWrite();
 
