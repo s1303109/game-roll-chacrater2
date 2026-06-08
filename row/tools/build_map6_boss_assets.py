@@ -9,7 +9,7 @@ from PIL import Image, ImageMath
 
 
 ROOT = Path("/workspace")
-SRC_SHEET = ROOT / "boss.png"
+SRC_SHEET = ROOT / "boss66.png"
 OUT_SHEET = ROOT / "row/assets/out/map6_boss_sheet.rgb565"
 OUT_BATTLE = ROOT / "map6_boss_battle.png"
 OUT_PREVIEW = ROOT / "row/assets/out/map6_boss_sheet_preview.png"
@@ -17,7 +17,7 @@ OUT_PREVIEW = ROOT / "row/assets/out/map6_boss_sheet_preview.png"
 FRAME_W = 192
 FRAME_H = 192
 SHEET_COLS = 3
-SHEET_ROWS = 3
+SHEET_ROWS = 2
 CONTENT_W = 176
 CONTENT_H = 176
 BOTTOM_MARGIN = 2
@@ -305,7 +305,7 @@ def _prepare_frames() -> List[Image.Image]:
             cell_sizes.append(cell.size)
 
     if len(cleaned_cells) != (SHEET_COLS * SHEET_ROWS):
-        raise RuntimeError("invalid frame count from boss.png")
+        raise RuntimeError("invalid frame count from source sheet")
 
     # Per-frame inspection: apply extra cleanup only to the worst 2 halo frames.
     halo_scores: List[Tuple[int, int]] = []
