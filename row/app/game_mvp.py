@@ -1435,7 +1435,7 @@ def _map_boss_enemy_profile(enemy_id, display_name, sprite_path):
         "enemy_id": enemy_id,
         "display_name": display_name,
         "sprite_path": sprite_path,
-        "max_hp": 150,
+        "max_hp": 50,
         "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
         "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
