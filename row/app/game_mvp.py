@@ -13,6 +13,9 @@ from map_registry import (
     MAP5_ID,
     MAP6_ID,
     MAP8_ID,
+    MAP9_ID,
+    MAP10_ID,
+    MAP11_ID,
     WOOD_MAIN_ID,
     WOOD_UP_ID,
     WOOD_RIGHT_ID,
@@ -126,6 +129,13 @@ def _resolve_first_existing_path(paths):
 
 def _ui_asset_paths(name):
     return (config.ui_path(name),)
+
+
+def _ui_asset_sequence(prefix, count):
+    paths = []
+    for index in range(1, count + 1):
+        paths.append(config.ui_path("%s_%02d.png" % (prefix, index)))
+    return tuple(paths)
 
 
 def _resolve_runtime_png_path(path):
@@ -408,8 +418,7 @@ def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spaw
     explore_force_full_redraw = True
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     current_map_id = target_map_id
-    if current_map_id != MAP6_ID:
-        _release_map6_boss_sheet()
+    _release_map_boss_sheet_if_not_current()
     _encounter_on_map_enter(current_map_id)
 
     role_active = resident_slots[resident_active_slot_id]["role"]
@@ -489,8 +498,7 @@ def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_
     explore_force_full_redraw = True
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     current_map_id = target_map_id
-    if current_map_id != MAP6_ID:
-        _release_map6_boss_sheet()
+    _release_map_boss_sheet_if_not_current()
     _encounter_on_map_enter(current_map_id)
 
     preload_zone_target_map_id = None
@@ -587,54 +595,91 @@ def _load_player_sheet(base):
     return False, last_err
 
 
-def _ensure_map6_boss_sheet_loaded():
-    global map6_boss_sheet_loaded
+def _map_boss_for_map(map_id=None):
+    if map_id is None:
+        map_id = current_map_id
+    return MAP_BOSS_DEFINITIONS.get(map_id)
+
+
+def _map_boss_for_enemy_id(enemy_id):
+    if not enemy_id:
+        return None
+    for boss in MAP_BOSS_DEFINITIONS.values():
+        if boss.get("enemy_id") == enemy_id:
+            return boss
+    return None
+
+
+def _ensure_map_boss_sheet_loaded(boss=None):
+    global map_boss_sheet_loaded_map_id, map6_boss_sheet_loaded
+    if boss is None:
+        boss = _map_boss_for_map()
+    if not boss:
+        return False
     if (
         (not hasattr(lgfx, "enemy_sheet_load_file"))
         or (not hasattr(lgfx, "enemy_frame_set"))
         or (not hasattr(lgfx, "enemy_sheet_clear"))
         or (not hasattr(lgfx, "enemy_draw"))
     ):
-        print("map6_boss_sheet_api_missing")
+        print("map_boss_sheet_api_missing")
         return False
 
-    if map6_boss_sheet_loaded:
+    boss_map_id = boss.get("map_id")
+    if map_boss_sheet_loaded_map_id == boss_map_id:
         return True
 
     lgfx.enemy_sheet_clear()
-    path = MAP6_BOSS_SHEET_PATH
-    if not _path_exists(path):
-        print("map6_boss_sheet_missing:", path)
+    map_boss_sheet_loaded_map_id = None
+    map6_boss_sheet_loaded = False
+    path = boss.get("sheet_path")
+    if not path or not _path_exists(path):
+        print("map_boss_sheet_missing:", path)
         return False
     ok = bool(
         lgfx.enemy_sheet_load_file(
             path,
-            MAP6_BOSS_SHEET_W,
-            MAP6_BOSS_SHEET_H,
-            MAP6_BOSS_FRAME_W,
-            MAP6_BOSS_FRAME_H,
+            int(boss.get("sheet_w", MAP_BOSS_SHEET_W)),
+            int(boss.get("sheet_h", MAP_BOSS_SHEET_H)),
+            int(boss.get("frame_w", MAP_BOSS_FRAME_W)),
+            int(boss.get("frame_h", MAP_BOSS_FRAME_H)),
         )
     )
     if ok:
         lgfx.enemy_frame_set(0)
         if hasattr(lgfx, "enemy_overlay_clear"):
             lgfx.enemy_overlay_clear()
-        map6_boss_sheet_loaded = True
-        print("map6_boss_sheet_loaded:", path)
+        map_boss_sheet_loaded_map_id = boss_map_id
+        map6_boss_sheet_loaded = boss_map_id == MAP6_ID
+        print("map_boss_sheet_loaded:", path)
         return True
-    print("map6_boss_sheet_load_fail:", path)
+    print("map_boss_sheet_load_fail:", path)
     map6_boss_sheet_loaded = False
     return False
 
 
-def _release_map6_boss_sheet():
-    global map6_boss_sheet_loaded
-    if not map6_boss_sheet_loaded:
+def _release_map_boss_sheet():
+    global map_boss_sheet_loaded_map_id, map6_boss_sheet_loaded
+    if map_boss_sheet_loaded_map_id is None and not map6_boss_sheet_loaded:
         return
     if hasattr(lgfx, "enemy_sheet_clear"):
         lgfx.enemy_sheet_clear()
+    map_boss_sheet_loaded_map_id = None
     map6_boss_sheet_loaded = False
-    print("map6_boss_sheet_released")
+    print("map_boss_sheet_released")
+
+
+def _release_map_boss_sheet_if_not_current():
+    if map_boss_sheet_loaded_map_id is not None and map_boss_sheet_loaded_map_id != current_map_id:
+        _release_map_boss_sheet()
+
+
+def _ensure_map6_boss_sheet_loaded():
+    return _ensure_map_boss_sheet_loaded(MAP_BOSS_DEFINITIONS.get(MAP6_ID))
+
+
+def _release_map6_boss_sheet():
+    _release_map_boss_sheet()
 
 
 MAP1_ASSET_BASES = MAP_REGISTRY[MAP1_ID]["asset_bases"]
@@ -775,6 +820,12 @@ MAP4_ENEMY_SPRITE_PATHS = (config.ui_path("map4_enemy_anim_96.png"),) + _ui_asse
 MAP5_ENEMY_SPRITE_PATHS = (config.ui_path("map5_enemy_anim_96.png"),) + _ui_asset_paths("map5 enemy.png")
 MAP6_BOSS_BATTLE_SPRITE_PATH = config.ui_path("map6_boss_battle.png")
 MAP6_BOSS_SHEET_PATH = config.sprite_path("map6_boss_sheet.rgb565")
+MAP9_FOREST_BOSS_BATTLE_SPRITE_PATH = config.ui_path("map9_forest_boss_battle.png")
+MAP9_FOREST_BOSS_SHEET_PATH = config.sprite_path("map9_forest_boss_sheet.rgb565")
+MAP10_ICE_BOSS_BATTLE_SPRITE_PATH = config.ui_path("map10_ice_boss_battle.png")
+MAP10_ICE_BOSS_SHEET_PATH = config.sprite_path("map10_ice_boss_sheet.rgb565")
+MAP11_FIRE_BOSS_BATTLE_SPRITE_PATH = config.ui_path("map11_fire_boss_battle.png")
+MAP11_FIRE_BOSS_SHEET_PATH = config.sprite_path("map11_fire_boss_sheet.rgb565")
 MAP6_BOSS_SHEET_W = 576
 MAP6_BOSS_SHEET_H = 384
 MAP6_BOSS_FRAME_W = 192
@@ -784,6 +835,75 @@ MAP6_BOSS_CENTER_Y = 246
 MAP6_BOSS_TRIGGER_RADIUS_PX = 54
 MAP6_BOSS_ANIM_FRAME_MS = 300
 MAP6_BOSS_ANIM_SEQUENCE = (0, 1, 2, 3, 4, 5)
+MAP_BOSS_SHEET_W = MAP6_BOSS_SHEET_W
+MAP_BOSS_SHEET_H = MAP6_BOSS_SHEET_H
+MAP_BOSS_FRAME_W = MAP6_BOSS_FRAME_W
+MAP_BOSS_FRAME_H = MAP6_BOSS_FRAME_H
+MAP_BOSS_TRIGGER_RADIUS_PX = MAP6_BOSS_TRIGGER_RADIUS_PX
+MAP_BOSS_ANIM_FRAME_MS = MAP6_BOSS_ANIM_FRAME_MS
+MAP_BOSS_ANIM_SEQUENCE = MAP6_BOSS_ANIM_SEQUENCE
+MAP_BOSS_DEFINITIONS = {
+    MAP6_ID: {
+        "map_id": MAP6_ID,
+        "enemy_id": "MAP6_BOSS",
+        "sheet_path": MAP6_BOSS_SHEET_PATH,
+        "sheet_w": MAP6_BOSS_SHEET_W,
+        "sheet_h": MAP6_BOSS_SHEET_H,
+        "frame_w": MAP6_BOSS_FRAME_W,
+        "frame_h": MAP6_BOSS_FRAME_H,
+        "center_x": MAP6_BOSS_CENTER_X,
+        "center_y": MAP6_BOSS_CENTER_Y,
+        "trigger_radius": MAP6_BOSS_TRIGGER_RADIUS_PX,
+        "anim_frame_ms": MAP6_BOSS_ANIM_FRAME_MS,
+        "anim_sequence": MAP6_BOSS_ANIM_SEQUENCE,
+        "lock_portals_until_defeated": False,
+    },
+    MAP9_ID: {
+        "map_id": MAP9_ID,
+        "enemy_id": "MAP9_FOREST_BOSS",
+        "sheet_path": MAP9_FOREST_BOSS_SHEET_PATH,
+        "sheet_w": MAP_BOSS_SHEET_W,
+        "sheet_h": MAP_BOSS_SHEET_H,
+        "frame_w": MAP_BOSS_FRAME_W,
+        "frame_h": MAP_BOSS_FRAME_H,
+        "center_x": 184,
+        "center_y": 160,
+        "trigger_radius": MAP_BOSS_TRIGGER_RADIUS_PX,
+        "anim_frame_ms": MAP_BOSS_ANIM_FRAME_MS,
+        "anim_sequence": MAP_BOSS_ANIM_SEQUENCE,
+        "lock_portals_until_defeated": True,
+    },
+    MAP10_ID: {
+        "map_id": MAP10_ID,
+        "enemy_id": "MAP10_ICE_BOSS",
+        "sheet_path": MAP10_ICE_BOSS_SHEET_PATH,
+        "sheet_w": MAP_BOSS_SHEET_W,
+        "sheet_h": MAP_BOSS_SHEET_H,
+        "frame_w": MAP_BOSS_FRAME_W,
+        "frame_h": MAP_BOSS_FRAME_H,
+        "center_x": 776,
+        "center_y": 304,
+        "trigger_radius": MAP_BOSS_TRIGGER_RADIUS_PX,
+        "anim_frame_ms": MAP_BOSS_ANIM_FRAME_MS,
+        "anim_sequence": MAP_BOSS_ANIM_SEQUENCE,
+        "lock_portals_until_defeated": True,
+    },
+    MAP11_ID: {
+        "map_id": MAP11_ID,
+        "enemy_id": "MAP11_FIRE_BOSS",
+        "sheet_path": MAP11_FIRE_BOSS_SHEET_PATH,
+        "sheet_w": MAP_BOSS_SHEET_W,
+        "sheet_h": MAP_BOSS_SHEET_H,
+        "frame_w": MAP_BOSS_FRAME_W,
+        "frame_h": MAP_BOSS_FRAME_H,
+        "center_x": 176,
+        "center_y": 144,
+        "trigger_radius": MAP_BOSS_TRIGGER_RADIUS_PX,
+        "anim_frame_ms": MAP_BOSS_ANIM_FRAME_MS,
+        "anim_sequence": MAP_BOSS_ANIM_SEQUENCE,
+        "lock_portals_until_defeated": True,
+    },
+}
 ACT_DIALOG_TEXT_PATH = config.ui_path("act_dialog_text.png")
 MERCY_DIALOG_TEXT_PATH = config.ui_path("mercy_dialog_text.png")
 LAMP_DIALOG_TEXT_PATH = config.ui_path("lamp_dialog_text.png")
@@ -874,6 +994,18 @@ MAP5_CYCLOBOT_RESET2_PNG = config.ui_path("map5_cyclobot_reset_02.png")
 MAP5_CYCLOBOT_MERCY1_PNG = config.ui_path("map5_cyclobot_mercy_01.png")
 MAP5_CYCLOBOT_MERCY2_PNG = config.ui_path("map5_cyclobot_mercy_02.png")
 MAP5_CYCLOBOT_MERCY3_PNG = config.ui_path("map5_cyclobot_mercy_03.png")
+MAP6_CRYSTALGOLEM_ACT_OBSERVE_PNG = config.ui_path("map6_crystalgolem_act_observe.png")
+MAP6_CRYSTALGOLEM_ACT_REMEMBER_PNG = config.ui_path("map6_crystalgolem_act_remember.png")
+MAP6_CRYSTALGOLEM_ACT_TELL_PNG = config.ui_path("map6_crystalgolem_act_tell.png")
+MAP6_CRYSTALGOLEM_ACT_TOUCH_CORE_PNG = config.ui_path("map6_crystalgolem_act_touch_core.png")
+MAP6_CRYSTALGOLEM_OPENING_PNGS = _ui_asset_sequence("map6_crystalgolem_opening", 10)
+MAP6_CRYSTALGOLEM_OBSERVE_PNGS = _ui_asset_sequence("map6_crystalgolem_observe", 2)
+MAP6_CRYSTALGOLEM_REMEMBER_PNGS = _ui_asset_sequence("map6_crystalgolem_remember", 8)
+MAP6_CRYSTALGOLEM_TELL_PNGS = _ui_asset_sequence("map6_crystalgolem_tell", 6)
+MAP6_CRYSTALGOLEM_TOUCH_CORE_PNGS = _ui_asset_sequence("map6_crystalgolem_touch_core", 8)
+MAP6_CRYSTALGOLEM_MERCY_PNGS = _ui_asset_sequence("map6_crystalgolem_mercy", 5)
+MAP6_CRYSTALGOLEM_OPENING_PNG_W = 156
+MAP6_CRYSTALGOLEM_OPENING_PNG_H = 72
 CMD_ICON_SRC_W = 32
 CMD_ICON_SRC_H = 32
 STAR_ICON_SRC_W = 24
@@ -885,6 +1017,26 @@ INVENTORY_PORTRAIT_SRC_H = 221
 FIGHT_ICON_PATHS = _ui_asset_paths("fight_icon.png")
 ACT_ICON_PATHS = _ui_asset_paths("act_icon.png")
 ITEM_ICON_PATHS = _ui_asset_paths("item_icon.png")
+ITEM_DETAIL_ICON_SRC_W = 32
+ITEM_DETAIL_ICON_SRC_H = 32
+ITEM_DETAIL_ICON_BY_PICKUP_ID = {
+    "wood_right_rack_knife": config.ui_path("item_icon_weapon_knife.png"),
+    "wood_right_rack_sword": config.ui_path("item_icon_weapon_sword.png"),
+    "map3_red_potion": config.ui_path("item_icon_item_red_potion.png"),
+    "map3_chest_armor": config.ui_path("item_icon_armor_map3.png"),
+    "map4_great_sword": config.ui_path("item_icon_weapon_great_sword.png"),
+    "map4_small_red_potion": config.ui_path("item_icon_item_small_red_potion.png"),
+    "map4_key": config.ui_path("item_icon_item_map5_door_key.png"),
+}
+ITEM_DETAIL_ICON_BY_ITEM_ID = {
+    "weapon_knife": config.ui_path("item_icon_weapon_knife.png"),
+    "weapon_sword": config.ui_path("item_icon_weapon_sword.png"),
+    "item_red_potion": config.ui_path("item_icon_item_red_potion.png"),
+    "armor_map3": config.ui_path("item_icon_armor_map3.png"),
+    "weapon_great_sword": config.ui_path("item_icon_weapon_great_sword.png"),
+    "item_small_red_potion": config.ui_path("item_icon_item_small_red_potion.png"),
+    "item_map5_door_key": config.ui_path("item_icon_item_map5_door_key.png"),
+}
 MERCY_ICON_PATHS = _ui_asset_paths("mercy_icon.png")
 CMD_ICON_PATHS = (
     FIGHT_ICON_PATHS,
@@ -916,6 +1068,7 @@ BATTLE_SLOT_DIALOG_CURRENT = 1
 BATTLE_SLOT_ACT_0 = 2
 BATTLE_SLOT_ACT_1 = 3
 BATTLE_SLOT_ACT_2 = 4
+BATTLE_SLOT_ACT_3 = 13
 BATTLE_SLOT_MERCY_LOCKED = 5
 BATTLE_SLOT_MERCY_SUCCESS = 6
 BATTLE_SLOT_FLOWEY_NORMAL = 7
@@ -924,6 +1077,12 @@ BATTLE_SLOT_STORY_FIRE = 9
 BATTLE_SLOT_STORY_TORIEL = 10
 BATTLE_SLOT_DEATH_SCREEN = 11
 WOOD_UP_DIALOG_SLOT_ID = 12
+BATTLE_ACT_OPTION_SLOT_IDS = (
+    BATTLE_SLOT_ACT_0,
+    BATTLE_SLOT_ACT_1,
+    BATTLE_SLOT_ACT_2,
+    BATTLE_SLOT_ACT_3,
+)
 BATTLE_SLOT_KIND_PNG = "png_slot"
 DEATH_GLITCH_STEP_MS = 90
 DEATH_FLICKER_STEP_MS = 45
@@ -1142,6 +1301,80 @@ MAP_ENCOUNTER_ENTRY_GRACE_MAX_MS = 15000
 MAP_ENCOUNTER_PICK_MODE_ROUND_ROBIN = "round_robin"
 DEFAULT_BATTLE_ENEMY_ID = "MAP1_FALLBACK_ENEMY"
 
+
+def _make_scripted_dialog_entries(paths, lines, png_w=SCRIPTED_BATTLE_DIALOG_PNG_W, png_h=SCRIPTED_BATTLE_DIALOG_PNG_H):
+    entries = []
+    for index, text in enumerate(lines):
+        path = None
+        if index < len(paths):
+            path = paths[index]
+        entries.append(
+            {
+                "png": path,
+                "png_w": png_w,
+                "png_h": png_h,
+                "text": text,
+            }
+        )
+    return tuple(entries)
+
+
+def _make_act_option_entry(path, width, text):
+    return {"png": path, "png_w": width, "png_h": 18, "text": text}
+
+
+MAP6_CRYSTALGOLEM_OPENING_LINES = (
+    "停止前進。",
+    "孩子，不該進入更深的地方。",
+    "判定結果：禁止通行。",
+    "弱小的靈魂，會被遺跡吞沒。",
+    "離開，或被阻止。",
+    "情緒紀錄仍在。",
+    "孤單。破碎。悲傷。錯誤。",
+    "所有前進者，最後都留下痛苦。",
+    "所有試圖深入的人，都帶著傷痕離開。",
+    "所以，我會封住道路。",
+)
+MAP6_CRYSTALGOLEM_OBSERVE_LINES = (
+    "觀察無意義。",
+    "理解不會改變危險。",
+)
+MAP6_CRYSTALGOLEM_REMEMBER_LINES = (
+    "你想起了之前遇見的怪物。",
+    "你想起 Gloombell 害怕被丟下。",
+    "你想起 Mimi-Stitch 害怕自己不完整。",
+    "你想起 Mushmuse 聽見別人的悲傷。",
+    "你想起 Cyclobot 只是被舊指令困住。",
+    "Crystal Golem 的胸口晶核亮了一下。",
+    "Crystal Golem：記憶確認。",
+    "Crystal Golem：你……沒有破壞它們？",
+)
+MAP6_CRYSTALGOLEM_TELL_LINES = (
+    "我知道前面可能很危險。",
+    "害怕受傷而停下，就甚麼都不會改變。",
+    "Crystal Golem 沉默了。",
+    "Crystal Golem：前進，代表失去。",
+    "Crystal Golem：停下，代表安全。",
+    "Crystal Golem：此判斷……曾經正確。",
+)
+MAP6_CRYSTALGOLEM_TOUCH_CORE_LINES = (
+    "你靠近 Crystal Golem，伸手碰向藍色晶核。",
+    "晶核很冷。",
+    "深處微微震動，像被壓住的心跳。",
+    "Crystal Golem：不要接觸核心。",
+    "Crystal Golem：那裡保存著錯誤、恐懼與失敗。",
+    "你沒有退後。",
+    "你只是靜靜站著。",
+    "Crystal Golem：為什麼……不害怕？",
+)
+MAP6_CRYSTALGOLEM_MERCY_LINES = (
+    "Crystal Golem：……你選擇停止攻擊。",
+    "Crystal Golem：修正判斷，你並非破壞者。",
+    "Crystal Golem：弱小，也能選擇理解。",
+    "Crystal Golem：道路封鎖……解除。",
+    "Crystal Golem：孩子，你可以繼續前進。",
+)
+
 MAP4_MUSHMUSE_SCRIPTED_PROFILE = {
     "script_behavior": "scripted_battle",
     "fight_pattern": FIGHT_PATTERN_MUSHMUSE,
@@ -1195,6 +1428,23 @@ def _map4_mushmuse_enemy_profile(enemy_id, display_name="Mushmuse"):
     profile["enemy_id"] = enemy_id
     profile["display_name"] = display_name
     return profile
+
+
+def _map_boss_enemy_profile(enemy_id, display_name, sprite_path):
+    return {
+        "enemy_id": enemy_id,
+        "display_name": display_name,
+        "sprite_path": sprite_path,
+        "max_hp": 150,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    }
 
 
 ENEMY_REGISTRY = {
@@ -1417,23 +1667,74 @@ ENEMY_REGISTRY = {
     },
     "MAP6_BOSS": {
         "enemy_id": "MAP6_BOSS",
-        "display_name": "MAP6 Boss",
+        "display_name": "Crystal Golem",
+        "script_behavior": "scripted_battle",
         "sprite_path": MAP6_BOSS_BATTLE_SPRITE_PATH,
-        "sprite_w": 96,
-        "sprite_h": 96,
+        "max_hp": 150,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
         "act_options": (
-            {"png": ACT_OPT1_PNG, "png_w": 88, "png_h": 18, "text": "Observe"},
-            {"png": ACT_OPT2_PNG, "png_w": 72, "png_h": 18, "text": "Question"},
-            {"png": ACT_OPT3_PNG, "png_w": 64, "png_h": 18, "text": "Calm"},
+            _make_act_option_entry(MAP6_CRYSTALGOLEM_ACT_OBSERVE_PNG, 46, "觀察"),
+            _make_act_option_entry(MAP6_CRYSTALGOLEM_ACT_REMEMBER_PNG, 46, "回想"),
+            _make_act_option_entry(MAP6_CRYSTALGOLEM_ACT_TELL_PNG, 46, "訴說"),
+            _make_act_option_entry(MAP6_CRYSTALGOLEM_ACT_TOUCH_CORE_PNG, 64, "觸碰晶核"),
         ),
-        "act_replies": (
-            {"png": ACT_REPLY1_PNG, "png_w": 132, "png_h": 18, "text": "It watches you."},
-            {"png": ACT_REPLY2_PNG, "png_w": 168, "png_h": 18, "text": "It stares silently."},
-            {"png": ACT_REPLY3_PNG, "png_w": 132, "png_h": 18, "text": "It loosens up."},
+        "opening_dialog": _make_scripted_dialog_entries(
+            MAP6_CRYSTALGOLEM_OPENING_PNGS,
+            MAP6_CRYSTALGOLEM_OPENING_LINES,
+            MAP6_CRYSTALGOLEM_OPENING_PNG_W,
+            MAP6_CRYSTALGOLEM_OPENING_PNG_H,
         ),
+        "act_sequences": (
+            _make_scripted_dialog_entries(
+                MAP6_CRYSTALGOLEM_OBSERVE_PNGS,
+                MAP6_CRYSTALGOLEM_OBSERVE_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP6_CRYSTALGOLEM_REMEMBER_PNGS,
+                MAP6_CRYSTALGOLEM_REMEMBER_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP6_CRYSTALGOLEM_TELL_PNGS,
+                MAP6_CRYSTALGOLEM_TELL_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP6_CRYSTALGOLEM_TOUCH_CORE_PNGS,
+                MAP6_CRYSTALGOLEM_TOUCH_CORE_LINES,
+            ),
+        ),
+        "act_unlock_order": (0, 1, 2, 3),
+        "mercy_success_sequence": _make_scripted_dialog_entries(
+            MAP6_CRYSTALGOLEM_MERCY_PNGS,
+            MAP6_CRYSTALGOLEM_MERCY_LINES,
+        ),
+        "opening_delay_ms": SCRIPTED_BATTLE_DIALOG_DELAY_MS,
+        "opening_side_dialog": True,
+        "opening_dialog_desired_w": MAP6_CRYSTALGOLEM_OPENING_PNG_W,
+        "opening_enter_attack": True,
+        "dialog_line_ms": MAP1_STORY_LINE_MS,
         "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
         "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
     },
+    "MAP9_FOREST_BOSS": _map_boss_enemy_profile(
+        "MAP9_FOREST_BOSS",
+        "Forest Guardian",
+        MAP9_FOREST_BOSS_BATTLE_SPRITE_PATH,
+    ),
+    "MAP10_ICE_BOSS": _map_boss_enemy_profile(
+        "MAP10_ICE_BOSS",
+        "Ice Guardian",
+        MAP10_ICE_BOSS_BATTLE_SPRITE_PATH,
+    ),
+    "MAP11_FIRE_BOSS": _map_boss_enemy_profile(
+        "MAP11_FIRE_BOSS",
+        "Fire Guardian",
+        MAP11_FIRE_BOSS_BATTLE_SPRITE_PATH,
+    ),
 }
 
 MAP_ENCOUNTER_CONFIG = {
@@ -1487,7 +1788,6 @@ class BattleAssetManager:
             hasattr(lgfx, "png_slot_load_file")
             and hasattr(lgfx, "png_slot_draw")
             and hasattr(lgfx, "png_slot_release")
-            and hasattr(lgfx, "png_slot_release_all")
         )
 
     def begin(self, enemy_id):
@@ -1557,10 +1857,11 @@ class BattleAssetManager:
     def cleanup(self):
         self._release_dialog_slot()
         if self._has_slot_api():
-            try:
-                lgfx.png_slot_release_all()
-            except Exception as err:
-                print("[battle_assets] release_all_fail:", err)
+            for slot_id in tuple(self.loaded_slots):
+                try:
+                    lgfx.png_slot_release(slot_id)
+                except Exception as err:
+                    print("[battle_assets] release_fail:", slot_id, err)
         self.enemy_id = None
         self.loaded_slots.clear()
         self.dialog_slot_loaded = False
@@ -1584,6 +1885,23 @@ scripted_battle_opening_pending = False
 scripted_battle_side_dialog = False
 scripted_battle_return_to_act = False
 scripted_battle_pending_exit = False
+map_boss_sheet_loaded_map_id = None
+map_boss_defeated_by_map = {
+    MAP6_ID: False,
+    MAP9_ID: False,
+    MAP10_ID: False,
+    MAP11_ID: False,
+}
+map_boss_battle_enemy_id = None
+map_boss_anim_seq_index = 0
+map_boss_anim_last_ms = 0
+map_boss_last_draw_frame = -1
+map_boss_last_draw_sx = -99999
+map_boss_last_draw_sy = -99999
+map_boss_scene_composed = False
+map_boss_scene_frame = -1
+map_boss_scene_sx = -99999
+map_boss_scene_sy = -99999
 map6_boss_sheet_loaded = False
 map6_boss_defeated = False
 map6_boss_battle_active = False
@@ -1991,6 +2309,51 @@ def _is_consumable_item(item):
     return bool(item.get("consumable", False))
 
 
+def _inventory_item_icon_path(item):
+    if not item:
+        return None
+
+    path = item.get("icon_path")
+    if path:
+        path = _resolve_runtime_png_path(path)
+        if path and _path_exists(path):
+            return path
+
+    pickup_id = item.get("origin_pickup_id")
+    if pickup_id:
+        path = ITEM_DETAIL_ICON_BY_PICKUP_ID.get(pickup_id)
+        if path and _path_exists(path):
+            return path
+
+    item_id = item.get("id")
+    if item_id:
+        path = ITEM_DETAIL_ICON_BY_ITEM_ID.get(item_id)
+        if path and _path_exists(path):
+            return path
+
+    for path in ITEM_ICON_PATHS:
+        if path and _path_exists(path):
+            return path
+    return None
+
+
+def _inventory_item_stat_text(item):
+    if not item:
+        return ""
+    slot = item.get("equip_slot")
+    if slot == "weapon":
+        return "AT +%d" % int(item.get("at_bonus", 0))
+    if slot == "armor":
+        return "DF +%d" % int(item.get("df_bonus", 0))
+    if _is_consumable_item(item):
+        heal_amount = int(item.get("heal_amount", 0))
+        if heal_amount > 0:
+            return "HP +%d" % heal_amount
+    if item.get("item_type") == "key":
+        return "KEY"
+    return "ITEM"
+
+
 def _sync_equipment_state_from_inventory():
     global equipped_weapon_item_id, equipped_armor_item_id
     global PLAYER_WEAPON, PLAYER_ARMOR, PLAYER_AT_BONUS, PLAYER_DF_BONUS
@@ -2099,6 +2462,7 @@ def _inventory_clone_item(item):
         "at_bonus": int(item.get("at_bonus", 0)),
         "df_bonus": int(item.get("df_bonus", 0)),
         "origin_pickup_id": item.get("origin_pickup_id"),
+        "icon_path": item.get("icon_path"),
         "heal_amount": int(item.get("heal_amount", 0)),
         "consumable": bool(item.get("consumable", True)),
     }
@@ -2325,25 +2689,27 @@ def _tile_setup_with_fallback():
     raise RuntimeError("TILE_SETUP_FAIL")
 
 
-def _map6_boss_scene_state(loop_start):
-    if not _map6_boss_should_draw():
+def _map_boss_scene_state(loop_start):
+    boss = _map_boss_for_map()
+    if not _map_boss_should_draw(boss):
         return None
-    _map6_boss_update_anim(loop_start)
-    frame_index = MAP6_BOSS_ANIM_SEQUENCE[map6_boss_anim_seq_index]
-    sx = MAP6_BOSS_CENTER_X - scroll_x
-    sy = MAP6_BOSS_CENTER_Y - scroll_y
+    _map_boss_update_anim(boss, loop_start)
+    sequence = boss.get("anim_sequence", MAP_BOSS_ANIM_SEQUENCE)
+    frame_index = sequence[map_boss_anim_seq_index]
+    sx = int(boss.get("center_x", 0)) - scroll_x
+    sy = int(boss.get("center_y", 0)) - scroll_y
     return frame_index, sx, sy
 
 
 def _render_scene(scroll_x, scroll_y, player_x, player_y, force_full, loop_start=None):
-    global map6_boss_scene_composed, map6_boss_scene_frame, map6_boss_scene_sx, map6_boss_scene_sy
-    map6_boss_scene_composed = False
-    map6_boss_scene_frame = -1
-    map6_boss_scene_sx = -99999
-    map6_boss_scene_sy = -99999
+    global map_boss_scene_composed, map_boss_scene_frame, map_boss_scene_sx, map_boss_scene_sy
+    map_boss_scene_composed = False
+    map_boss_scene_frame = -1
+    map_boss_scene_sx = -99999
+    map_boss_scene_sy = -99999
     boss_state = None
     if loop_start is not None and hasattr(lgfx, "tile_render_player_enemy"):
-        boss_state = _map6_boss_scene_state(loop_start)
+        boss_state = _map_boss_scene_state(loop_start)
     if boss_state and USE_TILE_RENDER_PLAYER_COMPOSE:
         frame_index, boss_sx, boss_sy = boss_state
         lgfx.tile_render_player_enemy(
@@ -2359,10 +2725,10 @@ def _render_scene(scroll_x, scroll_y, player_x, player_y, force_full, loop_start
             True,
             force_full,
         )
-        map6_boss_scene_composed = True
-        map6_boss_scene_frame = frame_index
-        map6_boss_scene_sx = boss_sx
-        map6_boss_scene_sy = boss_sy
+        map_boss_scene_composed = True
+        map_boss_scene_frame = frame_index
+        map_boss_scene_sx = boss_sx
+        map_boss_scene_sy = boss_sy
     elif USE_TILE_RENDER_PLAYER_COMPOSE and hasattr(lgfx, "tile_render_player"):
         lgfx.tile_render_player(scroll_x, scroll_y, player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R, force_full)
     else:
@@ -2609,7 +2975,7 @@ def _boot_phase_meta_spawn():
 
 
 def _boot_phase_tile_and_player():
-    global player_sheet_enabled, player_sheet_err, map6_boss_sheet_loaded
+    global player_sheet_enabled, player_sheet_err, map6_boss_sheet_loaded, map_boss_sheet_loaded_map_id
     if hasattr(lgfx, "player_sheet_clear"):
         # Release previous C-side sheet buffers before sprite allocation fallback.
         lgfx.player_sheet_clear()
@@ -2630,6 +2996,7 @@ def _boot_phase_tile_and_player():
     if not player_sheet_enabled and player_sheet_err:
         print("player_mode: red_dot", player_sheet_err)
 
+    map_boss_sheet_loaded_map_id = None
     map6_boss_sheet_loaded = False
 
     print("view:", ACTIVE_VIEW_W, ACTIVE_VIEW_H)
@@ -3329,8 +3696,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
     phase["spawn_finalize_ms"] = time.ticks_diff(time.ticks_ms(), t0)
     current_map_id = target_map_id
-    if current_map_id != MAP6_ID:
-        _release_map6_boss_sheet()
+    _release_map_boss_sheet_if_not_current()
     _encounter_on_map_enter(current_map_id)
 
     if target_slot_id == prev_back_slot_id:
@@ -3420,6 +3786,9 @@ def _init_runtime_state():
     global portal_transition_shrink_ms, portal_transition_black_ms, portal_transition_portal_ref, portal_transition_last_switch_try_ms
     global portal_transition_switch_fail_count
     global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
+    global map_boss_sheet_loaded_map_id, map_boss_battle_enemy_id, map_boss_anim_seq_index, map_boss_anim_last_ms
+    global map_boss_last_draw_frame, map_boss_last_draw_sx, map_boss_last_draw_sy
+    global map_boss_scene_composed, map_boss_scene_frame, map_boss_scene_sx, map_boss_scene_sy
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
     global map6_boss_scene_composed, map6_boss_scene_frame, map6_boss_scene_sx, map6_boss_scene_sy
     global interact_hint_prev_signature, interact_hint_prev_phase
@@ -3517,7 +3886,7 @@ def _init_runtime_state():
     battle_heart_needs_sprite_refresh = False
     fight_return_deadline_ms = 0
     player_hp = PLAYER_HP_MAX
-    enemy_hp = ENEMY_HP_MAX
+    enemy_hp = _battle_enemy_hp_max()
     bullets = []
     next_bullet_spawn_ms = 0
     damage_invuln_until_ms = 0
@@ -3655,6 +4024,19 @@ def _init_runtime_state():
     portal_transition_rearm_required = False
     portal_transition_rearm_map_id = 0
     portal_transition_rearm_portal_ref = None
+    map_boss_sheet_loaded_map_id = None
+    for boss_map_id in map_boss_defeated_by_map:
+        map_boss_defeated_by_map[boss_map_id] = False
+    map_boss_battle_enemy_id = None
+    map_boss_anim_seq_index = 0
+    map_boss_anim_last_ms = time.ticks_ms()
+    map_boss_last_draw_frame = -1
+    map_boss_last_draw_sx = -99999
+    map_boss_last_draw_sy = -99999
+    map_boss_scene_composed = False
+    map_boss_scene_frame = -1
+    map_boss_scene_sx = -99999
+    map_boss_scene_sy = -99999
     map6_boss_defeated = False
     map6_boss_battle_active = False
     map6_boss_anim_seq_index = 0
@@ -4406,6 +4788,31 @@ def _draw_text_in_box(x, y, w, h, text, color=BATTLE_COLOR_WHITE):
     lgfx.draw_text(tx, ty, text, color)
 
 
+def _fit_text_to_width(text, w):
+    if text is None:
+        text = ""
+    max_chars = w // 8
+    if max_chars <= 0:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    if max_chars == 1:
+        return text[:1]
+    return text[: max_chars - 1] + "."
+
+
+def _draw_text_left_in_box(x, y, w, h, text, color=BATTLE_COLOR_WHITE):
+    if not hasattr(lgfx, "draw_text"):
+        return
+    clipped = _fit_text_to_width(text, w - 4)
+    if not clipped:
+        return
+    ty = y + ((h - 8) // 2)
+    if ty < y:
+        ty = y
+    lgfx.draw_text(x + 2, ty, clipped, color)
+
+
 def _draw_rect_thick(x, y, w, h, color, thickness):
     if w <= 0 or h <= 0:
         return
@@ -4539,8 +4946,9 @@ def _cleanup_battle_native_assets_after_death():
     if not death_battle_cleanup_pending:
         return
     print("[battle_assets] deferred_cleanup_before mem_free=", gc.mem_free())
+    _release_death_screen_slot()
     battle_assets.cleanup()
-    _release_map6_boss_sheet()
+    _release_map_boss_sheet()
     print("[battle_assets] deferred_cleanup_after mem_free=", gc.mem_free())
     death_battle_cleanup_pending = False
 
@@ -4799,6 +5207,39 @@ def _close_explore_inventory():
     _reset_interact_hint_state()
 
 
+def _draw_inventory_item_detail_panel(x, y, w, h, item):
+    if w <= 0 or h <= 0:
+        return
+    panel_border = BATTLE_CMD_BORDER_THICK
+    _draw_rect_thick(x, y, w, h, BATTLE_COLOR_WHITE, panel_border)
+    inner_x = x + 6
+    inner_w = w - 12
+    if inner_w <= 0:
+        return
+    if not item:
+        _draw_text_left_in_box(inner_x, y + 6, inner_w, 12, "EMPTY", BATTLE_COLOR_WHITE)
+        return
+
+    _draw_text_left_in_box(inner_x, y + 6, inner_w, 12, item.get("name", "Item"), BATTLE_COLOR_WHITE)
+    _draw_text_left_in_box(inner_x, y + 20, inner_w, 12, _inventory_item_stat_text(item), BATTLE_CMD_COLOR)
+
+    icon_y = y + 38
+    icon_h = (y + h - 6) - icon_y
+    if icon_h <= 0:
+        return
+    icon_path = _inventory_item_icon_path(item)
+    if icon_path:
+        _draw_png_in_box(
+            (icon_path, ITEM_DETAIL_ICON_SRC_W, ITEM_DETAIL_ICON_SRC_H),
+            inner_x,
+            icon_y,
+            inner_w,
+            icon_h,
+            preserve_aspect=True,
+            allow_upscale=True,
+        )
+
+
 def _draw_explore_inventory_screen():
     panel_border = BATTLE_CMD_BORDER_THICK
     frame_border = BATTLE_FRAME_BORDER_THICK
@@ -4850,6 +5291,15 @@ def _draw_explore_inventory_screen():
             lgfx.draw_rect(tab_x, ry + tab_row_h - line_h, tab_w, line_h, BATTLE_COLOR_RED)
         text_color = BATTLE_CMD_COLOR if i == inv_tab_active else BATTLE_COLOR_WHITE
         _draw_text_in_box(tab_x + 2, ry, tab_w - 4, tab_row_h, label, text_color)
+
+    if inv_tab_active == INV_TAB_ITEM:
+        detail_y = tab_y + (len(tabs) * tab_row_h) + 6
+        detail_h = (left_y + right_h) - detail_y
+        detail_item = None
+        if not inventory_is_empty() and inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
+            detail_item = inventory_items[inv_choice_index]
+        if detail_h >= 44:
+            _draw_inventory_item_detail_panel(left_x, detail_y, left_w, detail_h, detail_item)
 
     title_h = 16
     right_title = "ITEM" if inv_tab_active == INV_TAB_ITEM else "STAT"
@@ -5015,9 +5465,9 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
             if nav_dir != 0 and nav_dir != inv_nav_prev_dir and not inventory_is_empty():
                 count = len(inventory_items)
                 if nav_dir > 0:
-                    inv_choice_index = (inv_choice_index + 1) % count
-                else:
                     inv_choice_index = (inv_choice_index - 1 + count) % count
+                else:
+                    inv_choice_index = (inv_choice_index + 1) % count
                 inv_screen_dirty = True
             inv_nav_prev_dir = nav_dir
         else:
@@ -5887,31 +6337,51 @@ def _draw_ground_weapon_drops():
         lgfx.draw_circle(sx, sy, GROUND_DROP_MARKER_R, BATTLE_COLOR_WHITE)
 
 
-def _map6_boss_should_draw():
-    if current_map_id != MAP6_ID:
+def _map_boss_is_defeated(boss):
+    if not boss:
         return False
-    if map6_boss_defeated:
+    map_id = boss.get("map_id")
+    if map_id == MAP6_ID and map6_boss_defeated:
+        return True
+    return bool(map_boss_defeated_by_map.get(map_id, False))
+
+
+def _current_map_boss_blocks_portals():
+    boss = _map_boss_for_map()
+    return bool(boss and boss.get("lock_portals_until_defeated") and not _map_boss_is_defeated(boss))
+
+
+def _map_boss_should_draw(boss=None):
+    if boss is None:
+        boss = _map_boss_for_map()
+    if not boss:
         return False
-    if not _ensure_map6_boss_sheet_loaded():
+    if boss.get("map_id") != current_map_id:
+        return False
+    if _map_boss_is_defeated(boss):
+        return False
+    if not _ensure_map_boss_sheet_loaded(boss):
         return False
     if not hasattr(lgfx, "enemy_draw") or not hasattr(lgfx, "enemy_frame_set"):
         return False
     return True
 
 
-def _map6_boss_draw_rect():
-    half_w = MAP6_BOSS_FRAME_W // 2
-    half_h = MAP6_BOSS_FRAME_H // 2
+def _map_boss_draw_rect(boss):
+    frame_w = int(boss.get("frame_w", MAP_BOSS_FRAME_W))
+    frame_h = int(boss.get("frame_h", MAP_BOSS_FRAME_H))
+    half_w = frame_w // 2
+    half_h = frame_h // 2
     return (
-        MAP6_BOSS_CENTER_X - half_w - scroll_x,
-        MAP6_BOSS_CENTER_Y - half_h - scroll_y,
-        MAP6_BOSS_FRAME_W,
-        MAP6_BOSS_FRAME_H,
+        int(boss.get("center_x", 0)) - half_w - scroll_x,
+        int(boss.get("center_y", 0)) - half_h - scroll_y,
+        frame_w,
+        frame_h,
     )
 
 
-def _map6_boss_player_overlap():
-    bx, by, bw, bh = _map6_boss_draw_rect()
+def _map_boss_player_overlap(boss):
+    bx, by, bw, bh = _map_boss_draw_rect(boss)
     if player_sheet_enabled:
         half_w = PLAYER_FRAME_W // 2
         half_h = PLAYER_FRAME_H // 2
@@ -5925,60 +6395,99 @@ def _map6_boss_player_overlap():
     return _rects_intersect(px, py, pw, ph, bx, by, bw, bh)
 
 
-def _map6_boss_update_anim(loop_start):
-    global map6_boss_anim_seq_index, map6_boss_anim_last_ms
-    if map6_boss_anim_last_ms == 0:
-        map6_boss_anim_last_ms = loop_start
-    while time.ticks_diff(loop_start, map6_boss_anim_last_ms) >= MAP6_BOSS_ANIM_FRAME_MS:
-        map6_boss_anim_last_ms = time.ticks_add(map6_boss_anim_last_ms, MAP6_BOSS_ANIM_FRAME_MS)
-        map6_boss_anim_seq_index += 1
-        if map6_boss_anim_seq_index >= len(MAP6_BOSS_ANIM_SEQUENCE):
-            map6_boss_anim_seq_index = 0
+def _map_boss_update_anim(boss, loop_start):
+    global map_boss_anim_seq_index, map_boss_anim_last_ms
+    sequence = boss.get("anim_sequence", MAP_BOSS_ANIM_SEQUENCE)
+    if not sequence:
+        sequence = MAP_BOSS_ANIM_SEQUENCE
+    frame_ms = int(boss.get("anim_frame_ms", MAP_BOSS_ANIM_FRAME_MS))
+    if frame_ms < 1:
+        frame_ms = MAP_BOSS_ANIM_FRAME_MS
+    if map_boss_anim_last_ms == 0:
+        map_boss_anim_last_ms = loop_start
+    while time.ticks_diff(loop_start, map_boss_anim_last_ms) >= frame_ms:
+        map_boss_anim_last_ms = time.ticks_add(map_boss_anim_last_ms, frame_ms)
+        map_boss_anim_seq_index += 1
+        if map_boss_anim_seq_index >= len(sequence):
+            map_boss_anim_seq_index = 0
 
 
-def _draw_map6_boss(loop_start, scene_redrawn=False, player_redrawn=False):
-    global map6_boss_last_draw_frame, map6_boss_last_draw_sx, map6_boss_last_draw_sy
-    if not _map6_boss_should_draw():
-        map6_boss_last_draw_frame = -1
+def _draw_map_boss(loop_start, scene_redrawn=False, player_redrawn=False):
+    global map_boss_last_draw_frame, map_boss_last_draw_sx, map_boss_last_draw_sy
+    boss = _map_boss_for_map()
+    if not _map_boss_should_draw(boss):
+        map_boss_last_draw_frame = -1
         return
-    if scene_redrawn and map6_boss_scene_composed:
-        map6_boss_last_draw_frame = map6_boss_scene_frame
-        map6_boss_last_draw_sx = map6_boss_scene_sx
-        map6_boss_last_draw_sy = map6_boss_scene_sy
+    if scene_redrawn and map_boss_scene_composed:
+        map_boss_last_draw_frame = map_boss_scene_frame
+        map_boss_last_draw_sx = map_boss_scene_sx
+        map_boss_last_draw_sy = map_boss_scene_sy
         return
-    _map6_boss_update_anim(loop_start)
-    frame_index = MAP6_BOSS_ANIM_SEQUENCE[map6_boss_anim_seq_index]
-    sx = MAP6_BOSS_CENTER_X - scroll_x
-    sy = MAP6_BOSS_CENTER_Y - scroll_y
-    need_draw = scene_redrawn or (frame_index != map6_boss_last_draw_frame) or (sx != map6_boss_last_draw_sx) or (sy != map6_boss_last_draw_sy)
+    _map_boss_update_anim(boss, loop_start)
+    sequence = boss.get("anim_sequence", MAP_BOSS_ANIM_SEQUENCE)
+    frame_index = sequence[map_boss_anim_seq_index]
+    sx = int(boss.get("center_x", 0)) - scroll_x
+    sy = int(boss.get("center_y", 0)) - scroll_y
+    need_draw = scene_redrawn or (frame_index != map_boss_last_draw_frame) or (sx != map_boss_last_draw_sx) or (sy != map_boss_last_draw_sy)
     if (not need_draw) and player_redrawn:
-        need_draw = _map6_boss_player_overlap()
+        need_draw = _map_boss_player_overlap(boss)
     if not need_draw:
         return
     lgfx.enemy_frame_set(frame_index)
     lgfx.enemy_draw(sx, sy)
-    map6_boss_last_draw_frame = frame_index
-    map6_boss_last_draw_sx = sx
-    map6_boss_last_draw_sy = sy
+    map_boss_last_draw_frame = frame_index
+    map_boss_last_draw_sx = sx
+    map_boss_last_draw_sy = sy
+
+
+def _map_boss_trigger_enemy_id(px, py):
+    boss = _map_boss_for_map()
+    if not boss or _map_boss_is_defeated(boss):
+        return None
+    dx = px - int(boss.get("center_x", 0))
+    dy = py - int(boss.get("center_y", 0))
+    r = int(boss.get("trigger_radius", MAP_BOSS_TRIGGER_RADIUS_PX))
+    if (dx * dx + dy * dy) <= (r * r):
+        return boss.get("enemy_id")
+    return None
+
+
+def _map_boss_mark_defeated(boss):
+    global map6_boss_defeated, map6_boss_battle_active, map_boss_battle_enemy_id
+    global map_boss_last_draw_frame, map_boss_anim_seq_index
+    if not boss:
+        return False
+    map_id = boss.get("map_id")
+    if hasattr(lgfx, "enemy_overlay_clear"):
+        lgfx.enemy_overlay_clear()
+    map_boss_defeated_by_map[map_id] = True
+    if map_id == MAP6_ID:
+        map6_boss_defeated = True
+    if map_boss_battle_enemy_id == boss.get("enemy_id"):
+        map_boss_battle_enemy_id = None
+    map6_boss_battle_active = False
+    map_boss_last_draw_frame = -1
+    map_boss_anim_seq_index = 0
+    if map_boss_sheet_loaded_map_id == map_id:
+        _release_map_boss_sheet()
+    print("map_boss_defeated:", boss.get("enemy_id"))
+    return True
+
+
+def _map_boss_mark_defeated_for_enemy(enemy_id):
+    return _map_boss_mark_defeated(_map_boss_for_enemy_id(enemy_id))
+
+
+def _map6_boss_should_draw():
+    return _map_boss_should_draw(MAP_BOSS_DEFINITIONS.get(MAP6_ID))
 
 
 def _map6_boss_trigger_hit(px, py):
-    if current_map_id != MAP6_ID or map6_boss_defeated:
-        return False
-    dx = px - MAP6_BOSS_CENTER_X
-    dy = py - MAP6_BOSS_CENTER_Y
-    r = MAP6_BOSS_TRIGGER_RADIUS_PX
-    return (dx * dx + dy * dy) <= (r * r)
+    return _map_boss_trigger_enemy_id(px, py) == "MAP6_BOSS"
 
 
 def _map6_boss_mark_defeated():
-    global map6_boss_defeated, map6_boss_battle_active, map6_boss_last_draw_frame
-    if hasattr(lgfx, "enemy_overlay_clear"):
-        lgfx.enemy_overlay_clear()
-    map6_boss_defeated = True
-    map6_boss_battle_active = False
-    map6_boss_last_draw_frame = -1
-    _release_map6_boss_sheet()
+    return _map_boss_mark_defeated(MAP_BOSS_DEFINITIONS.get(MAP6_ID))
 
 
 def _draw_weapon_pickup_dialog():
@@ -6993,10 +7502,30 @@ def _use_battle_item_at(index):
     return _use_inventory_item_at(usable_indices[index])
 
 
-def _act_slots_for_layout(mode, inner_x, inner_y, inner_w, inner_h):
+def _act_slots_for_layout(mode, option_count, inner_x, inner_y, inner_w, inner_h):
     gap = 4
-    if inner_w < 12 or inner_h < 12:
+    if option_count <= 0 or inner_w < 12 or inner_h < 12:
         return None
+    if option_count <= 2:
+        slot_h = (inner_h - (gap * (option_count - 1))) // option_count
+        if slot_h < 8:
+            return None
+        slots = []
+        cursor_y = inner_y
+        for _ in range(option_count):
+            slots.append((inner_x, cursor_y, inner_w, slot_h))
+            cursor_y += slot_h + gap
+        return tuple(slots)
+    if option_count == 4:
+        slot_w = (inner_w - gap) // 2
+        slot_h = (inner_h - gap) // 2
+        if slot_w < 8 or slot_h < 8:
+            return None
+        slot0 = (inner_x, inner_y, slot_w, slot_h)
+        slot1 = (inner_x + slot_w + gap, inner_y, slot_w, slot_h)
+        slot2 = (inner_x, inner_y + slot_h + gap, slot_w, slot_h)
+        slot3 = (inner_x + slot_w + gap, inner_y + slot_h + gap, slot_w, slot_h)
+        return (slot0, slot1, slot2, slot3)
     if mode == 1:
         slot_w = (inner_w - gap) // 2
         slot_h = (inner_h - gap) // 2
@@ -7039,6 +7568,9 @@ def _act_slots_fit(slots):
 
 
 def _resolve_act_dialog_layout():
+    option_count = _battle_enemy_act_option_count()
+    if option_count < 1:
+        option_count = 1
     frame_w = BATTLE_FRAME_W
     max_frame_w = ACTIVE_VIEW_W - 4
     if max_frame_w < frame_w:
@@ -7063,25 +7595,42 @@ def _resolve_act_dialog_layout():
         inner_y = dialog_y + 4
         inner_w = dialog_w - 8
         inner_h = dialog_h - 8
-        slots_lr = _act_slots_for_layout(1, inner_x, inner_y, inner_w, inner_h)
-        if slots_lr and _act_slots_fit(slots_lr):
-            return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_lr
-        slots_col = _act_slots_for_layout(2, inner_x, inner_y, inner_w, inner_h)
-        if slots_col and _act_slots_fit(slots_col):
-            return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_col
+        if option_count <= 2:
+            slots_col = _act_slots_for_layout(2, option_count, inner_x, inner_y, inner_w, inner_h)
+            if slots_col and _act_slots_fit(slots_col):
+                return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_col
+        elif option_count == 4:
+            slots_grid = _act_slots_for_layout(1, option_count, inner_x, inner_y, inner_w, inner_h)
+            if slots_grid and _act_slots_fit(slots_grid):
+                return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_grid
+        else:
+            slots_lr = _act_slots_for_layout(1, option_count, inner_x, inner_y, inner_w, inner_h)
+            if slots_lr and _act_slots_fit(slots_lr):
+                return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_lr
+            slots_col = _act_slots_for_layout(2, option_count, inner_x, inner_y, inner_w, inner_h)
+            if slots_col and _act_slots_fit(slots_col):
+                return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, slots_col
         if frame_w >= max_frame_w:
-            fallback_slots = slots_col
-            if fallback_slots is None:
-                fallback_slots = _act_slots_for_layout(2, inner_x, inner_y, inner_w, inner_h)
+            fallback_slots = None
+            if option_count <= 2:
+                fallback_slots = _act_slots_for_layout(2, option_count, inner_x, inner_y, inner_w, inner_h)
+            elif option_count == 4:
+                fallback_slots = _act_slots_for_layout(1, option_count, inner_x, inner_y, inner_w, inner_h)
+            else:
+                fallback_slots = _act_slots_for_layout(2, option_count, inner_x, inner_y, inner_w, inner_h)
             return frame_w, frame_x, frame_y, cmd_x0, cmd_y, cmd_w, dialog_x, dialog_y, dialog_w, dialog_h, fallback_slots
         frame_w += 24
         if frame_w > max_frame_w:
             frame_w = max_frame_w
 
 
+def _battle_menu_opening_frame_w():
+    return BATTLE_FRAME_W
+
+
 def _draw_battle_menu_screen(dialog_active):
     global menu_frame_x_used, menu_frame_w_used, menu_cmd_y_used
-    global act_menu_slot_cache, act_prev_selected_index
+    global act_menu_slot_cache, act_prev_selected_index, act_choice_index
     global item_menu_slot_cache, item_prev_selected_index, item_view_offset
     global battle_menu_full_clear_pending
     global battle_menu_static_ready, battle_menu_static_frame_x, battle_menu_static_frame_y, battle_menu_static_frame_w
@@ -7122,7 +7671,7 @@ def _draw_battle_menu_screen(dialog_active):
         ) = _resolve_item_dialog_layout()
         act_slots = None
     else:
-        frame_w = BATTLE_FRAME_W
+        frame_w = _battle_menu_opening_frame_w()
         frame_x, frame_y, cmd_x0, cmd_y, cmd_w = _battle_menu_geometry(frame_w)
         dialog_x = frame_x + 10
         dialog_w = frame_w - 20
@@ -7228,6 +7777,8 @@ def _draw_battle_menu_screen(dialog_active):
     battle_menu_prev_dialog_h = dialog_h
 
     if act_menu_active and act_slots:
+        if act_choice_index >= len(act_slots):
+            act_choice_index = len(act_slots) - 1
         act_menu_slot_cache = act_slots
         act_prev_selected_index = act_choice_index
         for i, slot in enumerate(act_slots):
@@ -7420,6 +7971,14 @@ def _battle_enemy_fight_pattern():
     return profile.get("fight_pattern")
 
 
+def _battle_enemy_hp_max():
+    profile = _battle_enemy_profile()
+    max_hp = int(profile.get("max_hp", ENEMY_HP_MAX))
+    if max_hp < 1:
+        max_hp = ENEMY_HP_MAX
+    return max_hp
+
+
 def _battle_enemy_resolve(enemy_id=None):
     if enemy_id:
         resolved = ENEMY_REGISTRY.get(enemy_id)
@@ -7474,13 +8033,18 @@ def _battle_set_fixed_dialog_slot(slot_id, path, src_w, src_h):
     return True
 
 
+def _battle_enemy_act_option_count():
+    profile = _battle_enemy_profile()
+    options = profile.get("act_options", ())
+    if options:
+        return len(options)
+    fallback = ENEMY_REGISTRY.get(DEFAULT_BATTLE_ENEMY_ID, {}).get("act_options", ())
+    return len(fallback)
+
+
 def _battle_enemy_act_option_slot_id(index):
-    if index == 0:
-        return BATTLE_SLOT_ACT_0
-    if index == 1:
-        return BATTLE_SLOT_ACT_1
-    if index == 2:
-        return BATTLE_SLOT_ACT_2
+    if index >= 0 and index < len(BATTLE_ACT_OPTION_SLOT_IDS):
+        return BATTLE_ACT_OPTION_SLOT_IDS[index]
     return -1
 
 
@@ -7695,6 +8259,7 @@ def _scripted_battle_dialog_png_size():
 
 
 def _scripted_battle_opening_dialog_rect(frame_x, frame_y, frame_w, cmd_y):
+    profile = _battle_enemy_profile()
     status_y = cmd_y - (8 + BATTLE_STATUS_TO_CMD_GAP)
     status_band_top = status_y - BATTLE_HP_BAR_H - 3
     y_min = frame_y + 10
@@ -7710,7 +8275,9 @@ def _scripted_battle_opening_dialog_rect(frame_x, frame_y, frame_w, cmd_y):
         side_right = side_left + 20
 
     src_w, src_h = _scripted_battle_dialog_png_size()
-    desired_w = 164
+    desired_w = int(profile.get("opening_dialog_desired_w", 164))
+    if desired_w < 40:
+        desired_w = 40
     dialog_w = desired_w
     avail_w = side_right - side_left
     if dialog_w > avail_w - 4:
@@ -7787,12 +8354,76 @@ def _scripted_battle_start_sequence(entries, kind, now_ms, side_dialog=False, re
     return True
 
 
+def _battle_enter_attack_mode(loop_start):
+    global mode, battle_menu_dirty, battle_dialog_visible
+    global battle_dialog_mode, battle_dialog_text, act_dialog_until_ms, mercy_exit_pending
+    global act_menu_active, act_nav_prev_dir, act_menu_slot_cache, act_prev_selected_index, act_selection_dirty
+    global item_menu_active, item_nav_prev_dir
+    global attack_started_ms, attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty
+
+    act_menu_active = False
+    act_nav_prev_dir = 0
+    act_menu_slot_cache = None
+    act_prev_selected_index = -1
+    act_selection_dirty = False
+    _reset_item_menu_state()
+    item_menu_active = False
+    item_nav_prev_dir = 0
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    _battle_clear_dialog_image()
+    battle_dialog_text = None
+    act_dialog_until_ms = 0
+    mercy_exit_pending = False
+    mode = MODE_BATTLE_ATTACK
+    attack_started_ms = loop_start
+    attack_cursor_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
+    attack_cursor_dir = 1
+    attack_locked = False
+    battle_attack_dirty = True
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    print("FIGHT")
+
+
+def _battle_enter_fight_mode(loop_start):
+    global mode, fight_return_deadline_ms
+    global battle_menu_dirty, battle_dialog_visible
+    global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
+    global battle_fight_dirty
+    global battle_dialog_mode, battle_dialog_text, act_dialog_until_ms, mercy_exit_pending
+    global act_menu_active, act_nav_prev_dir
+    global item_menu_active, item_nav_prev_dir
+
+    mode = MODE_BATTLE_FIGHT
+    battle_menu_dirty = True
+    battle_dialog_visible = False
+    battle_menu_full_clear_pending = True
+    battle_menu_static_ready = False
+    battle_menu_prev_dialog_active = False
+    battle_dialog_mode = BATTLE_DIALOG_NONE
+    _battle_clear_dialog_image()
+    battle_dialog_text = None
+    act_dialog_until_ms = 0
+    act_menu_active = False
+    act_nav_prev_dir = 0
+    _reset_item_menu_state()
+    item_menu_active = False
+    item_nav_prev_dir = 0
+    mercy_exit_pending = False
+    _reset_battle_state()
+    fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
+    battle_fight_dirty = True
+
+
 def _scripted_battle_finish():
     global act_menu_active, act_choice_index, act_nav_prev_dir, act_menu_slot_cache, act_prev_selected_index, act_selection_dirty
     global battle_dialog_mode, battle_dialog_started_ms, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms, battle_menu_dirty
 
     pending_exit = scripted_battle_pending_exit
     return_to_act = scripted_battle_return_to_act
+    finished_kind = scripted_battle_kind
+    finished_enemy_id = _battle_enemy_id()
+    opening_enter_attack = bool(_battle_enemy_profile().get("opening_enter_attack"))
     _scripted_battle_reset()
     battle_dialog_mode = BATTLE_DIALOG_NONE
     battle_dialog_started_ms = 0
@@ -7800,7 +8431,12 @@ def _scripted_battle_finish():
     battle_dialog_text = None
     act_dialog_until_ms = 0
     if pending_exit:
+        if finished_kind == SCRIPTED_BATTLE_KIND_MERCY:
+            _map_boss_mark_defeated_for_enemy(finished_enemy_id)
         _exit_battle_to_explore()
+        return
+    if finished_kind == SCRIPTED_BATTLE_KIND_OPENING and opening_enter_attack:
+        _battle_enter_attack_mode(time.ticks_ms())
         return
     if return_to_act:
         act_menu_active = True
@@ -8712,7 +9348,7 @@ def _death_refresh_glitch_state(loop_start, force=False):
 
 
 def _enter_death_screen(now_ms):
-    global mode, player_hp, mercy_exit_pending, map6_boss_battle_active
+    global mode, player_hp, mercy_exit_pending, map_boss_battle_enemy_id, map6_boss_battle_active
     global battle_menu_dirty, battle_dialog_visible, battle_fight_dirty, battle_status_dirty
     global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
     global fight_return_deadline_ms
@@ -8735,6 +9371,7 @@ def _enter_death_screen(now_ms):
     _map1_story_reset()
     _scripted_battle_reset()
     _reset_battle_state()
+    map_boss_battle_enemy_id = None
     map6_boss_battle_active = False
 
     death_screen_started_ms = now_ms
@@ -8765,11 +9402,8 @@ def _return_to_title_from_death():
     global death_screen_dirty, death_glitch_state, death_glitch_next_ms, death_progress_count, death_progress_next_ms
     global death_render_tick
     global death_title_reset_pending, death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count
-    global death_battle_cleanup_pending
 
-    _release_death_screen_slot()
-    _cleanup_battle_native_assets_after_death()
-    death_battle_cleanup_pending = False
+    # Switch modes before native cleanup; bad PSRAM state should not trap the death screen.
     if hasattr(lgfx, "set_brightness"):
         lgfx.set_brightness(255)
     player_hp = PLAYER_HP_MAX
@@ -8801,7 +9435,7 @@ def _return_to_title_from_death():
 
 
 def _exit_battle_to_explore():
-    global mode, encounter_cooldown_frames, mercy_exit_pending, map6_boss_battle_active
+    global mode, encounter_cooldown_frames, mercy_exit_pending, map_boss_battle_enemy_id, map6_boss_battle_active
     global explore_force_full_redraw
     global battle_menu_dirty, battle_dialog_visible
     global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
@@ -8823,6 +9457,7 @@ def _exit_battle_to_explore():
     _map1_story_reset()
     _scripted_battle_reset()
     _reset_battle_state()
+    map_boss_battle_enemy_id = None
     map6_boss_battle_active = False
     _clear_wood_up_dialog()
     _reset_interact_hint_state()
@@ -8858,7 +9493,7 @@ def _start_battle_from_explore(enemy_id=None):
     global battle_menu_static_ready, battle_menu_prev_dialog_active
     global explore_moved, explore_scrolled, explore_anim_changed
     global lamp_dialog_until_ms, wood_up_dialog_until_ms, wood_up_dialog_active_id, explore_overlay_dirty
-    global map6_boss_battle_active, scripted_battle_opening_pending, scripted_battle_opening_due_ms
+    global map_boss_battle_enemy_id, map6_boss_battle_active, scripted_battle_opening_pending, scripted_battle_opening_due_ms
 
     mode = MODE_BATTLE_MENU
     _clear_act_dialog_state(True)
@@ -8874,13 +9509,15 @@ def _start_battle_from_explore(enemy_id=None):
     wood_up_dialog_active_id = None
     explore_overlay_dirty = False
     _clear_interact_hints()
+    boss = _map_boss_for_enemy_id(enemy_id)
+    map_boss_battle_enemy_id = boss.get("enemy_id") if boss else None
     map6_boss_battle_active = enemy_id == "MAP6_BOSS"
     _set_current_battle_enemy(enemy_id)
     battle_assets.begin(_battle_enemy_id())
-    enemy_hp = ENEMY_HP_MAX
+    enemy_hp = _battle_enemy_hp_max()
     _reset_battle_state()
-    if map6_boss_battle_active:
-        _ensure_map6_boss_sheet_loaded()
+    if boss:
+        _ensure_map_boss_sheet_loaded(boss)
     if current_map_id == MAP1_ID and (not map1_opening_battle_done):
         _map1_story_begin(time.ticks_ms())
     else:
@@ -8901,6 +9538,7 @@ def _start_battle_from_explore(enemy_id=None):
 def _draw_battle_status_line(in_menu=False):
     if not hasattr(lgfx, "draw_text"):
         return
+    enemy_hp_max = _battle_enemy_hp_max()
     name_text = _battle_enemy_display_name()
     hp_text = "HP"
     right_text = "%2d/%d" % (player_hp, PLAYER_HP_MAX)
@@ -8917,7 +9555,7 @@ def _draw_battle_status_line(in_menu=False):
         enemy_bar_h = BATTLE_HP_BAR_H
         enemy_bar_x = x
         enemy_bar_y = y - enemy_bar_h - 3
-        enemy_status_text = "%d/%d" % (_clamp(enemy_hp, 0, ENEMY_HP_MAX), ENEMY_HP_MAX)
+        enemy_status_text = "%d/%d" % (_clamp(enemy_hp, 0, enemy_hp_max), enemy_hp_max)
         enemy_status_x = enemy_bar_x + enemy_bar_w + 6
         enemy_status_y = enemy_bar_y - 1
         _draw_rect_thick(enemy_bar_x, enemy_bar_y, enemy_bar_w, enemy_bar_h, BATTLE_COLOR_WHITE, 1)
@@ -8927,10 +9565,10 @@ def _draw_battle_status_line(in_menu=False):
         enemy_inner_h = enemy_bar_h - 2
         if enemy_inner_w > 0 and enemy_inner_h > 0:
             _fill_rect_solid(enemy_inner_x, enemy_inner_y, enemy_inner_w, enemy_inner_h, ENEMY_HP_BAR_EMPTY_COLOR)
-            enemy_now = _clamp(enemy_hp, 0, ENEMY_HP_MAX)
+            enemy_now = _clamp(enemy_hp, 0, enemy_hp_max)
             enemy_fill_w = 0
-            if ENEMY_HP_MAX > 0:
-                enemy_fill_w = (enemy_inner_w * enemy_now) // ENEMY_HP_MAX
+            if enemy_hp_max > 0:
+                enemy_fill_w = (enemy_inner_w * enemy_now) // enemy_hp_max
             if enemy_fill_w > 0:
                 _fill_rect_solid(enemy_inner_x, enemy_inner_y, enemy_fill_w, enemy_inner_h, ENEMY_HP_BAR_FILL_COLOR)
 
@@ -9702,8 +10340,9 @@ def draw_battle_attack_screen(full_refresh=False):
                 BATTLE_COLOR_WHITE,
             )
 
+        enemy_hp_max = _battle_enemy_hp_max()
         if hasattr(lgfx, "draw_text"):
-            hp_text = "ENEMY HP %d/%d" % (enemy_hp, ENEMY_HP_MAX)
+            hp_text = "ENEMY HP %d/%d" % (enemy_hp, enemy_hp_max)
             _draw_text_in_box(battle_frame_x + 8, enemy_y + ATTACK_ENEMY_DRAW_H + 4, BATTLE_FRAME_W - 16, 12, hp_text, BATTLE_COLOR_WHITE)
 
         hp_bar_x = battle_frame_x + ((BATTLE_FRAME_W - ENEMY_HP_BAR_W) // 2)
@@ -9715,10 +10354,10 @@ def draw_battle_attack_screen(full_refresh=False):
         hp_inner_h = ENEMY_HP_BAR_H - 2
         if hp_inner_w > 0 and hp_inner_h > 0:
             _fill_rect_solid(hp_inner_x, hp_inner_y, hp_inner_w, hp_inner_h, ENEMY_HP_BAR_EMPTY_COLOR)
-            enemy_hp_now = _clamp(enemy_hp, 0, ENEMY_HP_MAX)
+            enemy_hp_now = _clamp(enemy_hp, 0, enemy_hp_max)
             hp_fill_w = 0
-            if ENEMY_HP_MAX > 0:
-                hp_fill_w = (hp_inner_w * enemy_hp_now) // ENEMY_HP_MAX
+            if enemy_hp_max > 0:
+                hp_fill_w = (hp_inner_w * enemy_hp_now) // enemy_hp_max
             if hp_fill_w > 0:
                 _fill_rect_solid(hp_inner_x, hp_inner_y, hp_fill_w, hp_inner_h, ENEMY_HP_BAR_FILL_COLOR)
 
@@ -9790,6 +10429,8 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
 
     dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
     if mercy_exit_pending and not dialog_active:
+        if not _battle_enemy_uses_scripted_battle():
+            _map_boss_mark_defeated_for_enemy(_battle_enemy_id())
         _exit_battle_to_explore()
         return
     if dialog_active:
@@ -9801,19 +10442,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
 
     if item_menu_active:
         if fight_pressed:
-            _reset_item_menu_state()
-            battle_dialog_mode = BATTLE_DIALOG_NONE
-            _battle_clear_dialog_image()
-            battle_dialog_text = None
-            mode = MODE_BATTLE_ATTACK
-            bar_min_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
-            attack_started_ms = loop_start
-            attack_cursor_x = bar_min_x
-            attack_cursor_dir = 1
-            attack_locked = False
-            battle_attack_dirty = True
-            battle_menu_dirty = True
-            print("FIGHT")
+            _battle_enter_attack_mode(loop_start)
             return
         if act_pressed:
             _reset_item_menu_state()
@@ -9887,23 +10516,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
 
     if act_menu_active:
         if fight_pressed:
-            act_menu_active = False
-            act_nav_prev_dir = 0
-            act_menu_slot_cache = None
-            act_prev_selected_index = -1
-            act_selection_dirty = False
-            battle_dialog_mode = BATTLE_DIALOG_NONE
-            _battle_clear_dialog_image()
-            battle_dialog_text = None
-            mode = MODE_BATTLE_ATTACK
-            bar_min_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
-            attack_started_ms = loop_start
-            attack_cursor_x = bar_min_x
-            attack_cursor_dir = 1
-            attack_locked = False
-            battle_attack_dirty = True
-            battle_menu_dirty = True
-            print("FIGHT")
+            _battle_enter_attack_mode(loop_start)
             return
         if item_pressed:
             act_menu_active = False
@@ -9962,12 +10575,17 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
             nav_dir = 1
         elif x_dir < 0:
             nav_dir = -1
+        option_count = _battle_enemy_act_option_count()
+        if option_count < 1:
+            option_count = 1
+        if act_choice_index >= option_count:
+            act_choice_index = option_count - 1
         if nav_dir != 0 and nav_dir != act_nav_prev_dir:
             prev_choice = act_choice_index
             if nav_dir > 0:
-                act_choice_index = (act_choice_index + 1) % 3
+                act_choice_index = (act_choice_index + 1) % option_count
             else:
-                act_choice_index = (act_choice_index + 2) % 3
+                act_choice_index = (act_choice_index + option_count - 1) % option_count
             if act_choice_index != prev_choice:
                 act_selection_dirty = True
         act_nav_prev_dir = nav_dir
@@ -10007,15 +10625,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
         return
 
     if fight_pressed:
-        mode = MODE_BATTLE_ATTACK
-        bar_min_x = battle_frame_x + ((BATTLE_FRAME_W - ATTACK_BAR_W) // 2)
-        attack_started_ms = loop_start
-        attack_cursor_x = bar_min_x
-        attack_cursor_dir = 1
-        attack_locked = False
-        battle_attack_dirty = True
-        battle_dialog_text = None
-        print("FIGHT")
+        _battle_enter_attack_mode(loop_start)
         return
     if act_pressed:
         act_menu_active = True
@@ -10070,7 +10680,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
 
 
 def update_battle_attack(loop_start, fight_pressed):
-    global mode, enemy_hp, map6_boss_battle_active
+    global mode, enemy_hp
     global attack_started_ms, attack_cursor_x, attack_cursor_dir, attack_locked, battle_attack_dirty
     global fight_return_deadline_ms, battle_fight_dirty, battle_status_dirty
     global battle_dialog_mode, battle_dialog_png_info, battle_dialog_text, act_dialog_until_ms
@@ -10121,20 +10731,11 @@ def update_battle_attack(loop_start, fight_pressed):
     print("attack_hit: mult", mult, "damage", damage, "enemy_hp", enemy_hp)
 
     if enemy_hp <= 0:
-        if map6_boss_battle_active:
-            _map6_boss_mark_defeated()
+        _map_boss_mark_defeated_for_enemy(_battle_enemy_id())
         _exit_battle_to_explore()
         return
 
-    mode = MODE_BATTLE_FIGHT
-    _reset_battle_state()
-    fight_return_deadline_ms = time.ticks_add(loop_start, FIGHT_AUTO_RETURN_MS)
-    battle_fight_dirty = True
-    battle_dialog_mode = BATTLE_DIALOG_NONE
-    _battle_clear_dialog_image()
-    battle_dialog_text = None
-    act_dialog_until_ms = 0
-    mercy_exit_pending = False
+    _battle_enter_fight_mode(loop_start)
 
 
 def update_battle_fight(loop_start):
@@ -10211,12 +10812,12 @@ def draw_all(loop_start):
     global inv_screen_dirty
     global weapon_pickup_dialog_active, weapon_pickup_dialog_dirty
     global interact_hint_prev_signature
-    global map6_boss_scene_composed, map6_boss_scene_frame, map6_boss_scene_sx, map6_boss_scene_sy
+    global map_boss_scene_composed, map_boss_scene_frame, map_boss_scene_sx, map_boss_scene_sy
 
-    map6_boss_scene_composed = False
-    map6_boss_scene_frame = -1
-    map6_boss_scene_sx = -99999
-    map6_boss_scene_sy = -99999
+    map_boss_scene_composed = False
+    map_boss_scene_frame = -1
+    map_boss_scene_sx = -99999
+    map_boss_scene_sy = -99999
 
     if mode == MODE_TITLE_MENU:
         if interact_hint_prev_signature is not None:
@@ -10295,7 +10896,7 @@ def draw_all(loop_start):
                 _draw_spawn_intro_overlay()
                 spawn_intro_needs_redraw = False
         _draw_ground_weapon_drops()
-        _draw_map6_boss(loop_start, scene_redrawn, player_redrawn)
+        _draw_map_boss(loop_start, scene_redrawn, player_redrawn)
         _update_interact_hint_overlay(loop_start, scene_redrawn, player_redrawn)
         if weapon_pickup_dialog_active:
             if weapon_pickup_dialog_dirty or scene_redrawn or player_redrawn:
@@ -10395,7 +10996,7 @@ def _run_main_loop():
     global explore_scrolled, explore_anim_changed, move_dx, move_dy, active_portal, target_spawn, moved_since_last_map1, map1_opening_battle_timer_started
     global map1_opening_battle_due_ms, map1_opening_battle_done, move_dx_for_encounter, move_dy_for_encounter, move_dist_for_encounter, moved_since_last, encounter_enemy_id, lamp_dialog_until_ms
     global wood_up_dialog_until_ms
-    global explore_overlay_dirty, map6_boss_battle_active
+    global explore_overlay_dirty, map_boss_battle_enemy_id, map6_boss_battle_active
     while True:
         loop_start = time.ticks_ms()
         frame_dt = time.ticks_diff(loop_start, prev_loop_ms)
@@ -10484,6 +11085,8 @@ def _run_main_loop():
                         active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
                         if _is_map5_map6_portal(active_portal):
                             active_portal = None
+                        if active_portal and _current_map_boss_blocks_portals():
+                            active_portal = None
                         if active_portal:
                             if active_portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
                                 if not _portal_transition_rearm_blocked(active_portal):
@@ -10518,9 +11121,11 @@ def _run_main_loop():
                         _encounter_note_travel(current_map_id, move_dist_for_encounter)
 
                     if mode == MODE_EXPLORE and encounter_cooldown_frames == 0 and teleport_cooldown_frames == 0:
-                        if _map6_boss_trigger_hit(player_x, player_y):
-                            map6_boss_battle_active = True
-                            _start_battle_from_explore(enemy_id="MAP6_BOSS")
+                        boss_enemy_id = _map_boss_trigger_enemy_id(player_x, player_y)
+                        if boss_enemy_id:
+                            map_boss_battle_enemy_id = boss_enemy_id
+                            map6_boss_battle_active = boss_enemy_id == "MAP6_BOSS"
+                            _start_battle_from_explore(enemy_id=boss_enemy_id)
                         moved_since_last = (player_x != prev_player_x) or (player_y != prev_player_y)
                         if mode == MODE_EXPLORE and moved_since_last:
                             encounter_enemy_id = _encounter_try_start(current_map_id, player_x, player_y)

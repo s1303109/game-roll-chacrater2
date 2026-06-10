@@ -157,6 +157,13 @@ UI_FILE_MAP=(
   "fight_icon.png|fight_icon.png"
   "act_icon.png|act_icon.png"
   "item_icon.png|item_icon.png"
+  "item_icon_weapon_knife.png|item_icon_weapon_knife.png"
+  "item_icon_weapon_sword.png|item_icon_weapon_sword.png"
+  "item_icon_item_red_potion.png|item_icon_item_red_potion.png"
+  "item_icon_armor_map3.png|item_icon_armor_map3.png"
+  "item_icon_weapon_great_sword.png|item_icon_weapon_great_sword.png"
+  "item_icon_item_small_red_potion.png|item_icon_item_small_red_potion.png"
+  "item_icon_item_map5_door_key.png|item_icon_item_map5_door_key.png"
   "mercy_icon.png|mercy_icon.png"
   "act_dialog_text.png|act_dialog_text.png"
   "mercy_dialog_text.png|mercy_dialog_text.png"
@@ -175,6 +182,9 @@ UI_FILE_MAP=(
   "act_reply3_text.png|act_reply3_text.png"
   "mercy_locked_text.png|mercy_locked_text.png"
   "map6_boss_battle.png|map6_boss_battle.png"
+  "map9_forest_boss_battle.png|map9_forest_boss_battle.png"
+  "map10_ice_boss_battle.png|map10_ice_boss_battle.png"
+  "map11_fire_boss_battle.png|map11_fire_boss_battle.png"
   "main character close eyes.clean.png|main character close eyes.clean.png"
   "main character close eyes.orig.png|main character close eyes.orig.png"
 )
@@ -260,6 +270,9 @@ verify_required_sources() {
 
   [[ -f "${ASSET_ROOT}/out/player_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/player_sheet.rgb565"
   [[ -f "${ASSET_ROOT}/out/map6_boss_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/map6_boss_sheet.rgb565"
+  [[ -f "${ASSET_ROOT}/out/map9_forest_boss_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/map9_forest_boss_sheet.rgb565"
+  [[ -f "${ASSET_ROOT}/out/map10_ice_boss_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/map10_ice_boss_sheet.rgb565"
+  [[ -f "${ASSET_ROOT}/out/map11_fire_boss_sheet.rgb565" ]] || fail "Missing sprite source: ${ASSET_ROOT}/out/map11_fire_boss_sheet.rgb565"
 
   for dir in "${MAP_DIRS[@]}"; do
     for name in map.json tilemap.bin tileset.bin collision.bin; do
@@ -512,6 +525,9 @@ copy_game_files() {
 
   copy_one "${ASSET_ROOT}/out/player_sheet.rgb565" "/sd/game/sprites/player_sheet.rgb565" "/sd/game/sprites/player_sheet.rgb565"
   copy_one "${ASSET_ROOT}/out/map6_boss_sheet.rgb565" "/sd/game/sprites/map6_boss_sheet.rgb565" "/sd/game/sprites/map6_boss_sheet.rgb565"
+  copy_one "${ASSET_ROOT}/out/map9_forest_boss_sheet.rgb565" "/sd/game/sprites/map9_forest_boss_sheet.rgb565" "/sd/game/sprites/map9_forest_boss_sheet.rgb565"
+  copy_one "${ASSET_ROOT}/out/map10_ice_boss_sheet.rgb565" "/sd/game/sprites/map10_ice_boss_sheet.rgb565" "/sd/game/sprites/map10_ice_boss_sheet.rgb565"
+  copy_one "${ASSET_ROOT}/out/map11_fire_boss_sheet.rgb565" "/sd/game/sprites/map11_fire_boss_sheet.rgb565" "/sd/game/sprites/map11_fire_boss_sheet.rgb565"
 
   for dir in "${MAP_DIRS[@]}"; do
     for name in map.json tilemap.bin tileset.bin collision.bin; do
