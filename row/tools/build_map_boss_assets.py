@@ -12,12 +12,12 @@ from PIL import Image
 ROOT = Path("/workspace")
 OUT_DIR = ROOT / "row/assets/out"
 
-FRAME_W = 192
-FRAME_H = 192
+FRAME_W = 96
+FRAME_H = 96
 SHEET_COLS = 3
 SHEET_ROWS = 2
-CONTENT_W = 176
-CONTENT_H = 176
+CONTENT_W = 88
+CONTENT_H = 88
 BATTLE_W = 96
 BATTLE_H = 96
 BG_DARK_THRESHOLD = 14
@@ -296,7 +296,7 @@ def _write_outputs(spec: BossSpec) -> None:
 SPECS = (
     BossSpec(
         "map9_forest_boss",
-        ROOT / "forest enemy .png",
+        ROOT / "forest boss 2.png",
         OUT_DIR / "map9_forest_boss_sheet.rgb565",
         ROOT / "map9_forest_boss_battle.png",
         OUT_DIR / "map9_forest_boss_sheet_preview.png",

@@ -839,7 +839,11 @@ MAP_BOSS_SHEET_W = MAP6_BOSS_SHEET_W
 MAP_BOSS_SHEET_H = MAP6_BOSS_SHEET_H
 MAP_BOSS_FRAME_W = MAP6_BOSS_FRAME_W
 MAP_BOSS_FRAME_H = MAP6_BOSS_FRAME_H
-MAP_BOSS_TRIGGER_RADIUS_PX = MAP6_BOSS_TRIGGER_RADIUS_PX
+MAP_NEW_BOSS_SHEET_W = 288
+MAP_NEW_BOSS_SHEET_H = 192
+MAP_NEW_BOSS_FRAME_W = 96
+MAP_NEW_BOSS_FRAME_H = 96
+MAP_BOSS_TRIGGER_RADIUS_PX = 30
 MAP_BOSS_ANIM_FRAME_MS = MAP6_BOSS_ANIM_FRAME_MS
 MAP_BOSS_ANIM_SEQUENCE = MAP6_BOSS_ANIM_SEQUENCE
 MAP_BOSS_DEFINITIONS = {
@@ -862,10 +866,10 @@ MAP_BOSS_DEFINITIONS = {
         "map_id": MAP9_ID,
         "enemy_id": "MAP9_FOREST_BOSS",
         "sheet_path": MAP9_FOREST_BOSS_SHEET_PATH,
-        "sheet_w": MAP_BOSS_SHEET_W,
-        "sheet_h": MAP_BOSS_SHEET_H,
-        "frame_w": MAP_BOSS_FRAME_W,
-        "frame_h": MAP_BOSS_FRAME_H,
+        "sheet_w": MAP_NEW_BOSS_SHEET_W,
+        "sheet_h": MAP_NEW_BOSS_SHEET_H,
+        "frame_w": MAP_NEW_BOSS_FRAME_W,
+        "frame_h": MAP_NEW_BOSS_FRAME_H,
         "center_x": 184,
         "center_y": 160,
         "trigger_radius": MAP_BOSS_TRIGGER_RADIUS_PX,
@@ -877,10 +881,10 @@ MAP_BOSS_DEFINITIONS = {
         "map_id": MAP10_ID,
         "enemy_id": "MAP10_ICE_BOSS",
         "sheet_path": MAP10_ICE_BOSS_SHEET_PATH,
-        "sheet_w": MAP_BOSS_SHEET_W,
-        "sheet_h": MAP_BOSS_SHEET_H,
-        "frame_w": MAP_BOSS_FRAME_W,
-        "frame_h": MAP_BOSS_FRAME_H,
+        "sheet_w": MAP_NEW_BOSS_SHEET_W,
+        "sheet_h": MAP_NEW_BOSS_SHEET_H,
+        "frame_w": MAP_NEW_BOSS_FRAME_W,
+        "frame_h": MAP_NEW_BOSS_FRAME_H,
         "center_x": 776,
         "center_y": 304,
         "trigger_radius": MAP_BOSS_TRIGGER_RADIUS_PX,
@@ -892,11 +896,11 @@ MAP_BOSS_DEFINITIONS = {
         "map_id": MAP11_ID,
         "enemy_id": "MAP11_FIRE_BOSS",
         "sheet_path": MAP11_FIRE_BOSS_SHEET_PATH,
-        "sheet_w": MAP_BOSS_SHEET_W,
-        "sheet_h": MAP_BOSS_SHEET_H,
-        "frame_w": MAP_BOSS_FRAME_W,
-        "frame_h": MAP_BOSS_FRAME_H,
-        "center_x": 176,
+        "sheet_w": MAP_NEW_BOSS_SHEET_W,
+        "sheet_h": MAP_NEW_BOSS_SHEET_H,
+        "frame_w": MAP_NEW_BOSS_FRAME_W,
+        "frame_h": MAP_NEW_BOSS_FRAME_H,
+        "center_x": 192,
         "center_y": 144,
         "trigger_radius": MAP_BOSS_TRIGGER_RADIUS_PX,
         "anim_frame_ms": MAP_BOSS_ANIM_FRAME_MS,
@@ -6419,22 +6423,25 @@ def _draw_map_boss(loop_start, scene_redrawn=False, player_redrawn=False):
         map_boss_last_draw_frame = -1
         return
     if scene_redrawn and map_boss_scene_composed:
-        map_boss_last_draw_frame = map_boss_scene_frame
-        map_boss_last_draw_sx = map_boss_scene_sx
-        map_boss_last_draw_sy = map_boss_scene_sy
-        return
-    _map_boss_update_anim(boss, loop_start)
-    sequence = boss.get("anim_sequence", MAP_BOSS_ANIM_SEQUENCE)
-    frame_index = sequence[map_boss_anim_seq_index]
-    sx = int(boss.get("center_x", 0)) - scroll_x
-    sy = int(boss.get("center_y", 0)) - scroll_y
-    need_draw = scene_redrawn or (frame_index != map_boss_last_draw_frame) or (sx != map_boss_last_draw_sx) or (sy != map_boss_last_draw_sy)
+        frame_index = map_boss_scene_frame
+        sx = map_boss_scene_sx
+        sy = map_boss_scene_sy
+        need_draw = True
+    else:
+        _map_boss_update_anim(boss, loop_start)
+        sequence = boss.get("anim_sequence", MAP_BOSS_ANIM_SEQUENCE)
+        frame_index = sequence[map_boss_anim_seq_index]
+        sx = int(boss.get("center_x", 0)) - scroll_x
+        sy = int(boss.get("center_y", 0)) - scroll_y
+        need_draw = scene_redrawn or (frame_index != map_boss_last_draw_frame) or (sx != map_boss_last_draw_sx) or (sy != map_boss_last_draw_sy)
     if (not need_draw) and player_redrawn:
         need_draw = _map_boss_player_overlap(boss)
     if not need_draw:
         return
     lgfx.enemy_frame_set(frame_index)
     lgfx.enemy_draw(sx, sy)
+    if scene_redrawn and hasattr(lgfx, "draw_player"):
+        lgfx.draw_player(player_x - scroll_x, player_y - scroll_y, PLAYER_COLOR, PLAYER_R)
     map_boss_last_draw_frame = frame_index
     map_boss_last_draw_sx = sx
     map_boss_last_draw_sy = sy
