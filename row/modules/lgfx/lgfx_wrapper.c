@@ -28,6 +28,7 @@ int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes);
 bool lgfx_slot_cancel_load_impl(int slot_id);
 bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw);
 bool lgfx_slot_release_impl(int slot_id);
+void lgfx_slot_release_all_impl(void);
 bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token);
 bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active);
 void lgfx_slot_set_role_impl(int slot_id, int role);
@@ -264,6 +265,12 @@ static mp_obj_t lgfx_slot_release(mp_obj_t slot_id_obj) {
     return mp_obj_new_bool(lgfx_slot_release_impl(mp_obj_get_int(slot_id_obj)));
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(lgfx_slot_release_obj, lgfx_slot_release);
+
+static mp_obj_t lgfx_slot_release_all(void) {
+    lgfx_slot_release_all_impl();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(lgfx_slot_release_all_obj, lgfx_slot_release_all);
 
 static mp_obj_t lgfx_slot_has_map(mp_obj_t slot_id_obj, mp_obj_t map_token_obj) {
     int slot_id = mp_obj_get_int(slot_id_obj);
@@ -604,6 +611,7 @@ static const mp_rom_map_elem_t lgfx_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_slot_cancel_load), MP_ROM_PTR(&lgfx_slot_cancel_load_obj) },
     { MP_ROM_QSTR(MP_QSTR_slot_select), MP_ROM_PTR(&lgfx_slot_select_obj) },
     { MP_ROM_QSTR(MP_QSTR_slot_release), MP_ROM_PTR(&lgfx_slot_release_obj) },
+    { MP_ROM_QSTR(MP_QSTR_slot_release_all), MP_ROM_PTR(&lgfx_slot_release_all_obj) },
     { MP_ROM_QSTR(MP_QSTR_slot_has_map), MP_ROM_PTR(&lgfx_slot_has_map_obj) },
     { MP_ROM_QSTR(MP_QSTR_slot_info), MP_ROM_PTR(&lgfx_slot_info_obj) },
     { MP_ROM_QSTR(MP_QSTR_slot_set_role), MP_ROM_PTR(&lgfx_slot_set_role_obj) },

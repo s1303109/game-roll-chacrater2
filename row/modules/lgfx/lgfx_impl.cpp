@@ -118,6 +118,7 @@ extern "C" bool lgfx_slot_release_impl(int slot_id) {
   (void)slot_id;
   return false;
 }
+extern "C" void lgfx_slot_release_all_impl(void) {}
 extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
   (void)slot_id;
   (void)map_token;
@@ -3085,6 +3086,17 @@ extern "C" bool lgfx_slot_release_impl(int slot_id) {
   resident_slot_release_resources(&resident_slots[slot_id]);
   tile_state.last_error = TILE_LOAD_OK;
   return true;
+}
+
+extern "C" void lgfx_slot_release_all_impl(void) {
+  tile_free_buffers();
+  for (int i = 0; i < RESIDENT_SLOT_COUNT; ++i) {
+    resident_slot_release_resources(&resident_slots[i]);
+  }
+  for (int i = 0; i < TILESET_CACHE_COUNT; ++i) {
+    tileset_cache_reset(&tileset_cache[i]);
+  }
+  tile_state.last_error = TILE_LOAD_OK;
 }
 
 extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {

@@ -18,6 +18,9 @@ MAP10_ID = 14
 MAP11_ID = 15
 MAP9_1_ID = 16
 MAP11_1_ID = 17
+ENDING_SAFE_ID = 18
+ENDING_NORMAL_ID = 19
+ENDING_DEATH_ID = 20
 
 
 MAP1_PORTAL_TO_MAP2_RECT_PX = (304, 160, 32, 96)
@@ -40,6 +43,7 @@ MAP8_PORTAL_TO_MAP7_RECT_PX = (592, 828, 254, 194)
 MAP8_PORTAL_TO_MAP9_RECT_PX = (1128, 350, 80, 80)
 MAP8_PORTAL_TO_MAP10_RECT_PX = (247, 348, 80, 80)
 MAP8_PORTAL_TO_MAP11_RECT_PX = (267, 781, 80, 80)
+MAP8_PORTAL_TO_ENDING_RECT_PX = (688, 176, 112, 160)
 MAP9_PORTAL_TO_MAP8_RECT_PX = (440, 464, 80, 80)
 MAP9_PORTAL_TO_MAP9_1_RECT_PX = (744, 96, 48, 72)
 MAP10_PORTAL_TO_MAP8_RECT_PX = (437, 431, 80, 80)
@@ -47,6 +51,7 @@ MAP11_PORTAL_TO_MAP8_RECT_PX = (442, 456, 80, 80)
 MAP9_1_PORTAL_TO_MAP9_RECT_PX = (304, 832, 32, 40)
 MAP11_PORTAL_TO_MAP11_1_RECT_PX = (740, 124, 52, 36)
 MAP11_1_PORTAL_TO_MAP11_RECT_PX = (304, 848, 32, 48)
+ENDING_PORTAL_TO_END_SCREEN_RECT_PX = (288, 72, 64, 96)
 MAP2_FROM_MAP3_SPAWN_X = 480
 MAP2_FROM_MAP3_SPAWN_Y = 590
 MAP4_FROM_MAP3_SPAWN = (112, 172)
@@ -69,6 +74,7 @@ MAP11_FROM_MAP8_SPAWN = (482, 448)
 MAP8_FROM_MAP11_SPAWN = (307, 869)
 MAP11_1_FROM_MAP11_SPAWN = (320, 808)
 MAP11_FROM_MAP11_1_SPAWN = (766, 184)
+ENDING_FROM_MAP8_SPAWN = (320, 584)
 WOOD_MAIN_PORTAL_TO_UP_RECT_PX = (144, 0, 32, 24)
 WOOD_MAIN_PORTAL_TO_RIGHT_RECT_PX = (296, 106, 24, 36)
 WOOD_MAIN_PORTAL_TO_LEFT_RECT_PX = (0, 106, 24, 36)
@@ -285,6 +291,14 @@ MAP_REGISTRY = {
                 "transition_shrink_ms": 4000,
                 "transition_black_ms": 1000,
             },
+            {
+                "rect": MAP8_PORTAL_TO_ENDING_RECT_PX,
+                "ending_route_portal": True,
+                "target_spawn": ENDING_FROM_MAP8_SPAWN,
+                "preload_pad_px": 128,
+                "trigger_rect_px": (704, 180, 48, 12),
+                "entry_move_y_sign": -1,
+            },
         ),
     ),
     MAP9_ID: _map_entry(
@@ -378,6 +392,48 @@ MAP_REGISTRY = {
                 "target_spawn": MAP11_FROM_MAP11_1_SPAWN,
                 "entry_move_y_sign": 1,
                 "preload_pad_px": 96,
+            },
+        ),
+    ),
+    ENDING_SAFE_ID: _map_entry(
+        "out_end_safe",
+        "ending_safe_tileset",
+        (
+            {
+                "rect": ENDING_PORTAL_TO_END_SCREEN_RECT_PX,
+                "ending_final_portal": True,
+                "ending_kind": "safe",
+                "trigger_center_px": (320, 112),
+                "trigger_radius_px": 28,
+                "entry_move_y_sign": -1,
+            },
+        ),
+    ),
+    ENDING_NORMAL_ID: _map_entry(
+        "out_end_normal",
+        "ending_normal_tileset",
+        (
+            {
+                "rect": ENDING_PORTAL_TO_END_SCREEN_RECT_PX,
+                "ending_final_portal": True,
+                "ending_kind": "normal",
+                "trigger_center_px": (320, 112),
+                "trigger_radius_px": 28,
+                "entry_move_y_sign": -1,
+            },
+        ),
+    ),
+    ENDING_DEATH_ID: _map_entry(
+        "out_end_death",
+        "ending_death_tileset",
+        (
+            {
+                "rect": ENDING_PORTAL_TO_END_SCREEN_RECT_PX,
+                "ending_final_portal": True,
+                "ending_kind": "death",
+                "trigger_center_px": (320, 112),
+                "trigger_radius_px": 28,
+                "entry_move_y_sign": -1,
             },
         ),
     ),

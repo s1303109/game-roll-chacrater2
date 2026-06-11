@@ -12,10 +12,14 @@ from map_registry import (
     MAP4_ID,
     MAP5_ID,
     MAP6_ID,
+    MAP7_ID,
     MAP8_ID,
     MAP9_ID,
     MAP10_ID,
     MAP11_ID,
+    ENDING_SAFE_ID,
+    ENDING_NORMAL_ID,
+    ENDING_DEATH_ID,
     WOOD_MAIN_ID,
     WOOD_UP_ID,
     WOOD_RIGHT_ID,
@@ -754,6 +758,7 @@ MODE_EXPLORE_INVENTORY = 3
 MODE_BATTLE_ATTACK = 4
 MODE_TITLE_MENU = 5
 MODE_DEATH_SCREEN = 6
+MODE_END_SCREEN = 7
 TITLE_COVER_PATHS = (
     config.ui_path("front_cover_320x240.png"),
 )
@@ -785,6 +790,16 @@ BOOT_COMIC_PATHS = (
 DEATH_SCREEN_PATHS = (
     config.ui_path("death_320x240.png"),
 )
+ENDING_ROUTE_SAFE = "safe"
+ENDING_ROUTE_NORMAL = "normal"
+ENDING_ROUTE_DEATH = "death"
+ROUTE_RESULT_FIGHT_KILL = "fight_kill"
+ROUTE_RESULT_MERCY = "mercy"
+ENDING_SCREEN_PATHS = {
+    ENDING_ROUTE_SAFE: (config.ui_path("ending_safe_320x240.png"),),
+    ENDING_ROUTE_NORMAL: (config.ui_path("ending_normal_320x240.png"),),
+    ENDING_ROUTE_DEATH: (config.ui_path("ending_death_320x240.png"),),
+}
 ENCOUNTER_COOLDOWN_FRAMES = 120
 BATTLE_FRAME_W = 240
 BATTLE_FRAME_H = 200
@@ -926,6 +941,8 @@ MAP3_BOOK_DIALOG_PATHS = (
     config.ui_path("map3_book_dialog_04.png"),
 )
 MAP5_MAP6_DOOR_LOCKED_DIALOG_PATH = config.ui_path("map5_map6_door_locked_dialog.png")
+ENDING_LOCKED_DUTY_DIALOG_PATH = config.ui_path("ending_locked_duty_text.png")
+ENDING_LOCKED_DUTY_DIALOG_ID = "ending_locked_duty"
 WOOD_LEFT_BATHTUB_DIALOG_PATH = config.ui_path("wood_left_bathtub_dialog.png")
 WOOD_LEFT_TOILET_DIALOG_PATH = config.ui_path("wood_left_toilet_dialog.png")
 WOOD_LEFT_PLANT_DIALOG_PATH = config.ui_path("wood_left_plant_dialog.png")
@@ -1010,6 +1027,42 @@ MAP6_CRYSTALGOLEM_TOUCH_CORE_PNGS = _ui_asset_sequence("map6_crystalgolem_touch_
 MAP6_CRYSTALGOLEM_MERCY_PNGS = _ui_asset_sequence("map6_crystalgolem_mercy", 5)
 MAP6_CRYSTALGOLEM_OPENING_PNG_W = 156
 MAP6_CRYSTALGOLEM_OPENING_PNG_H = 72
+MAP9_MOSSIDOL_ACT_OBSERVE_PNG = config.ui_path("map9_mossidol_act_observe.png")
+MAP9_MOSSIDOL_ACT_CLEAN_MOSS_PNG = config.ui_path("map9_mossidol_act_clean_moss.png")
+MAP9_MOSSIDOL_ACT_REMEMBER_PNG = config.ui_path("map9_mossidol_act_remember.png")
+MAP9_MOSSIDOL_ACT_WHISPER_PNG = config.ui_path("map9_mossidol_act_whisper.png")
+MAP9_MOSSIDOL_OPENING_PNGS = _ui_asset_sequence("map9_mossidol_opening", 5)
+MAP9_MOSSIDOL_OBSERVE_PNGS = _ui_asset_sequence("map9_mossidol_observe", 3)
+MAP9_MOSSIDOL_CLEAN_MOSS_PNGS = _ui_asset_sequence("map9_mossidol_clean_moss", 3)
+MAP9_MOSSIDOL_REMEMBER_PNGS = _ui_asset_sequence("map9_mossidol_remember", 4)
+MAP9_MOSSIDOL_WHISPER_PNGS = _ui_asset_sequence("map9_mossidol_whisper", 3)
+MAP9_MOSSIDOL_MERCY_PNGS = _ui_asset_sequence("map9_mossidol_mercy", 4)
+MAP9_MOSSIDOL_OPENING_PNG_W = 156
+MAP9_MOSSIDOL_OPENING_PNG_H = 72
+MAP10_ICEGUARDIAN_ACT_OBSERVE_PNG = config.ui_path("map10_iceguardian_act_observe.png")
+MAP10_ICEGUARDIAN_ACT_LISTEN_PNG = config.ui_path("map10_iceguardian_act_listen.png")
+MAP10_ICEGUARDIAN_ACT_TOUCH_CRYSTAL_PNG = config.ui_path("map10_iceguardian_act_touch_crystal.png")
+MAP10_ICEGUARDIAN_ACT_TELL_PNG = config.ui_path("map10_iceguardian_act_tell.png")
+MAP10_ICEGUARDIAN_OPENING_PNGS = _ui_asset_sequence("map10_iceguardian_opening", 5)
+MAP10_ICEGUARDIAN_OBSERVE_PNGS = _ui_asset_sequence("map10_iceguardian_observe", 3)
+MAP10_ICEGUARDIAN_LISTEN_PNGS = _ui_asset_sequence("map10_iceguardian_listen", 3)
+MAP10_ICEGUARDIAN_TOUCH_CRYSTAL_PNGS = _ui_asset_sequence("map10_iceguardian_touch_crystal", 4)
+MAP10_ICEGUARDIAN_TELL_PNGS = _ui_asset_sequence("map10_iceguardian_tell", 3)
+MAP10_ICEGUARDIAN_MERCY_PNGS = _ui_asset_sequence("map10_iceguardian_mercy", 4)
+MAP10_ICEGUARDIAN_OPENING_PNG_W = 156
+MAP10_ICEGUARDIAN_OPENING_PNG_H = 72
+MAP11_LAVABRUTE_ACT_OBSERVE_PNG = config.ui_path("map11_lavabrute_act_observe.png")
+MAP11_LAVABRUTE_ACT_ENDURE_PNG = config.ui_path("map11_lavabrute_act_endure.png")
+MAP11_LAVABRUTE_ACT_APPROACH_PNG = config.ui_path("map11_lavabrute_act_approach.png")
+MAP11_LAVABRUTE_ACT_CALM_PNG = config.ui_path("map11_lavabrute_act_calm.png")
+MAP11_LAVABRUTE_OPENING_PNGS = _ui_asset_sequence("map11_lavabrute_opening", 5)
+MAP11_LAVABRUTE_OBSERVE_PNGS = _ui_asset_sequence("map11_lavabrute_observe", 3)
+MAP11_LAVABRUTE_ENDURE_PNGS = _ui_asset_sequence("map11_lavabrute_endure", 3)
+MAP11_LAVABRUTE_APPROACH_PNGS = _ui_asset_sequence("map11_lavabrute_approach", 4)
+MAP11_LAVABRUTE_CALM_PNGS = _ui_asset_sequence("map11_lavabrute_calm", 3)
+MAP11_LAVABRUTE_MERCY_PNGS = _ui_asset_sequence("map11_lavabrute_mercy", 4)
+MAP11_LAVABRUTE_OPENING_PNG_W = 156
+MAP11_LAVABRUTE_OPENING_PNG_H = 72
 CMD_ICON_SRC_W = 32
 CMD_ICON_SRC_H = 32
 STAR_ICON_SRC_W = 24
@@ -1040,6 +1093,7 @@ ITEM_DETAIL_ICON_BY_ITEM_ID = {
     "weapon_great_sword": config.ui_path("item_icon_weapon_great_sword.png"),
     "item_small_red_potion": config.ui_path("item_icon_item_small_red_potion.png"),
     "item_map5_door_key": config.ui_path("item_icon_item_map5_door_key.png"),
+    "item_map7_gate_key": config.ui_path("item_icon_item_map7_gate_key.png"),
 }
 MERCY_ICON_PATHS = _ui_asset_paths("mercy_icon.png")
 CMD_ICON_PATHS = (
@@ -1080,6 +1134,7 @@ BATTLE_SLOT_FLOWEY_ANGRY = 8
 BATTLE_SLOT_STORY_FIRE = 9
 BATTLE_SLOT_STORY_TORIEL = 10
 BATTLE_SLOT_DEATH_SCREEN = 11
+END_SCREEN_SLOT_ID = BATTLE_SLOT_DEATH_SCREEN
 WOOD_UP_DIALOG_SLOT_ID = 12
 BATTLE_ACT_OPTION_SLOT_IDS = (
     BATTLE_SLOT_ACT_0,
@@ -1377,6 +1432,108 @@ MAP6_CRYSTALGOLEM_MERCY_LINES = (
     "Crystal Golem：弱小，也能選擇理解。",
     "Crystal Golem：道路封鎖……解除。",
     "Crystal Golem：孩子，你可以繼續前進。",
+)
+MAP9_MOSSIDOL_OPENING_LINES = (
+    "藤蔓從石縫中伸出。",
+    "沉睡的石像站了起來。",
+    "Moss Idol：踩踏者，停下。",
+    "Moss Idol：遺忘會讓遺跡死去。",
+    "Moss Idol：所以，我會留住你。",
+)
+MAP9_MOSSIDOL_OBSERVE_LINES = (
+    "你觀察牠破碎的石面。",
+    "石縫裡長滿葉子。",
+    "Moss Idol：記憶會讓石頭變重。",
+)
+MAP9_MOSSIDOL_CLEAN_MOSS_LINES = (
+    "你撥開牠胸口的苔蘚。",
+    "底下露出古老符號。",
+    "Moss Idol：那是我還記得的東西。",
+)
+MAP9_MOSSIDOL_REMEMBER_LINES = (
+    "你想起走過的遺跡。",
+    "你想起那些阻止你的怪物。",
+    "牠們也只是害怕失去。",
+    "Moss Idol：你也記得它們？",
+)
+MAP9_MOSSIDOL_WHISPER_LINES = (
+    "你低聲告訴牠。",
+    "被記住，不必把人困住。",
+    "Moss Idol：我只是害怕被遺忘。",
+)
+MAP9_MOSSIDOL_MERCY_LINES = (
+    "Moss Idol：你的腳步聲，我會記住。",
+    "Moss Idol：但我不會再阻止你。",
+    "Moss Idol：藤蔓封鎖……解除。",
+    "Moss Idol：帶著遺跡的名字前進吧。",
+)
+MAP10_ICEGUARDIAN_OPENING_LINES = (
+    "寒氣開始聚集。",
+    "藍晶發出微光。",
+    "Ice Guardian：禁止接近聖座。",
+    "Ice Guardian：前進者，會被冰晶吞沒。",
+    "Ice Guardian：所以，道路必須停止。",
+)
+MAP10_ICEGUARDIAN_OBSERVE_LINES = (
+    "你觀察牠身上的裂痕。",
+    "牠像是由破碎誓言拼成的。",
+    "Ice Guardian：你看見了裂縫。",
+)
+MAP10_ICEGUARDIAN_LISTEN_LINES = (
+    "你聽見冰晶深處的回音。",
+    "那不像威脅。",
+    "Ice Guardian：你……聽見了？",
+)
+MAP10_ICEGUARDIAN_TOUCH_CRYSTAL_LINES = (
+    "你伸手碰向冰晶核心。",
+    "冰冷刺進指尖。",
+    "Ice Guardian：不要觸碰核心。",
+    "你沒有放手。",
+)
+MAP10_ICEGUARDIAN_TELL_LINES = (
+    "你說，破碎不代表結束。",
+    "寒冷也可以是記憶。",
+    "Ice Guardian：判斷正在修正。",
+)
+MAP10_ICEGUARDIAN_MERCY_LINES = (
+    "Ice Guardian：冰晶沒有碎裂。",
+    "Ice Guardian：前進者，不一定會被凍結。",
+    "Ice Guardian：聖座封鎖……解除。",
+    "Ice Guardian：帶著記憶，繼續前進。",
+)
+MAP11_LAVABRUTE_OPENING_LINES = (
+    "地面的裂縫亮起火光。",
+    "熔岩像呼吸一樣翻動。",
+    "Lava Brute：你的靈魂，也會燃燒嗎？",
+    "Lava Brute：弱小會被火吞掉。",
+    "Lava Brute：證明你不會被火支配。",
+)
+MAP11_LAVABRUTE_OBSERVE_LINES = (
+    "你觀察牠身上的裂痕。",
+    "火光像不穩定的心跳。",
+    "Lava Brute：火焰只會吞掉軟弱。",
+)
+MAP11_LAVABRUTE_ENDURE_LINES = (
+    "你站在原地，沒有反擊。",
+    "熱浪逼近你的臉。",
+    "Lava Brute：為什麼不逃？",
+)
+MAP11_LAVABRUTE_APPROACH_LINES = (
+    "你慢慢靠近牠。",
+    "牠的爪子停在半空中。",
+    "Lava Brute：別靠近。",
+    "Lava Brute：我控制不了這些火。",
+)
+MAP11_LAVABRUTE_CALM_LINES = (
+    "你說，火焰不一定只能破壞。",
+    "燃燒也可以是照亮。",
+    "Lava Brute：照亮……不是燒毀？",
+)
+MAP11_LAVABRUTE_MERCY_LINES = (
+    "Lava Brute：火勢安靜下來了。",
+    "Lava Brute：你的靈魂沒有燃燒。",
+    "Lava Brute：熔岩封鎖……解除。",
+    "Lava Brute：走吧，在火失控以前。",
 )
 
 MAP4_MUSHMUSE_SCRIPTED_PROFILE = {
@@ -1724,21 +1881,171 @@ ENEMY_REGISTRY = {
         "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
         "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
     },
-    "MAP9_FOREST_BOSS": _map_boss_enemy_profile(
-        "MAP9_FOREST_BOSS",
-        "Forest Guardian",
-        MAP9_FOREST_BOSS_BATTLE_SPRITE_PATH,
-    ),
-    "MAP10_ICE_BOSS": _map_boss_enemy_profile(
-        "MAP10_ICE_BOSS",
-        "Ice Guardian",
-        MAP10_ICE_BOSS_BATTLE_SPRITE_PATH,
-    ),
-    "MAP11_FIRE_BOSS": _map_boss_enemy_profile(
-        "MAP11_FIRE_BOSS",
-        "Fire Guardian",
-        MAP11_FIRE_BOSS_BATTLE_SPRITE_PATH,
-    ),
+    "MAP9_FOREST_BOSS": {
+        "enemy_id": "MAP9_FOREST_BOSS",
+        "display_name": "Moss Idol",
+        "script_behavior": "scripted_battle",
+        "sprite_path": MAP9_FOREST_BOSS_BATTLE_SPRITE_PATH,
+        "max_hp": 150,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "act_options": (
+            _make_act_option_entry(MAP9_MOSSIDOL_ACT_OBSERVE_PNG, 46, "觀察"),
+            _make_act_option_entry(MAP9_MOSSIDOL_ACT_CLEAN_MOSS_PNG, 64, "清理苔蘚"),
+            _make_act_option_entry(MAP9_MOSSIDOL_ACT_REMEMBER_PNG, 46, "回想"),
+            _make_act_option_entry(MAP9_MOSSIDOL_ACT_WHISPER_PNG, 46, "低語"),
+        ),
+        "opening_dialog": _make_scripted_dialog_entries(
+            MAP9_MOSSIDOL_OPENING_PNGS,
+            MAP9_MOSSIDOL_OPENING_LINES,
+            MAP9_MOSSIDOL_OPENING_PNG_W,
+            MAP9_MOSSIDOL_OPENING_PNG_H,
+        ),
+        "act_sequences": (
+            _make_scripted_dialog_entries(
+                MAP9_MOSSIDOL_OBSERVE_PNGS,
+                MAP9_MOSSIDOL_OBSERVE_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP9_MOSSIDOL_CLEAN_MOSS_PNGS,
+                MAP9_MOSSIDOL_CLEAN_MOSS_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP9_MOSSIDOL_REMEMBER_PNGS,
+                MAP9_MOSSIDOL_REMEMBER_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP9_MOSSIDOL_WHISPER_PNGS,
+                MAP9_MOSSIDOL_WHISPER_LINES,
+            ),
+        ),
+        "act_unlock_order": (0, 1, 2, 3),
+        "mercy_success_sequence": _make_scripted_dialog_entries(
+            MAP9_MOSSIDOL_MERCY_PNGS,
+            MAP9_MOSSIDOL_MERCY_LINES,
+        ),
+        "opening_delay_ms": SCRIPTED_BATTLE_DIALOG_DELAY_MS,
+        "opening_side_dialog": True,
+        "opening_dialog_desired_w": MAP9_MOSSIDOL_OPENING_PNG_W,
+        "opening_enter_attack": True,
+        "dialog_line_ms": MAP1_STORY_LINE_MS,
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP10_ICE_BOSS": {
+        "enemy_id": "MAP10_ICE_BOSS",
+        "display_name": "Ice Guardian",
+        "script_behavior": "scripted_battle",
+        "sprite_path": MAP10_ICE_BOSS_BATTLE_SPRITE_PATH,
+        "max_hp": 150,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "act_options": (
+            _make_act_option_entry(MAP10_ICEGUARDIAN_ACT_OBSERVE_PNG, 46, "觀察"),
+            _make_act_option_entry(MAP10_ICEGUARDIAN_ACT_LISTEN_PNG, 46, "聆聽"),
+            _make_act_option_entry(MAP10_ICEGUARDIAN_ACT_TOUCH_CRYSTAL_PNG, 64, "觸碰冰晶"),
+            _make_act_option_entry(MAP10_ICEGUARDIAN_ACT_TELL_PNG, 46, "訴說"),
+        ),
+        "opening_dialog": _make_scripted_dialog_entries(
+            MAP10_ICEGUARDIAN_OPENING_PNGS,
+            MAP10_ICEGUARDIAN_OPENING_LINES,
+            MAP10_ICEGUARDIAN_OPENING_PNG_W,
+            MAP10_ICEGUARDIAN_OPENING_PNG_H,
+        ),
+        "act_sequences": (
+            _make_scripted_dialog_entries(
+                MAP10_ICEGUARDIAN_OBSERVE_PNGS,
+                MAP10_ICEGUARDIAN_OBSERVE_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP10_ICEGUARDIAN_LISTEN_PNGS,
+                MAP10_ICEGUARDIAN_LISTEN_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP10_ICEGUARDIAN_TOUCH_CRYSTAL_PNGS,
+                MAP10_ICEGUARDIAN_TOUCH_CRYSTAL_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP10_ICEGUARDIAN_TELL_PNGS,
+                MAP10_ICEGUARDIAN_TELL_LINES,
+            ),
+        ),
+        "act_unlock_order": (0, 1, 2, 3),
+        "mercy_success_sequence": _make_scripted_dialog_entries(
+            MAP10_ICEGUARDIAN_MERCY_PNGS,
+            MAP10_ICEGUARDIAN_MERCY_LINES,
+        ),
+        "opening_delay_ms": SCRIPTED_BATTLE_DIALOG_DELAY_MS,
+        "opening_side_dialog": True,
+        "opening_dialog_desired_w": MAP10_ICEGUARDIAN_OPENING_PNG_W,
+        "opening_enter_attack": True,
+        "dialog_line_ms": MAP1_STORY_LINE_MS,
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
+    "MAP11_FIRE_BOSS": {
+        "enemy_id": "MAP11_FIRE_BOSS",
+        "display_name": "Lava Brute",
+        "script_behavior": "scripted_battle",
+        "sprite_path": MAP11_FIRE_BOSS_BATTLE_SPRITE_PATH,
+        "max_hp": 150,
+        "sprite_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "sprite_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "menu_draw_x_offset": NORMAL_BATTLE_ENEMY_DRAW_X_OFFSET,
+        "menu_draw_y_offset": NORMAL_BATTLE_ENEMY_DRAW_Y_OFFSET,
+        "menu_draw_w": NORMAL_BATTLE_ENEMY_DRAW_W,
+        "menu_draw_h": NORMAL_BATTLE_ENEMY_DRAW_H,
+        "act_options": (
+            _make_act_option_entry(MAP11_LAVABRUTE_ACT_OBSERVE_PNG, 46, "觀察"),
+            _make_act_option_entry(MAP11_LAVABRUTE_ACT_ENDURE_PNG, 46, "忍耐"),
+            _make_act_option_entry(MAP11_LAVABRUTE_ACT_APPROACH_PNG, 46, "靠近"),
+            _make_act_option_entry(MAP11_LAVABRUTE_ACT_CALM_PNG, 46, "冷靜"),
+        ),
+        "opening_dialog": _make_scripted_dialog_entries(
+            MAP11_LAVABRUTE_OPENING_PNGS,
+            MAP11_LAVABRUTE_OPENING_LINES,
+            MAP11_LAVABRUTE_OPENING_PNG_W,
+            MAP11_LAVABRUTE_OPENING_PNG_H,
+        ),
+        "act_sequences": (
+            _make_scripted_dialog_entries(
+                MAP11_LAVABRUTE_OBSERVE_PNGS,
+                MAP11_LAVABRUTE_OBSERVE_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP11_LAVABRUTE_ENDURE_PNGS,
+                MAP11_LAVABRUTE_ENDURE_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP11_LAVABRUTE_APPROACH_PNGS,
+                MAP11_LAVABRUTE_APPROACH_LINES,
+            ),
+            _make_scripted_dialog_entries(
+                MAP11_LAVABRUTE_CALM_PNGS,
+                MAP11_LAVABRUTE_CALM_LINES,
+            ),
+        ),
+        "act_unlock_order": (0, 1, 2, 3),
+        "mercy_success_sequence": _make_scripted_dialog_entries(
+            MAP11_LAVABRUTE_MERCY_PNGS,
+            MAP11_LAVABRUTE_MERCY_LINES,
+        ),
+        "opening_delay_ms": SCRIPTED_BATTLE_DIALOG_DELAY_MS,
+        "opening_side_dialog": True,
+        "opening_dialog_desired_w": MAP11_LAVABRUTE_OPENING_PNG_W,
+        "opening_enter_attack": True,
+        "dialog_line_ms": MAP1_STORY_LINE_MS,
+        "mercy_locked": {"png": MERCY_LOCKED_PNG, "png_w": 144, "png_h": 18, "text": "Cannot spare yet."},
+        "mercy_success": {"png": MERCY_DIALOG_TEXT_PATH, "png_w": 220, "png_h": 20, "text": "Spared."},
+    },
 }
 
 MAP_ENCOUNTER_CONFIG = {
@@ -1918,6 +2225,17 @@ map6_boss_scene_composed = False
 map6_boss_scene_frame = -1
 map6_boss_scene_sx = -99999
 map6_boss_scene_sy = -99999
+route_fight_kill_count = 0
+route_mercy_count = 0
+current_battle_route_recorded = False
+current_battle_route_exempt = False
+end_screen_kind = ENDING_ROUTE_NORMAL
+end_screen_path = None
+end_screen_png_loaded = False
+end_screen_load_pending = False
+end_screen_dirty = False
+end_screen_started_ms = 0
+end_title_reset_pending = False
 
 preload_zone_target_map_id = None
 preload_zone_enter_ms = 0
@@ -2066,6 +2384,17 @@ ITEM_MAP4_KEY = {
     "df_bonus": 0,
     "heal_amount": 0,
     "consumable": False,
+}
+ITEM_MAP6_BOSS_KEY = {
+    "id": "item_map7_gate_key",
+    "name": "Key",
+    "item_type": "key",
+    "equip_slot": "none",
+    "at_bonus": 0,
+    "df_bonus": 0,
+    "heal_amount": 0,
+    "consumable": False,
+    "icon_path": config.ui_path("item_icon_item_map7_gate_key.png"),
 }
 WOOD_RIGHT_WEAPON_RACKS = (
     {
@@ -2281,6 +2610,7 @@ map4_pickup_taken = {
     "map4_key": False,
 }
 map5_map6_door_unlocked = False
+map5_map7_gate_unlocked = False
 ground_weapon_drops = []
 ground_weapon_drop_seq = 0
 equipped_weapon_item_id = None
@@ -3317,8 +3647,17 @@ def _resident_boot_activate_map(target_map_id):
     resident_back_slot_id = RESIDENT_BACK_SLOT_ID
     resident_active_slot_id = RESIDENT_ACTIVE_SLOT_ID
     resident_ahead_slot_id = RESIDENT_AHEAD_SLOT_ID
+    released_all = False
+    if hasattr(lgfx, "display_wait_idle"):
+        lgfx.display_wait_idle()
+    if hasattr(lgfx, "slot_release_all"):
+        try:
+            lgfx.slot_release_all()
+            released_all = True
+        except Exception as err:
+            print("resident_boot_release_all_fail:", err)
     for slot_id in RESIDENT_SLOT_IDS:
-        if hasattr(lgfx, "slot_release"):
+        if (not released_all) and hasattr(lgfx, "slot_release"):
             try:
                 lgfx.slot_release(slot_id)
             except Exception:
@@ -3796,12 +4135,15 @@ def _init_runtime_state():
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
     global map6_boss_scene_composed, map6_boss_scene_frame, map6_boss_scene_sx, map6_boss_scene_sy
     global interact_hint_prev_signature, interact_hint_prev_phase
-    global map5_map6_door_unlocked
+    global map5_map6_door_unlocked, map5_map7_gate_unlocked
     global death_screen_started_ms, death_screen_dirty, death_glitch_seed, death_glitch_state, death_glitch_next_ms
     global death_screen_full_redraw
     global death_render_tick
     global death_screen_png_loaded, death_screen_path, death_progress_count, death_progress_next_ms, death_title_reset_pending
     global death_screen_load_pending, death_screen_load_retry_ms, death_screen_load_fail_count, death_battle_cleanup_pending
+    global route_fight_kill_count, route_mercy_count, current_battle_route_recorded, current_battle_route_exempt
+    global end_screen_kind, end_screen_path, end_screen_png_loaded, end_screen_load_pending
+    global end_screen_dirty, end_screen_started_ms, end_title_reset_pending
     if hasattr(lgfx, "enemy_overlay_clear"):
         lgfx.enemy_overlay_clear()
     adc_x = ADC(Pin(JOY_X_PIN))
@@ -4049,9 +4391,14 @@ def _init_runtime_state():
     map6_boss_scene_frame = -1
     map6_boss_scene_sx = -99999
     map6_boss_scene_sy = -99999
+    route_fight_kill_count = 0
+    route_mercy_count = 0
+    current_battle_route_recorded = False
+    current_battle_route_exempt = False
     interact_hint_prev_signature = None
     interact_hint_prev_phase = -1
     map5_map6_door_unlocked = False
+    map5_map7_gate_unlocked = False
     death_screen_started_ms = 0
     death_screen_dirty = False
     death_glitch_seed = (time.ticks_ms() | 1) & 0x7FFFFFFF
@@ -4068,6 +4415,13 @@ def _init_runtime_state():
     death_screen_load_retry_ms = 0
     death_screen_load_fail_count = 0
     death_battle_cleanup_pending = False
+    end_screen_kind = ENDING_ROUTE_NORMAL
+    end_screen_path = _ending_screen_path_for_kind(end_screen_kind)
+    end_screen_png_loaded = False
+    end_screen_load_pending = False
+    end_screen_dirty = False
+    end_screen_started_ms = 0
+    end_title_reset_pending = False
     inventory_portrait_path = _resolve_first_existing_path(INVENTORY_PORTRAIT_PATHS)
     title_cover_path = _resolve_first_existing_path(TITLE_COVER_PATHS)
     title_ui_start_path = _resolve_first_existing_path(TITLE_UI_START_PATHS)
@@ -4184,14 +4538,16 @@ def _prepare_map_entry_cleanup(target_map_id, reason=None, release_back=False, f
 
 
 def _build_preload_cache(source_map_id, portal):
-    target_map_id = portal.get("target_map_id")
+    target_map_id = _portal_target_map_id(portal)
+    if not target_map_id:
+        return False
     config = MAP_REGISTRY.get(target_map_id)
     if not config:
         print("preload_skip_missing_target:", target_map_id)
         return False
 
     try:
-        record = _resident_resolve_map_record(target_map_id, portal.get("target_spawn"))
+        record = _resident_resolve_map_record(target_map_id, _portal_target_spawn(portal))
         if not _resident_start_slot_load(resident_ahead_slot_id, record, False):
             raise RuntimeError("slot_begin_failed")
         return True
@@ -4234,6 +4590,10 @@ def _portal_direction_ok(portal, move_dx, move_dy):
 
 
 def _portal_trigger_hit(portal, px, py):
+    trigger_rect = portal.get("trigger_rect_px")
+    if trigger_rect is not None:
+        return _in_rect(px, py, trigger_rect)
+
     center = portal.get("trigger_center_px")
     radius = portal.get("trigger_radius_px")
     if center is not None and radius is not None:
@@ -4253,6 +4613,121 @@ def _get_current_portal(px, py, move_dx=0, move_dy=0):
         if _portal_trigger_hit(portal, px, py) and _portal_direction_ok(portal, move_dx, move_dy):
             return portal
     return None
+
+
+def _ending_route_kind(log=False):
+    if route_mercy_count > 0 and route_fight_kill_count == 0:
+        kind = ENDING_ROUTE_SAFE
+    elif route_fight_kill_count > 0 and route_mercy_count == 0:
+        kind = ENDING_ROUTE_DEATH
+    else:
+        kind = ENDING_ROUTE_NORMAL
+    if log:
+        print(
+            "ending_route_resolve:",
+            kind,
+            "fight_kill:",
+            route_fight_kill_count,
+            "mercy:",
+            route_mercy_count,
+        )
+    return kind
+
+
+def _ending_map_id_for_kind(kind):
+    if kind == ENDING_ROUTE_SAFE:
+        return ENDING_SAFE_ID
+    if kind == ENDING_ROUTE_DEATH:
+        return ENDING_DEATH_ID
+    return ENDING_NORMAL_ID
+
+
+def _ending_screen_path_for_kind(kind):
+    paths = ENDING_SCREEN_PATHS.get(kind)
+    if not paths:
+        paths = ENDING_SCREEN_PATHS.get(ENDING_ROUTE_NORMAL, ())
+    return _resolve_first_existing_path(paths)
+
+
+def _portal_target_map_id(portal, log=False):
+    if not portal:
+        return 0
+    if portal.get("ending_route_portal"):
+        return _ending_map_id_for_kind(_ending_route_kind(log))
+    return portal.get("target_map_id", 0)
+
+
+def _portal_target_spawn(portal):
+    if not portal:
+        return None
+    return portal.get("target_spawn")
+
+
+def _ending_branch_bosses_complete():
+    return (
+        bool(map_boss_defeated_by_map.get(MAP9_ID, False))
+        and bool(map_boss_defeated_by_map.get(MAP10_ID, False))
+        and bool(map_boss_defeated_by_map.get(MAP11_ID, False))
+    )
+
+
+def _ending_route_portal_locked(portal):
+    return bool(
+        portal
+        and current_map_id == MAP8_ID
+        and portal.get("ending_route_portal")
+        and not _ending_branch_bosses_complete()
+    )
+
+
+def _try_handle_locked_ending_route_portal(portal, loop_start):
+    if not _ending_route_portal_locked(portal):
+        return False
+    if wood_up_dialog_active_id == ENDING_LOCKED_DUTY_DIALOG_ID and _wood_up_dialog_is_active(loop_start):
+        return True
+    if not _open_single_png_notice_dialog(
+        loop_start,
+        ENDING_LOCKED_DUTY_DIALOG_ID,
+        ENDING_LOCKED_DUTY_DIALOG_PATH,
+    ):
+        _clear_interact_hints()
+    print(
+        "ending_route_portal_locked:",
+        "map9",
+        map_boss_defeated_by_map.get(MAP9_ID, False),
+        "map10",
+        map_boss_defeated_by_map.get(MAP10_ID, False),
+        "map11",
+        map_boss_defeated_by_map.get(MAP11_ID, False),
+    )
+    return True
+
+
+def _route_record_current_battle(result):
+    global route_fight_kill_count, route_mercy_count, current_battle_route_recorded
+
+    if current_battle_route_recorded:
+        return False
+    if current_battle_route_exempt or _map1_story_is_active():
+        current_battle_route_recorded = True
+        return False
+
+    if result == ROUTE_RESULT_FIGHT_KILL:
+        route_fight_kill_count += 1
+    elif result == ROUTE_RESULT_MERCY:
+        route_mercy_count += 1
+    else:
+        return False
+    current_battle_route_recorded = True
+    print(
+        "route_record:",
+        result,
+        "fight_kill:",
+        route_fight_kill_count,
+        "mercy:",
+        route_mercy_count,
+    )
+    return True
 
 
 def _portal_transition_clear():
@@ -4329,8 +4804,8 @@ def _portal_transition_start(portal):
     portal_transition_started_ms = time.ticks_ms()
     portal_transition_stage = "shrink"
     portal_transition_source_map_id = current_map_id
-    portal_transition_target_map_id = portal.get("target_map_id", 0)
-    portal_transition_target_spawn = portal.get("target_spawn")
+    portal_transition_target_map_id = _portal_target_map_id(portal)
+    portal_transition_target_spawn = _portal_target_spawn(portal)
     portal_transition_center_screen_x = player_x - scroll_x
     portal_transition_center_screen_y = player_y - scroll_y
     portal_transition_shrink_ms = int(portal.get("transition_shrink_ms", PORTAL_TRANSITION_DEFAULT_SHRINK_MS))
@@ -4429,6 +4904,11 @@ def _update_preload_for_player(px, py):
     preload_portal = None
     preload_zone_rect = None
     for portal in portals:
+        if _ending_route_portal_locked(portal):
+            continue
+        target_map_id = _portal_target_map_id(portal)
+        if not target_map_id:
+            continue
         # Keep cinematic spotlight portals out of preload by default unless a
         # portal explicitly opts in.
         if (
@@ -4454,7 +4934,9 @@ def _update_preload_for_player(px, py):
                 _release_preload_cache("leave_preload_zone")
         return
 
-    target_map_id = preload_portal.get("target_map_id")
+    target_map_id = _portal_target_map_id(preload_portal)
+    if not target_map_id:
+        return
     fast_track_target = target_map_id in PRELOAD_FAST_TRACK_TARGET_MAP_IDS
     if target_map_id != preload_zone_target_map_id:
         preload_zone_target_map_id = target_map_id
@@ -5015,10 +5497,10 @@ def _death_render_tick_for_time(loop_start):
 
 
 def _start_new_game_from_title():
-    global mode, title_dirty, death_title_reset_pending
+    global mode, title_dirty, death_title_reset_pending, end_title_reset_pending
     global explore_force_full_redraw, spawn_intro_needs_redraw
 
-    if death_title_reset_pending:
+    if death_title_reset_pending or end_title_reset_pending:
         _cleanup_battle_native_assets_after_death()
         _boot_phase_meta_spawn()
         _boot_phase_tile_and_player()
@@ -5027,6 +5509,7 @@ def _start_new_game_from_title():
         _boot_phase_finalize_startup()
         _init_runtime_state()
         death_title_reset_pending = False
+        end_title_reset_pending = False
 
     _clear_interact_hints()
     _clear_wood_up_dialog()
@@ -5167,6 +5650,192 @@ def update_death_screen(loop_start, exit_pressed):
     death_screen_dirty = redraw_needed
     if death_progress_count >= DEATH_PROGRESS_SLOTS:
         _return_to_title_from_death()
+
+
+def _release_end_screen_slot():
+    global end_screen_png_loaded
+
+    if end_screen_png_loaded and hasattr(lgfx, "png_slot_release"):
+        try:
+            lgfx.png_slot_release(END_SCREEN_SLOT_ID)
+        except Exception as err:
+            print("end_screen_release_fail:", err)
+    end_screen_png_loaded = False
+
+
+def _release_explore_map_slots_for_end_screen():
+    global collision, meta, asset_base, tile, map_w, map_h, world_w, world_h, runtime_endian
+    global preload_zone_target_map_id, preload_zone_enter_ms, preload_last_build_ms
+    global preload_release_due_ms, preload_suspend_until_ms
+    global gc_suspend_until_ms, gc_pending, resident_transition_active
+    global resident_back_slot_id, resident_active_slot_id, resident_ahead_slot_id
+
+    _clear_interact_hints()
+    _clear_wood_up_dialog()
+    if hasattr(lgfx, "enemy_overlay_clear"):
+        try:
+            lgfx.enemy_overlay_clear()
+        except Exception as err:
+            print("end_screen_enemy_overlay_clear_fail:", err)
+    if hasattr(lgfx, "display_wait_idle"):
+        try:
+            lgfx.display_wait_idle()
+        except Exception as err:
+            print("end_screen_wait_idle_fail:", err)
+    _release_map_boss_sheet()
+
+    released_all = False
+    if hasattr(lgfx, "slot_release_all"):
+        try:
+            lgfx.slot_release_all()
+            released_all = True
+            print("end_screen_map_slots_released")
+        except Exception as err:
+            print("end_screen_map_slot_release_all_fail:", err)
+
+    if released_all:
+        for slot_id in RESIDENT_SLOT_IDS:
+            _resident_clear_slot_record(slot_id)
+    else:
+        for slot_id in RESIDENT_SLOT_IDS:
+            if slot_id != resident_active_slot_id:
+                _resident_release_slot(slot_id, "end_screen_release_nonactive")
+        print("end_screen_map_slot_release_all_missing")
+
+    resident_back_slot_id = RESIDENT_BACK_SLOT_ID
+    resident_active_slot_id = RESIDENT_ACTIVE_SLOT_ID
+    resident_ahead_slot_id = RESIDENT_AHEAD_SLOT_ID
+    _resident_sync_roles()
+    collision = None
+    meta = None
+    asset_base = None
+    tile = 0
+    map_w = 0
+    map_h = 0
+    world_w = ACTIVE_VIEW_W
+    world_h = ACTIVE_VIEW_H
+    runtime_endian = "little"
+    preload_zone_target_map_id = None
+    preload_zone_enter_ms = 0
+    preload_last_build_ms = 0
+    preload_release_due_ms = 0
+    preload_suspend_until_ms = 0
+    gc_suspend_until_ms = 0
+    gc_pending = False
+    resident_transition_active = False
+    gc.collect()
+
+
+def _end_try_load_png(loop_start):
+    global end_screen_png_loaded, end_screen_load_pending, end_screen_dirty
+
+    if end_screen_png_loaded or (not end_screen_load_pending):
+        return
+    end_screen_load_pending = False
+    if (not end_screen_path) or (not _path_exists(end_screen_path)):
+        end_screen_png_loaded = False
+        return
+    if not (
+        hasattr(lgfx, "png_slot_load_file")
+        and hasattr(lgfx, "png_slot_draw")
+        and hasattr(lgfx, "png_slot_release")
+    ):
+        end_screen_png_loaded = False
+        return
+    try:
+        end_screen_png_loaded = bool(lgfx.png_slot_load_file(END_SCREEN_SLOT_ID, end_screen_path))
+    except Exception as err:
+        print("end_screen_load_fail:", err)
+        end_screen_png_loaded = False
+    end_screen_dirty = True
+
+
+def _draw_end_screen(loop_start):
+    global end_screen_png_loaded
+
+    if hasattr(lgfx, "set_brightness"):
+        lgfx.set_brightness(255)
+
+    drew_png = False
+    if end_screen_png_loaded and hasattr(lgfx, "png_slot_draw"):
+        try:
+            drew_png = bool(lgfx.png_slot_draw(END_SCREEN_SLOT_ID, 0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H))
+        except Exception as err:
+            print("end_screen_draw_fail:", err)
+            end_screen_png_loaded = False
+            drew_png = False
+    if (not drew_png) and end_screen_path and hasattr(lgfx, "draw_png_file"):
+        try:
+            drew_png = bool(lgfx.draw_png_file(end_screen_path, 0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H))
+        except Exception as err:
+            print("end_screen_draw_file_fail:", err)
+            drew_png = False
+    if not drew_png:
+        _fill_rect_solid(0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H, 0x0000)
+        _draw_text_in_box(0, 0, ACTIVE_VIEW_W, ACTIVE_VIEW_H, "THE END", BATTLE_COLOR_WHITE)
+
+
+def _enter_end_screen(kind=None):
+    global mode, end_screen_kind, end_screen_path, end_screen_png_loaded, end_screen_load_pending
+    global end_screen_dirty, end_screen_started_ms
+    global explore_force_full_redraw, spawn_intro_needs_redraw
+
+    if kind not in (ENDING_ROUTE_SAFE, ENDING_ROUTE_NORMAL, ENDING_ROUTE_DEATH):
+        kind = _ending_route_kind()
+    end_screen_kind = kind
+    end_screen_path = _ending_screen_path_for_kind(kind)
+    end_screen_started_ms = time.ticks_ms()
+    end_screen_dirty = True
+    end_screen_load_pending = True
+    _release_death_screen_slot()
+    _release_end_screen_slot()
+    _release_explore_map_slots_for_end_screen()
+    explore_force_full_redraw = False
+    spawn_intro_needs_redraw = False
+    mode = MODE_END_SCREEN
+    _prime_button_edge_state()
+    print("ending_screen:", kind, end_screen_path)
+
+
+def _return_to_title_from_end():
+    global mode, title_menu_index, title_nav_prev_dir, title_nav_next_ms
+    global title_notice_until_ms, title_notice_text, title_dirty, title_full_redraw, title_cover_drew_png
+    global explore_force_full_redraw, spawn_intro_needs_redraw
+    global end_screen_dirty, end_screen_load_pending, end_screen_started_ms, end_title_reset_pending
+
+    if hasattr(lgfx, "set_brightness"):
+        lgfx.set_brightness(255)
+    mode = MODE_TITLE_MENU
+    title_menu_index = 0
+    title_nav_prev_dir = 0
+    title_nav_next_ms = 0
+    title_notice_until_ms = 0
+    title_notice_text = None
+    title_dirty = True
+    title_full_redraw = True
+    title_cover_drew_png = False
+    explore_force_full_redraw = False
+    spawn_intro_needs_redraw = False
+    end_screen_dirty = False
+    end_screen_load_pending = False
+    end_screen_started_ms = 0
+    end_title_reset_pending = True
+    _release_end_screen_slot()
+    _clear_wood_up_dialog()
+    _clear_interact_hints()
+    _prime_button_edge_state()
+    gc.collect()
+
+
+def update_end_screen(loop_start, exit_pressed):
+    global end_screen_dirty
+
+    _end_try_load_png(loop_start)
+    if exit_pressed:
+        _return_to_title_from_end()
+        return
+    if not end_screen_dirty:
+        end_screen_dirty = False
 
 
 def _open_explore_inventory():
@@ -5808,6 +6477,14 @@ def _is_map5_map6_portal(portal):
     )
 
 
+def _is_map5_map7_portal(portal):
+    return bool(
+        portal
+        and current_map_id == MAP5_ID
+        and portal.get("target_map_id") == MAP7_ID
+    )
+
+
 def _find_map5_map6_door_portal():
     if current_map_id != MAP5_ID:
         return None
@@ -5868,6 +6545,71 @@ def _try_handle_map5_map6_door_interact(loop_start):
         "prompt": "Use Key?",
         "portal": portal,
         "item": ITEM_MAP4_KEY,
+    }
+    weapon_pickup_dialog_dirty = True
+    return True
+
+
+def _find_map5_map7_gate_portal():
+    if current_map_id != MAP5_ID:
+        return None
+    config = MAP_REGISTRY.get(current_map_id)
+    if not config:
+        return None
+    best_portal = None
+    best_d2 = 0
+    for portal in config.get("portals", ()):
+        if portal.get("target_map_id") != MAP7_ID:
+            continue
+        rect = portal.get("rect", (0, 0, 0, 0))
+        x, y, w, h = rect
+        rx = x + (w // 2)
+        ry = y + h
+        radius = 28
+        dx = rx - player_x
+        dy = ry - player_y
+        d2 = (dx * dx) + (dy * dy)
+        if d2 <= (radius * radius):
+            if (best_portal is None) or (d2 < best_d2):
+                best_portal = portal
+                best_d2 = d2
+        interact_rect = (x - 12, y - 8, w + 24, h + 20)
+        if _player_touches_rect(interact_rect, 2) or _in_rect(player_x, player_y, interact_rect):
+            return portal
+    return best_portal
+
+
+def _try_handle_map5_map7_gate_interact(loop_start):
+    global weapon_pickup_dialog_active, weapon_pickup_choice_index
+    global weapon_pickup_nav_prev_dir, weapon_pickup_target
+    global weapon_pickup_dialog_dirty
+
+    portal = _find_map5_map7_gate_portal()
+    if not portal:
+        return False
+
+    if map5_map7_gate_unlocked:
+        target_spawn = portal.get("target_spawn")
+        if target_spawn and len(target_spawn) >= 2:
+            return bool(switch_map(MAP7_ID, target_spawn[0], target_spawn[1]))
+        return bool(switch_map(MAP7_ID))
+
+    if not _inventory_has_item_id(ITEM_MAP6_BOSS_KEY["id"]):
+        return _open_single_png_notice_dialog(
+            loop_start,
+            "map5_map7_locked",
+            MAP5_MAP6_DOOR_LOCKED_DIALOG_PATH,
+        )
+
+    _clear_interact_hints()
+    weapon_pickup_dialog_active = True
+    weapon_pickup_choice_index = 0
+    weapon_pickup_nav_prev_dir = 0
+    weapon_pickup_target = {
+        "source": "map5_map7_gate",
+        "prompt": "Use Key?",
+        "portal": portal,
+        "item": ITEM_MAP6_BOSS_KEY,
     }
     weapon_pickup_dialog_dirty = True
     return True
@@ -6256,7 +6998,7 @@ def _resolve_weapon_pickup_confirm():
     global weapon_pickup_dialog_active, weapon_pickup_choice_index
     global weapon_pickup_nav_prev_dir, weapon_pickup_target
     global explore_force_full_redraw, weapon_pickup_dialog_dirty
-    global map5_map6_door_unlocked
+    global map5_map6_door_unlocked, map5_map7_gate_unlocked
 
     target = weapon_pickup_target
     if weapon_pickup_choice_index != 0 or not target:
@@ -6270,7 +7012,7 @@ def _resolve_weapon_pickup_confirm():
 
     source = target.get("source")
     should_process = False
-    if source == "map5_door":
+    if source == "map5_door" or source == "map5_map7_gate":
         should_process = True
     elif inventory_try_add(target.get("item")):
         should_process = True
@@ -6301,6 +7043,19 @@ def _resolve_weapon_pickup_confirm():
             if ok:
                 _inventory_remove_first_by_id(ITEM_MAP4_KEY["id"])
                 map5_map6_door_unlocked = True
+        elif source == "map5_map7_gate":
+            portal = target.get("portal")
+            target_map_id = portal.get("target_map_id") if portal else 0
+            target_spawn = portal.get("target_spawn") if portal else None
+            ok = False
+            if target_map_id:
+                if target_spawn and len(target_spawn) >= 2:
+                    ok = bool(switch_map(target_map_id, target_spawn[0], target_spawn[1]))
+                else:
+                    ok = bool(switch_map(target_map_id))
+            if ok:
+                _inventory_remove_first_by_id(ITEM_MAP6_BOSS_KEY["id"])
+                map5_map7_gate_unlocked = True
         elif source == "ground":
             drop_id = target.get("drop_id")
             if drop_id:
@@ -6459,17 +7214,31 @@ def _map_boss_trigger_enemy_id(px, py):
     return None
 
 
+def _spawn_map6_boss_key_drop(boss):
+    if not boss:
+        return False
+    drop_x = int(boss.get("center_x", player_x))
+    drop_y = int(boss.get("center_y", player_y))
+    ok = _spawn_ground_drop_from_item(ITEM_MAP6_BOSS_KEY, MAP6_ID, drop_x, drop_y)
+    if ok:
+        print("map6_boss_key_drop_spawned")
+    return ok
+
+
 def _map_boss_mark_defeated(boss):
     global map6_boss_defeated, map6_boss_battle_active, map_boss_battle_enemy_id
     global map_boss_last_draw_frame, map_boss_anim_seq_index
     if not boss:
         return False
     map_id = boss.get("map_id")
+    was_defeated = _map_boss_is_defeated(boss)
     if hasattr(lgfx, "enemy_overlay_clear"):
         lgfx.enemy_overlay_clear()
     map_boss_defeated_by_map[map_id] = True
     if map_id == MAP6_ID:
         map6_boss_defeated = True
+        if not was_defeated:
+            _spawn_map6_boss_key_drop(boss)
     if map_boss_battle_enemy_id == boss.get("enemy_id"):
         map_boss_battle_enemy_id = None
     map6_boss_battle_active = False
@@ -8439,6 +9208,7 @@ def _scripted_battle_finish():
     act_dialog_until_ms = 0
     if pending_exit:
         if finished_kind == SCRIPTED_BATTLE_KIND_MERCY:
+            _route_record_current_battle(ROUTE_RESULT_MERCY)
             _map_boss_mark_defeated_for_enemy(finished_enemy_id)
         _exit_battle_to_explore()
         return
@@ -9396,6 +10166,7 @@ def _enter_death_screen(now_ms):
     _prime_button_edge_state()
     if not death_screen_path:
         death_screen_path = _resolve_first_existing_path(DEATH_SCREEN_PATHS)
+    _release_end_screen_slot()
     _release_death_screen_slot()
     _clear_interact_hints()
     mode = MODE_DEATH_SCREEN
@@ -9446,6 +10217,7 @@ def _exit_battle_to_explore():
     global explore_force_full_redraw
     global battle_menu_dirty, battle_dialog_visible
     global battle_menu_full_clear_pending, battle_menu_static_ready, battle_menu_prev_dialog_active
+    global current_battle_route_recorded, current_battle_route_exempt
 
     print("[battle_assets] cleanup_before mem_free=", gc.mem_free())
     battle_assets.cleanup()
@@ -9466,6 +10238,8 @@ def _exit_battle_to_explore():
     _reset_battle_state()
     map_boss_battle_enemy_id = None
     map6_boss_battle_active = False
+    current_battle_route_recorded = False
+    current_battle_route_exempt = False
     _clear_wood_up_dialog()
     _reset_interact_hint_state()
 
@@ -9501,10 +10275,13 @@ def _start_battle_from_explore(enemy_id=None):
     global explore_moved, explore_scrolled, explore_anim_changed
     global lamp_dialog_until_ms, wood_up_dialog_until_ms, wood_up_dialog_active_id, explore_overlay_dirty
     global map_boss_battle_enemy_id, map6_boss_battle_active, scripted_battle_opening_pending, scripted_battle_opening_due_ms
+    global current_battle_route_recorded, current_battle_route_exempt
 
     mode = MODE_BATTLE_MENU
     _clear_act_dialog_state(True)
     mercy_exit_pending = False
+    current_battle_route_recorded = False
+    current_battle_route_exempt = bool(current_map_id == MAP1_ID and enemy_id is None and (not map1_opening_battle_done))
     battle_menu_dirty = True
     battle_dialog_visible = False
     battle_menu_full_clear_pending = True
@@ -10436,6 +11213,7 @@ def update_battle_menu(loop_start, fight_pressed, act_pressed, item_pressed, mer
 
     dialog_active = time.ticks_diff(act_dialog_until_ms, loop_start) > 0
     if mercy_exit_pending and not dialog_active:
+        _route_record_current_battle(ROUTE_RESULT_MERCY)
         if not _battle_enemy_uses_scripted_battle():
             _map_boss_mark_defeated_for_enemy(_battle_enemy_id())
         _exit_battle_to_explore()
@@ -10738,6 +11516,7 @@ def update_battle_attack(loop_start, fight_pressed):
     print("attack_hit: mult", mult, "damage", damage, "enemy_hp", enemy_hp)
 
     if enemy_hp <= 0:
+        _route_record_current_battle(ROUTE_RESULT_FIGHT_KILL)
         _map_boss_mark_defeated_for_enemy(_battle_enemy_id())
         _exit_battle_to_explore()
         return
@@ -10809,6 +11588,7 @@ def draw_all(loop_start):
     global spawn_intro_needs_redraw
     global title_dirty, title_full_redraw
     global death_screen_dirty
+    global end_screen_dirty
     global battle_prev_heart_x, battle_prev_heart_y
     global battle_menu_dirty, battle_fight_dirty, battle_dialog_visible, battle_heart_needs_sprite_refresh
     global battle_bullets_dirty, battle_prev_bullet_positions
@@ -10841,6 +11621,14 @@ def draw_all(loop_start):
         if death_screen_dirty:
             _draw_death_screen(loop_start, True)
             death_screen_dirty = False
+        return
+
+    if mode == MODE_END_SCREEN:
+        if interact_hint_prev_signature is not None:
+            _clear_interact_hints()
+        if end_screen_dirty:
+            _draw_end_screen(loop_start)
+            end_screen_dirty = False
         return
 
     if mode == MODE_EXPLORE:
@@ -11065,6 +11853,11 @@ def _run_main_loop():
             explore_scrolled = False
             explore_anim_changed = False
             update_death_screen(loop_start, death_exit_pressed)
+        elif mode == MODE_END_SCREEN:
+            explore_moved = False
+            explore_scrolled = False
+            explore_anim_changed = False
+            update_end_screen(loop_start, death_exit_pressed)
         elif mode == MODE_EXPLORE:
             if portal_transition_active:
                 explore_moved = False
@@ -11090,20 +11883,26 @@ def _run_main_loop():
                         move_dx = player_x - prev_player_x
                         move_dy = player_y - prev_player_y
                         active_portal = _get_current_portal(player_x, player_y, move_dx, move_dy)
-                        if _is_map5_map6_portal(active_portal):
+                        if _is_map5_map6_portal(active_portal) or _is_map5_map7_portal(active_portal):
                             active_portal = None
                         if active_portal and _current_map_boss_blocks_portals():
                             active_portal = None
                         if active_portal:
-                            if active_portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
+                            if _try_handle_locked_ending_route_portal(active_portal, loop_start):
+                                active_portal = None
+                            elif active_portal.get("ending_final_portal"):
+                                _enter_end_screen(active_portal.get("ending_kind"))
+                            elif active_portal.get("transition_effect") == PORTAL_TRANSITION_EFFECT_SPOTLIGHT:
                                 if not _portal_transition_rearm_blocked(active_portal):
                                     _portal_transition_start(active_portal)
                             else:
-                                target_spawn = active_portal.get("target_spawn")
-                                if target_spawn and len(target_spawn) >= 2:
-                                    switch_map(active_portal["target_map_id"], target_spawn[0], target_spawn[1])
-                                else:
-                                    switch_map(active_portal["target_map_id"])
+                                target_map_id = _portal_target_map_id(active_portal, True)
+                                target_spawn = _portal_target_spawn(active_portal)
+                                if target_map_id:
+                                    if target_spawn and len(target_spawn) >= 2:
+                                        switch_map(target_map_id, target_spawn[0], target_spawn[1])
+                                    else:
+                                        switch_map(target_map_id)
 
                     if mode == MODE_EXPLORE and current_map_id == MAP1_ID and (not map1_opening_battle_done):
                         moved_since_last_map1 = (player_x != prev_player_x) or (player_y != prev_player_y)
@@ -11144,6 +11943,8 @@ def _run_main_loop():
                         if _try_open_weapon_pickup_dialog():
                             pass
                         elif _try_handle_map5_map6_door_interact(loop_start):
+                            pass
+                        elif _try_handle_map5_map7_gate_interact(loop_start):
                             pass
                         elif _try_open_wood_up_dialog(loop_start):
                             explore_overlay_dirty = False
