@@ -30,6 +30,8 @@ from map_registry import (
 
 SD_READY = False
 DISPLAY_INIT_DONE = False
+SAVE_VERSION = 1
+save_write_suspended = False
 
 
 def _try_mount_sd():
@@ -122,6 +124,373 @@ def _path_exists(path):
         return True
     except OSError:
         return False
+
+
+def _safe_int(value, fallback=0):
+    try:
+        return int(value)
+    except Exception:
+        return fallback
+
+
+def _optional_int(value):
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _saved_bool(value):
+    return bool(value is True or value == 1)
+
+
+def _saved_dict_get(source, key, fallback=None):
+    if not isinstance(source, dict):
+        return fallback
+    if key in source:
+        return source.get(key)
+    return source.get(str(key), fallback)
+
+
+def _save_bool_dict(source):
+    result = {}
+    for key in source:
+        result[str(key)] = bool(source.get(key, False))
+    return result
+
+
+def _save_encounter_state():
+    result = {}
+    for map_id in MAP_ENCOUNTER_CONFIG:
+        state = _encounter_state_for_map(map_id)
+        result[str(map_id)] = {
+            "rolled_quota": state.get("rolled_quota"),
+            "remaining": int(state.get("remaining", 0)),
+            "cleared": bool(state.get("cleared", False)),
+            "enemy_cursor": int(state.get("enemy_cursor", 0)),
+        }
+    return result
+
+
+def _save_inventory_items():
+    items = []
+    for item in inventory_items:
+        cloned = _inventory_clone_item(item)
+        if cloned:
+            items.append(cloned)
+    return items
+
+
+def _save_ground_weapon_drops():
+    drops = []
+    for drop in ground_weapon_drops:
+        item = _inventory_clone_item(drop.get("item")) if isinstance(drop, dict) else None
+        if not item:
+            continue
+        drops.append(
+            {
+                "id": drop.get("id"),
+                "map_id": int(drop.get("map_id", MAP1_ID)),
+                "x": int(drop.get("x", 0)),
+                "y": int(drop.get("y", 0)),
+                "item": item,
+            }
+        )
+    return drops
+
+
+def _build_save_data():
+    return {
+        "version": SAVE_VERSION,
+        "map_id": int(current_map_id),
+        "player_x": int(player_x),
+        "player_y": int(player_y),
+        "player_hp": int(player_hp),
+        "map1_opening_battle_done": bool(map1_opening_battle_done),
+        "map_encounter_state": _save_encounter_state(),
+        "map_boss_defeated_by_map": _save_bool_dict(map_boss_defeated_by_map),
+        "map6_boss_defeated": bool(map6_boss_defeated),
+        "route_fight_kill_count": int(route_fight_kill_count),
+        "route_mercy_count": int(route_mercy_count),
+        "inventory_items": _save_inventory_items(),
+        "equipped_weapon_item_id": equipped_weapon_item_id,
+        "equipped_armor_item_id": equipped_armor_item_id,
+        "rack_pickup_taken": _save_bool_dict(rack_pickup_taken),
+        "map3_pickup_taken": _save_bool_dict(map3_pickup_taken),
+        "map4_pickup_taken": _save_bool_dict(map4_pickup_taken),
+        "map5_map6_door_unlocked": bool(map5_map6_door_unlocked),
+        "map5_map7_gate_unlocked": bool(map5_map7_gate_unlocked),
+        "ground_weapon_drops": _save_ground_weapon_drops(),
+        "ground_weapon_drop_seq": int(ground_weapon_drop_seq),
+    }
+
+
+def _write_save_data(reason):
+    if save_write_suspended:
+        return False
+    tmp_path = config.SAVE1_PATH + ".tmp"
+    try:
+        config.ensure_save_dir()
+        data = _build_save_data()
+        with open(tmp_path, "w") as f:
+            f.write(json.dumps(data))
+            if hasattr(f, "flush"):
+                f.flush()
+        try:
+            os.rename(tmp_path, config.SAVE1_PATH)
+        except OSError:
+            try:
+                os.remove(config.SAVE1_PATH)
+            except OSError:
+                pass
+            os.rename(tmp_path, config.SAVE1_PATH)
+        print("save_write:", reason)
+        return True
+    except Exception as err:
+        print("save_write_fail:", reason, err)
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        return False
+
+
+def _read_save_data():
+    try:
+        with open(config.SAVE1_PATH, "r") as f:
+            data = json.loads(f.read())
+    except Exception as err:
+        print("save_read_fail:", err)
+        return None
+    if not isinstance(data, dict):
+        print("save_read_invalid: not_dict")
+        return None
+    if data.get("version") != SAVE_VERSION:
+        print("save_read_invalid_version:", data.get("version"))
+        return None
+    return data
+
+
+def _delete_save_data():
+    for path in (config.SAVE1_PATH, config.SAVE1_PATH + ".tmp"):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _reset_encounter_save_state():
+    for map_id in MAP_ENCOUNTER_CONFIG:
+        map_encounter_state[map_id] = {
+            "rolled_quota": None,
+            "remaining": 0,
+            "cleared": False,
+            "enemy_cursor": 0,
+            "entry_travel_px": 0,
+            "entry_ready_after_ms": 0,
+        }
+
+
+def _reset_saved_progress_state():
+    global map1_opening_battle_done, map6_boss_defeated
+    global route_fight_kill_count, route_mercy_count
+    global map5_map6_door_unlocked, map5_map7_gate_unlocked
+    global ground_weapon_drops, ground_weapon_drop_seq
+    global equipped_weapon_item_id, equipped_armor_item_id, inventory_items
+
+    _reset_encounter_save_state()
+    map1_opening_battle_done = False
+    for boss_map_id in map_boss_defeated_by_map:
+        map_boss_defeated_by_map[boss_map_id] = False
+    map6_boss_defeated = False
+    route_fight_kill_count = 0
+    route_mercy_count = 0
+    for pickup_id in rack_pickup_taken:
+        rack_pickup_taken[pickup_id] = False
+    for pickup_id in map3_pickup_taken:
+        map3_pickup_taken[pickup_id] = False
+    for pickup_id in map4_pickup_taken:
+        map4_pickup_taken[pickup_id] = False
+    map5_map6_door_unlocked = False
+    map5_map7_gate_unlocked = False
+    ground_weapon_drops = []
+    ground_weapon_drop_seq = 0
+    equipped_weapon_item_id = None
+    equipped_armor_item_id = None
+    inventory_items = []
+    _sync_equipment_state_from_inventory()
+
+
+def _restore_bool_dict(target, source):
+    for key in target:
+        target[key] = _saved_bool(_saved_dict_get(source, key, False))
+
+
+def _restore_encounter_save_state(source):
+    for map_id in MAP_ENCOUNTER_CONFIG:
+        saved = _saved_dict_get(source, map_id, {})
+        if not isinstance(saved, dict):
+            saved = {}
+        remaining = _safe_int(saved.get("remaining", 0), 0)
+        cursor = _safe_int(saved.get("enemy_cursor", 0), 0)
+        if remaining < 0:
+            remaining = 0
+        if cursor < 0:
+            cursor = 0
+        map_encounter_state[map_id] = {
+            "rolled_quota": _optional_int(saved.get("rolled_quota")),
+            "remaining": remaining,
+            "cleared": _saved_bool(saved.get("cleared", False)),
+            "enemy_cursor": cursor,
+            "entry_travel_px": 0,
+            "entry_ready_after_ms": 0,
+        }
+
+
+def _restore_inventory_items(source):
+    items = []
+    if isinstance(source, list):
+        for item in source:
+            cloned = _inventory_clone_item(item) if isinstance(item, dict) else None
+            if cloned:
+                items.append(cloned)
+            if len(items) >= INVENTORY_CAPACITY:
+                break
+    return items
+
+
+def _restore_ground_weapon_drops(source, saved_seq):
+    drops = []
+    max_seq = 0
+    if isinstance(source, list):
+        for drop in source:
+            if not isinstance(drop, dict):
+                continue
+            item = _inventory_clone_item(drop.get("item")) if isinstance(drop.get("item"), dict) else None
+            drop_id = drop.get("id")
+            if (not item) or (not drop_id):
+                continue
+            drop_id = str(drop_id)
+            if drop_id.startswith("ground_drop_"):
+                seq = _safe_int(drop_id[len("ground_drop_"):], 0)
+                if seq > max_seq:
+                    max_seq = seq
+            drops.append(
+                {
+                    "id": drop_id,
+                    "map_id": _safe_int(drop.get("map_id"), MAP1_ID),
+                    "x": _safe_int(drop.get("x"), 0),
+                    "y": _safe_int(drop.get("y"), 0),
+                    "item": item,
+                }
+            )
+    seq = _safe_int(saved_seq, 0)
+    if max_seq > seq:
+        seq = max_seq
+    return drops, seq
+
+
+def _restore_player_position(px, py):
+    global player_x, player_y, scroll_x, scroll_y
+    global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
+    global move_carry_x, move_carry_y, prev_input_x, prev_input_y
+    global explore_force_full_redraw, teleport_cooldown_frames, encounter_cooldown_frames
+
+    player_x = _clamp(px, PLAYER_R, world_w - PLAYER_R - 1)
+    player_y = _clamp(py, PLAYER_R, world_h - PLAYER_R - 1)
+    safe_x, safe_y = _nearest_walkable(player_x, player_y)
+    if safe_x != player_x or safe_y != player_y:
+        print("save_spawn_adjusted:", player_x, player_y, "->", safe_x, safe_y)
+    player_x, player_y = safe_x, safe_y
+    scroll_x = _clamp(player_x - ACTIVE_VIEW_W // 2, 0, world_w - ACTIVE_VIEW_W)
+    scroll_y = _clamp(player_y - ACTIVE_VIEW_H // 2, 0, world_h - ACTIVE_VIEW_H)
+    prev_scroll_x = scroll_x
+    prev_scroll_y = scroll_y
+    prev_player_x = player_x
+    prev_player_y = player_y
+    move_carry_x = 0
+    move_carry_y = 0
+    prev_input_x = 0
+    prev_input_y = 0
+    teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+    encounter_cooldown_frames = ENCOUNTER_COOLDOWN_FRAMES
+    explore_force_full_redraw = True
+
+
+def _apply_saved_progress_state(data):
+    global map1_opening_battle_done, map6_boss_defeated
+    global route_fight_kill_count, route_mercy_count
+    global map5_map6_door_unlocked, map5_map7_gate_unlocked
+    global ground_weapon_drops, ground_weapon_drop_seq
+    global equipped_weapon_item_id, equipped_armor_item_id, inventory_items
+
+    _restore_encounter_save_state(data.get("map_encounter_state"))
+    map1_opening_battle_done = bool(data.get("map1_opening_battle_done", False))
+    _restore_bool_dict(map_boss_defeated_by_map, data.get("map_boss_defeated_by_map"))
+    map6_boss_defeated = _saved_bool(data.get("map6_boss_defeated", False)) or bool(map_boss_defeated_by_map.get(MAP6_ID, False))
+    route_fight_kill_count = _safe_int(data.get("route_fight_kill_count"), 0)
+    route_mercy_count = _safe_int(data.get("route_mercy_count"), 0)
+    if route_fight_kill_count < 0:
+        route_fight_kill_count = 0
+    if route_mercy_count < 0:
+        route_mercy_count = 0
+    inventory_items = _restore_inventory_items(data.get("inventory_items"))
+    equipped_weapon_item_id = data.get("equipped_weapon_item_id")
+    equipped_armor_item_id = data.get("equipped_armor_item_id")
+    _sync_equipment_state_from_inventory()
+    _restore_bool_dict(rack_pickup_taken, data.get("rack_pickup_taken"))
+    _restore_bool_dict(map3_pickup_taken, data.get("map3_pickup_taken"))
+    _restore_bool_dict(map4_pickup_taken, data.get("map4_pickup_taken"))
+    map5_map6_door_unlocked = _saved_bool(data.get("map5_map6_door_unlocked", False))
+    map5_map7_gate_unlocked = _saved_bool(data.get("map5_map7_gate_unlocked", False))
+    ground_weapon_drops, ground_weapon_drop_seq = _restore_ground_weapon_drops(
+        data.get("ground_weapon_drops"),
+        data.get("ground_weapon_drop_seq"),
+    )
+
+
+def _apply_save_data(data):
+    global mode, player_hp, save_write_suspended
+    global current_battle_route_recorded, current_battle_route_exempt
+    global title_dirty, title_full_redraw, spawn_intro_active, spawn_intro_needs_redraw
+
+    if not isinstance(data, dict):
+        return False
+    target_map_id = _optional_int(data.get("map_id"))
+    if target_map_id not in MAP_REGISTRY:
+        print("save_apply_invalid_map:", target_map_id)
+        return False
+    if data.get("player_x") is None or data.get("player_y") is None:
+        print("save_apply_invalid_position")
+        return False
+    target_x = _safe_int(data.get("player_x"), 0)
+    target_y = _safe_int(data.get("player_y"), 0)
+
+    save_write_suspended = True
+    try:
+        _apply_saved_progress_state(data)
+        if target_map_id != current_map_id:
+            if not switch_map(target_map_id, target_x, target_y, save_after=False):
+                return False
+        else:
+            _encounter_on_map_enter(current_map_id)
+        _restore_player_position(target_x, target_y)
+        player_hp = _clamp(_safe_int(data.get("player_hp"), PLAYER_HP_MAX), 1, PLAYER_HP_MAX)
+        current_battle_route_recorded = False
+        current_battle_route_exempt = False
+        spawn_intro_active = False
+        spawn_intro_needs_redraw = False
+        mode = MODE_EXPLORE
+        title_dirty = True
+        title_full_redraw = True
+        return True
+    except Exception as err:
+        print("save_apply_fail:", err)
+        return False
+    finally:
+        save_write_suspended = False
 
 
 def _resolve_first_existing_path(paths):
@@ -349,7 +718,7 @@ def _load_tiles(meta, base, tile, map_w, map_h, prefer_stream=False):
     raise RuntimeError(mem_err if mem_err else "TILE_OOM")
 
 
-def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None):
+def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None, save_after=True):
     global collision, meta, asset_base, current_map_id
     global player_x, player_y, scroll_x, scroll_y
     global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
@@ -442,10 +811,12 @@ def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spaw
     else:
         gc.collect()
     print("switch_map_direct_ok:", target_map_id)
+    if save_after:
+        _write_save_data("switch_map")
     return True
 
 
-def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None):
+def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None, save_after=True):
     global current_map_id
     global player_x, player_y, scroll_x, scroll_y
     global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
@@ -515,6 +886,8 @@ def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_
     else:
         gc.collect()
     print("switch_map_boot_ok:", target_map_id)
+    if save_after:
+        _write_save_data("switch_map")
     return True
 
 
@@ -3671,7 +4044,7 @@ def _resident_boot_activate_map(target_map_id):
     _resident_prepare_active_slot(resident_active_slot_id)
 
 
-def _play_boot_comic_intro():
+def _run_boot_startup_phases():
     phases = (
         _boot_phase_sd_ready,
         _boot_phase_meta_spawn,
@@ -3680,27 +4053,23 @@ def _play_boot_comic_intro():
         _boot_phase_collision,
         _boot_phase_finalize_startup,
     )
+    for phase_fn in phases:
+        phase_fn()
 
-    def _wait_slot(ms):
-        deadline = time.ticks_add(time.ticks_ms(), ms)
-        while time.ticks_diff(deadline, time.ticks_ms()) > 0:
-            time.sleep_ms(10)
 
+def _wait_boot_comic_slot(ms):
+    deadline = time.ticks_add(time.ticks_ms(), ms)
+    while time.ticks_diff(deadline, time.ticks_ms()) > 0:
+        time.sleep_ms(10)
+
+
+def _play_boot_comic_sequence():
     for i in range(len(BOOT_COMIC_TIME_LABELS)):
         _draw_boot_time_card(BOOT_COMIC_TIME_LABELS[i])
-        _wait_slot(BOOT_TIME_CARD_MS)
+        _wait_boot_comic_slot(BOOT_TIME_CARD_MS)
         _draw_boot_comic_frame(BOOT_COMIC_PATHS[i])
-        # Keep the first 5 comics strictly fixed.
-        if i < (len(BOOT_COMIC_TIME_LABELS) - 1):
-            _wait_slot(BOOT_COMIC_FRAME_MS)
-            continue
+        _wait_boot_comic_slot(BOOT_COMIC_FRAME_MS)
 
-        # Run all startup phases during the last comic only.
-        last_deadline = time.ticks_add(time.ticks_ms(), BOOT_COMIC_FRAME_MS)
-        for phase_fn in phases:
-            phase_fn()
-        while time.ticks_diff(last_deadline, time.ticks_ms()) > 0:
-            time.sleep_ms(10)
 
 def _load_map_context(base, fallback_all_walkable=False, prefer_stream=False, preloaded_meta=None, preloaded_collision=None):
     global asset_base, meta, tile, map_w, map_h, world_w, world_h, runtime_endian, collision
@@ -3787,7 +4156,7 @@ def _load_map_context(base, fallback_all_walkable=False, prefer_stream=False, pr
     return phase
 
 
-def switch_map(target_map_id, spawn_x=None, spawn_y=None):
+def switch_map(target_map_id, spawn_x=None, spawn_y=None, save_after=True):
     global collision, meta, asset_base, current_map_id
     global player_x, player_y, scroll_x, scroll_y
     global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
@@ -3892,7 +4261,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
             if last_err:
                 print("switch_map_tile_last_error:", last_err)
             if target_map_id == MAP8_ID:
-                if _switch_map_direct_fallback(target_map_id, record, spawn_x, spawn_y):
+                if _switch_map_direct_fallback(target_map_id, record, spawn_x, spawn_y, save_after):
                     return True
             if last_err == 8:
                 # Loader cache allocation failed. Free back slot payload and
@@ -3909,7 +4278,7 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
                     # Slot loader can fail on very large maps even when PSRAM is
                     # available. Use the direct loader as a targeted fallback for
                     # Map8 instead of aborting the portal transition.
-                    if _switch_map_direct_fallback(target_map_id, record, spawn_x, spawn_y):
+                    if _switch_map_direct_fallback(target_map_id, record, spawn_x, spawn_y, save_after):
                         return True
                 try:
                     tile_bytes = record["meta"]["tile_size"] * record["meta"]["tile_size"] * 2
@@ -4066,6 +4435,8 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None):
     else:
         gc.collect()
     resident_transition_active = False
+    if save_after:
+        _write_save_data("switch_map")
     return True
 
 
@@ -4426,6 +4797,7 @@ def _init_runtime_state():
     title_cover_path = _resolve_first_existing_path(TITLE_COVER_PATHS)
     title_ui_start_path = _resolve_first_existing_path(TITLE_UI_START_PATHS)
     title_ui_continue_path = _resolve_first_existing_path(TITLE_UI_CONTINUE_PATHS)
+    _reset_saved_progress_state()
 
     if player_sheet_enabled:
         lgfx.player_frame_set(anim_row * 3 + anim_col)
@@ -5500,6 +5872,7 @@ def _start_new_game_from_title():
     global mode, title_dirty, death_title_reset_pending, end_title_reset_pending
     global explore_force_full_redraw, spawn_intro_needs_redraw
 
+    _delete_save_data()
     if death_title_reset_pending or end_title_reset_pending:
         _cleanup_battle_native_assets_after_death()
         _boot_phase_meta_spawn()
@@ -5513,10 +5886,43 @@ def _start_new_game_from_title():
 
     _clear_interact_hints()
     _clear_wood_up_dialog()
+    _play_boot_comic_sequence()
     mode = MODE_EXPLORE
     explore_force_full_redraw = True
     spawn_intro_needs_redraw = spawn_intro_active
     title_dirty = True
+    _write_save_data("new_game")
+
+
+def _start_continue_from_title():
+    global death_title_reset_pending, end_title_reset_pending
+    global title_dirty, title_full_redraw, title_notice_text, title_notice_until_ms
+
+    data = _read_save_data()
+    if data is None:
+        return False
+
+    if death_title_reset_pending or end_title_reset_pending:
+        _cleanup_battle_native_assets_after_death()
+        _boot_phase_meta_spawn()
+        _boot_phase_tile_and_player()
+        _boot_phase_tile_data()
+        _boot_phase_collision()
+        _boot_phase_finalize_startup()
+        _init_runtime_state()
+        death_title_reset_pending = False
+        end_title_reset_pending = False
+
+    if not _apply_save_data(data):
+        return False
+    _clear_interact_hints()
+    _clear_wood_up_dialog()
+    title_notice_text = None
+    title_notice_until_ms = 0
+    title_dirty = True
+    title_full_redraw = True
+    print("save_continue_ok")
+    return True
 
 
 def update_title_menu(loop_start, interact_pressed):
@@ -5553,10 +5959,12 @@ def update_title_menu(loop_start, interact_pressed):
         return
 
     if title_menu_index == 1:
-        if _path_exists(config.SAVE1_PATH):
-            title_notice_text = TITLE_NOTICE_CONTINUE_TEXT
-        else:
+        if not _path_exists(config.SAVE1_PATH):
             title_notice_text = TITLE_NOTICE_NO_SAVE_TEXT
+        elif _start_continue_from_title():
+            return
+        else:
+            title_notice_text = TITLE_NOTICE_CONTINUE_TEXT
         title_notice_until_ms = time.ticks_add(loop_start, TITLE_NOTICE_MS)
         title_dirty = True
         title_full_redraw = True
@@ -6061,6 +6469,7 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
         return
 
     if inv_drop_active:
+        progress_changed = False
         nav_dir = _menu_nav_dir_vertical()
         if nav_dir != 0 and nav_dir != inv_drop_nav_prev_dir:
             if inv_drop_choice_count < 2:
@@ -6077,23 +6486,26 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
             selected_item = inventory_items[inv_choice_index]
             if _is_equippable_item(selected_item):
                 if inv_drop_choice_index == 0:
-                    _equip_inventory_item(selected_item)
+                    progress_changed = _equip_inventory_item(selected_item) or progress_changed
                 elif inv_drop_choice_index == 1:
-                    _drop_inventory_item_at(inv_choice_index)
+                    progress_changed = _drop_inventory_item_at(inv_choice_index) or progress_changed
             elif _is_consumable_item(selected_item):
                 if inv_drop_choice_index == 0:
-                    _use_inventory_item_at(inv_choice_index)
+                    result_text = _use_inventory_item_at(inv_choice_index)
+                    progress_changed = result_text.startswith("Used ") or progress_changed
                 elif inv_drop_choice_index == 1:
-                    _drop_inventory_item_at(inv_choice_index)
+                    progress_changed = _drop_inventory_item_at(inv_choice_index) or progress_changed
             else:
                 if inv_drop_choice_index == 1:
-                    _drop_inventory_item_at(inv_choice_index)
+                    progress_changed = _drop_inventory_item_at(inv_choice_index) or progress_changed
             inv_choice_index = inventory_clamp_index(inv_choice_index)
         inv_drop_active = False
         inv_drop_choice_index = 0
         inv_drop_choice_count = 2
         inv_drop_nav_prev_dir = 0
         inv_screen_dirty = True
+        if progress_changed:
+            _write_save_data("inventory")
         return
 
     focus_dir = _menu_nav_dir_horizontal()
@@ -7012,24 +7424,29 @@ def _resolve_weapon_pickup_confirm():
 
     source = target.get("source")
     should_process = False
+    progress_changed = False
     if source == "map5_door" or source == "map5_map7_gate":
         should_process = True
     elif inventory_try_add(target.get("item")):
         should_process = True
+        progress_changed = True
 
     if should_process:
         if source == "rack":
             pickup_id = target.get("pickup_id")
             if pickup_id:
                 rack_pickup_taken[pickup_id] = True
+                progress_changed = True
         elif source == "map3":
             pickup_id = target.get("pickup_id")
             if pickup_id:
                 map3_pickup_taken[pickup_id] = True
+                progress_changed = True
         elif source == "map4":
             pickup_id = target.get("pickup_id")
             if pickup_id:
                 map4_pickup_taken[pickup_id] = True
+                progress_changed = True
         elif source == "map5_door":
             portal = target.get("portal")
             target_map_id = portal.get("target_map_id") if portal else 0
@@ -7037,12 +7454,13 @@ def _resolve_weapon_pickup_confirm():
             ok = False
             if target_map_id:
                 if target_spawn and len(target_spawn) >= 2:
-                    ok = bool(switch_map(target_map_id, target_spawn[0], target_spawn[1]))
+                    ok = bool(switch_map(target_map_id, target_spawn[0], target_spawn[1], save_after=False))
                 else:
-                    ok = bool(switch_map(target_map_id))
+                    ok = bool(switch_map(target_map_id, save_after=False))
             if ok:
                 _inventory_remove_first_by_id(ITEM_MAP4_KEY["id"])
                 map5_map6_door_unlocked = True
+                progress_changed = True
         elif source == "map5_map7_gate":
             portal = target.get("portal")
             target_map_id = portal.get("target_map_id") if portal else 0
@@ -7050,18 +7468,20 @@ def _resolve_weapon_pickup_confirm():
             ok = False
             if target_map_id:
                 if target_spawn and len(target_spawn) >= 2:
-                    ok = bool(switch_map(target_map_id, target_spawn[0], target_spawn[1]))
+                    ok = bool(switch_map(target_map_id, target_spawn[0], target_spawn[1], save_after=False))
                 else:
-                    ok = bool(switch_map(target_map_id))
+                    ok = bool(switch_map(target_map_id, save_after=False))
             if ok:
                 _inventory_remove_first_by_id(ITEM_MAP6_BOSS_KEY["id"])
                 map5_map7_gate_unlocked = True
+                progress_changed = True
         elif source == "ground":
             drop_id = target.get("drop_id")
             if drop_id:
                 for i in range(len(ground_weapon_drops) - 1, -1, -1):
                     if ground_weapon_drops[i].get("id") == drop_id:
                         ground_weapon_drops.pop(i)
+                        progress_changed = True
                         break
 
     weapon_pickup_dialog_active = False
@@ -7070,6 +7490,8 @@ def _resolve_weapon_pickup_confirm():
     weapon_pickup_target = None
     weapon_pickup_dialog_dirty = False
     explore_force_full_redraw = True
+    if progress_changed:
+        _write_save_data("pickup")
 
 
 def update_weapon_pickup_dialog(interact_pressed):
@@ -10242,6 +10664,7 @@ def _exit_battle_to_explore():
     current_battle_route_exempt = False
     _clear_wood_up_dialog()
     _reset_interact_hint_state()
+    _write_save_data("battle_exit")
 
 
 def _clear_act_dialog_state(reset_sequence):
@@ -11989,6 +12412,6 @@ def _run_main_loop():
 
 def main():
     _init_display()
-    _play_boot_comic_intro()
+    _run_boot_startup_phases()
     _init_runtime_state()
     _run_main_loop()
