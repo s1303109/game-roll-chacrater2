@@ -818,7 +818,60 @@ def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spaw
     return True
 
 
-def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None, save_after=True):
+def _restore_switch_map_boot_snapshot(snapshot):
+    global current_map_id
+    global player_x, player_y, scroll_x, scroll_y
+    global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
+    global leaf_zone_prev_inside, explore_overlay_dirty, lamp_dialog_until_ms
+    global explore_force_full_redraw, teleport_cooldown_frames
+    global move_carry_x, move_carry_y, prev_input_x, prev_input_y
+    global preload_suspend_until_ms, gc_suspend_until_ms, gc_pending
+    global preload_zone_target_map_id, preload_zone_enter_ms
+    global resident_transition_active
+
+    if not snapshot or (not snapshot.get("map_id")):
+        return False
+    try:
+        _resident_boot_activate_map(snapshot["map_id"])
+    except Exception as err:
+        print("switch_map_boot_restore_fail:", err)
+        return False
+
+    current_map_id = snapshot["map_id"]
+    player_x = snapshot["player_x"]
+    player_y = snapshot["player_y"]
+    scroll_x = snapshot["scroll_x"]
+    scroll_y = snapshot["scroll_y"]
+    prev_scroll_x = snapshot["prev_scroll_x"]
+    prev_scroll_y = snapshot["prev_scroll_y"]
+    prev_player_x = snapshot["prev_player_x"]
+    prev_player_y = snapshot["prev_player_y"]
+    leaf_zone_prev_inside = False
+    explore_overlay_dirty = False
+    lamp_dialog_until_ms = 0
+    _clear_wood_up_dialog()
+    explore_force_full_redraw = True
+    teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+    move_carry_x = 0
+    move_carry_y = 0
+    prev_input_x = 0
+    prev_input_y = 0
+    preload_zone_target_map_id = None
+    preload_zone_enter_ms = 0
+    now = time.ticks_ms()
+    preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
+    gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
+    resident_transition_active = False
+    if GC_DEFER_ENABLE:
+        gc_pending = True
+    else:
+        gc_pending = False
+        gc.collect()
+    print("switch_map_boot_restore_ok:", current_map_id)
+    return True
+
+
+def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_y=None, save_after=True, restore_snapshot=None, cleanup_reason=None):
     global current_map_id
     global player_x, player_y, scroll_x, scroll_y
     global prev_scroll_x, prev_scroll_y, prev_player_x, prev_player_y
@@ -828,12 +881,28 @@ def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_
     global move_carry_x, move_carry_y, prev_input_x, prev_input_y
     global preload_suspend_until_ms, gc_suspend_until_ms, gc_pending
     global preload_zone_target_map_id, preload_zone_enter_ms
+    global resident_transition_active
 
     try:
-        _release_preload_cache("switch_boot_fallback")
+        reason = cleanup_reason if cleanup_reason else "switch_boot_fallback"
+        if target_map_id == MAP8_ID:
+            # Map8 is large enough that keeping the current active tileset alive
+            # often prevents the target tileset from getting a contiguous PSRAM
+            # allocation. Reset resident slots before loading it.
+            _prepare_heavy_map_entry_cleanup(
+                target_map_id,
+                reason,
+                release_back=False,
+                force_gc=True,
+                release_transient=False,
+            )
+        else:
+            _release_preload_cache(reason)
         _resident_boot_activate_map(target_map_id)
     except Exception as err:
         print("switch_map_boot_fail:", err)
+        if restore_snapshot is not None:
+            _restore_switch_map_boot_snapshot(restore_snapshot)
         return False
 
     if spawn_x is None and target_record.get("spawn") and len(target_record["spawn"]) >= 2:
@@ -883,6 +952,7 @@ def _switch_map_boot_fallback(target_map_id, target_record, spawn_x=None, spawn_
     now = time.ticks_ms()
     preload_suspend_until_ms = time.ticks_add(now, PRELOAD_POST_SWITCH_PAUSE_MS)
     gc_suspend_until_ms = time.ticks_add(now, GC_POST_SWITCH_PAUSE_MS)
+    resident_transition_active = False
     if GC_DEFER_ENABLE:
         gc_pending = True
     else:
@@ -4293,6 +4363,32 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None, save_after=True):
             teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
             return False
         phase["resolve_base_ms"] = time.ticks_diff(time.ticks_ms(), t0)
+        if target_map_id == MAP8_ID:
+            restore_snapshot = {
+                "map_id": prev_current_map_id,
+                "player_x": prev_player_x_saved,
+                "player_y": prev_player_y_saved,
+                "scroll_x": prev_scroll_x_saved,
+                "scroll_y": prev_scroll_y_saved,
+                "prev_scroll_x": prev_prev_scroll_x_saved,
+                "prev_scroll_y": prev_prev_scroll_y_saved,
+                "prev_player_x": prev_prev_player_x_saved,
+                "prev_player_y": prev_prev_player_y_saved,
+            }
+            if _switch_map_boot_fallback(
+                target_map_id,
+                record,
+                spawn_x,
+                spawn_y,
+                save_after,
+                restore_snapshot=restore_snapshot,
+                cleanup_reason="switch_boot_prepare_map8",
+            ):
+                return True
+            print("switch_map_fail_stage:boot_reload")
+            _print_switch_timings()
+            teleport_cooldown_frames = TELEPORT_COOLDOWN_FRAMES
+            return False
         target_slot_id = resident_ahead_slot_id
         if target_map_id == MAP8_ID:
             _prepare_heavy_map_entry_cleanup(
