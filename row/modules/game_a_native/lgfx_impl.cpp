@@ -3,52 +3,52 @@
 #include <stddef.h>
 #include <stdint.h>
 
-extern "C" void lgfx_init_impl(void) {}
-extern "C" void lgfx_fill_impl(uint16_t color) {
+extern "C" void game_a_lgfx_init_impl(void) {}
+extern "C" void game_a_lgfx_fill_impl(uint16_t color) {
   (void)color;
 }
-extern "C" void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
+extern "C" void game_a_lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
   (void)x;
   (void)y;
   (void)text;
   (void)color;
 }
-extern "C" void lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
+extern "C" void game_a_lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
   (void)x;
   (void)y;
   (void)w;
   (void)h;
   (void)color;
 }
-extern "C" void lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
+extern "C" void game_a_lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
   (void)x;
   (void)y;
   (void)r;
   (void)color;
 }
-extern "C" void lgfx_clear_impl(void) {}
-extern "C" void lgfx_set_rotation_impl(int rotation) {
+extern "C" void game_a_lgfx_clear_impl(void) {}
+extern "C" void game_a_lgfx_set_rotation_impl(int rotation) {
   (void)rotation;
 }
-extern "C" void lgfx_set_brightness_impl(int brightness) {
+extern "C" void game_a_lgfx_set_brightness_impl(int brightness) {
   (void)brightness;
 }
-extern "C" void lgfx_set_swap_bytes_impl(bool swap) {
+extern "C" void game_a_lgfx_set_swap_bytes_impl(bool swap) {
   (void)swap;
 }
-extern "C" void lgfx_sprite_create_impl(int w, int h, bool use_psram) {
+extern "C" void game_a_lgfx_sprite_create_impl(int w, int h, bool use_psram) {
   (void)w;
   (void)h;
   (void)use_psram;
 }
-extern "C" void lgfx_sprite_fill_impl(uint16_t color) {
+extern "C" void game_a_lgfx_sprite_fill_impl(uint16_t color) {
   (void)color;
 }
-extern "C" void lgfx_sprite_push_impl(int x, int y) {
+extern "C" void game_a_lgfx_sprite_push_impl(int x, int y) {
   (void)x;
   (void)y;
 }
-extern "C" bool lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int view_w, int view_h, bool use_psram) {
+extern "C" bool game_a_lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int view_w, int view_h, bool use_psram) {
   (void)tile_size;
   (void)map_w;
   (void)map_h;
@@ -57,28 +57,28 @@ extern "C" bool lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int vi
   (void)use_psram;
   return false;
 }
-extern "C" bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_len, const uint8_t *tilemap_data, size_t tilemap_len) {
+extern "C" bool game_a_lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_len, const uint8_t *tilemap_data, size_t tilemap_len) {
   (void)tileset_data;
   (void)tileset_len;
   (void)tilemap_data;
   (void)tilemap_len;
   return false;
 }
-extern "C" bool lgfx_tile_set_impl(int tx, int ty, int tile_index) {
+extern "C" bool game_a_lgfx_tile_set_impl(int tx, int ty, int tile_index) {
   (void)tx;
   (void)ty;
   (void)tile_index;
   return false;
 }
-extern "C" bool lgfx_tile_load_files_impl(const char *tileset_path, const char *tilemap_path) {
+extern "C" bool game_a_lgfx_tile_load_files_impl(const char *tileset_path, const char *tilemap_path) {
   (void)tileset_path;
   (void)tilemap_path;
   return false;
 }
-extern "C" int lgfx_tile_loader_mode_impl(void) {
+extern "C" int game_a_lgfx_tile_loader_mode_impl(void) {
   return 0;
 }
-extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+extern "C" bool game_a_lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
   (void)slot_id;
   (void)map_token;
   (void)tileset_token;
@@ -89,7 +89,7 @@ extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint3
   (void)map_h;
   return false;
 }
-extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+extern "C" bool game_a_lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
   (void)slot_id;
   (void)map_token;
   (void)tileset_token;
@@ -100,31 +100,31 @@ extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token,
   (void)map_h;
   return false;
 }
-extern "C" int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
+extern "C" int game_a_lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
   (void)slot_id;
   (void)max_bytes;
   return 0;
 }
-extern "C" bool lgfx_slot_cancel_load_impl(int slot_id) {
+extern "C" bool game_a_lgfx_slot_cancel_load_impl(int slot_id) {
   (void)slot_id;
   return false;
 }
-extern "C" bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
+extern "C" bool game_a_lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
   (void)slot_id;
   (void)force_full_redraw;
   return false;
 }
-extern "C" bool lgfx_slot_release_impl(int slot_id) {
+extern "C" bool game_a_lgfx_slot_release_impl(int slot_id) {
   (void)slot_id;
   return false;
 }
-extern "C" void lgfx_slot_release_all_impl(void) {}
-extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
+extern "C" void game_a_lgfx_slot_release_all_impl(void) {}
+extern "C" bool game_a_lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
   (void)slot_id;
   (void)map_token;
   return false;
 }
-extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
+extern "C" bool game_a_lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
   (void)slot_id;
   if (role) {
     *role = 0;
@@ -158,22 +158,22 @@ extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t
   }
   return false;
 }
-extern "C" void lgfx_slot_set_role_impl(int slot_id, int role) {
+extern "C" void game_a_lgfx_slot_set_role_impl(int slot_id, int role) {
   (void)slot_id;
   (void)role;
 }
-extern "C" void lgfx_display_wait_idle_impl(void) {}
-extern "C" int lgfx_tile_last_error_impl(void) {
+extern "C" void game_a_lgfx_display_wait_idle_impl(void) {}
+extern "C" int game_a_lgfx_tile_last_error_impl(void) {
   return -1;
 }
-extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full) {
+extern "C" int game_a_lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full) {
   (void)scroll_x;
   (void)scroll_y;
   (void)force_full;
   return 0;
 }
 // tile_render_player_impl is defined later in the file with full implementation
-extern "C" int lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius,
+extern "C" int game_a_lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius,
                                                   int enemy_x, int enemy_y, int enemy_frame, bool enemy_enabled, bool force_full) {
   (void)scroll_x;
   (void)scroll_y;
@@ -188,13 +188,13 @@ extern "C" int lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, in
   (void)force_full;
   return 0;
 }
-extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) {
+extern "C" void game_a_lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) {
   (void)x;
   (void)y;
   (void)color;
   (void)radius;
 }
-extern "C" bool lgfx_player_sheet_load_impl(const uint8_t *sheet_data, size_t sheet_len, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+extern "C" bool game_a_lgfx_player_sheet_load_impl(const uint8_t *sheet_data, size_t sheet_len, int sheet_w, int sheet_h, int frame_w, int frame_h) {
   (void)sheet_data;
   (void)sheet_len;
   (void)sheet_w;
@@ -203,7 +203,7 @@ extern "C" bool lgfx_player_sheet_load_impl(const uint8_t *sheet_data, size_t sh
   (void)frame_h;
   return false;
 }
-extern "C" bool lgfx_player_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+extern "C" bool game_a_lgfx_player_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
   (void)sheet_path;
   (void)sheet_w;
   (void)sheet_h;
@@ -211,14 +211,14 @@ extern "C" bool lgfx_player_sheet_load_file_impl(const char *sheet_path, int she
   (void)frame_h;
   return false;
 }
-extern "C" void lgfx_player_frame_set_impl(int frame_index) {
+extern "C" void game_a_lgfx_player_frame_set_impl(int frame_index) {
   (void)frame_index;
 }
-extern "C" void lgfx_player_flip_x_set_impl(bool flip_x) {
+extern "C" void game_a_lgfx_player_flip_x_set_impl(bool flip_x) {
   (void)flip_x;
 }
-extern "C" void lgfx_player_sheet_clear_impl(void) {}
-extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+extern "C" void game_a_lgfx_player_sheet_clear_impl(void) {}
+extern "C" bool game_a_lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
   (void)sheet_path;
   (void)sheet_w;
   (void)sheet_h;
@@ -226,17 +226,17 @@ extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int shee
   (void)frame_h;
   return false;
 }
-extern "C" void lgfx_enemy_frame_set_impl(int frame_index) {
+extern "C" void game_a_lgfx_enemy_frame_set_impl(int frame_index) {
   (void)frame_index;
 }
-extern "C" void lgfx_enemy_sheet_clear_impl(void) {}
-extern "C" void lgfx_enemy_draw_impl(int x, int y) {
+extern "C" void game_a_lgfx_enemy_sheet_clear_impl(void) {}
+extern "C" void game_a_lgfx_enemy_draw_impl(int x, int y) {
   (void)x;
   (void)y;
 }
-extern "C" void lgfx_enemy_overlay_clear_impl(void) {}
-extern "C" void lgfx_interact_hint_begin_impl(void) {}
-extern "C" void lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, int h, int phase_step) {
+extern "C" void game_a_lgfx_enemy_overlay_clear_impl(void) {}
+extern "C" void game_a_lgfx_interact_hint_begin_impl(void) {}
+extern "C" void game_a_lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, int h, int phase_step) {
   (void)slot_id;
   (void)x;
   (void)y;
@@ -244,16 +244,16 @@ extern "C" void lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, i
   (void)h;
   (void)phase_step;
 }
-extern "C" void lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int r, int phase_step) {
+extern "C" void game_a_lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int r, int phase_step) {
   (void)slot_id;
   (void)cx;
   (void)cy;
   (void)r;
   (void)phase_step;
 }
-extern "C" void lgfx_interact_hint_end_impl(void) {}
-extern "C" void lgfx_interact_hint_clear_impl(void) {}
-extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
+extern "C" void game_a_lgfx_interact_hint_end_impl(void) {}
+extern "C" void game_a_lgfx_interact_hint_clear_impl(void) {}
+extern "C" bool game_a_lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
   (void)path;
   (void)x;
   (void)y;
@@ -261,12 +261,12 @@ extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, i
   (void)h;
   return false;
 }
-extern "C" bool lgfx_png_slot_load_file_impl(int slot_id, const char *path) {
+extern "C" bool game_a_lgfx_png_slot_load_file_impl(int slot_id, const char *path) {
   (void)slot_id;
   (void)path;
   return false;
 }
-extern "C" bool lgfx_png_slot_draw_impl(int slot_id, int x, int y, int w, int h) {
+extern "C" bool game_a_lgfx_png_slot_draw_impl(int slot_id, int x, int y, int w, int h) {
   (void)slot_id;
   (void)x;
   (void)y;
@@ -274,11 +274,11 @@ extern "C" bool lgfx_png_slot_draw_impl(int slot_id, int x, int y, int w, int h)
   (void)h;
   return false;
 }
-extern "C" void lgfx_png_slot_release_impl(int slot_id) {
+extern "C" void game_a_lgfx_png_slot_release_impl(int slot_id) {
   (void)slot_id;
 }
-extern "C" void lgfx_png_slot_release_all_impl(void) {}
-extern "C" void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
+extern "C" void game_a_lgfx_png_slot_release_all_impl(void) {}
+extern "C" void game_a_lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
   if (full_frames) {
     *full_frames = 0;
   }
@@ -315,16 +315,16 @@ extern "C" {
 #include "../../../LovyanGFX/src/lgfx/utility/lgfx_pngle.h"
 
 // Forward declarations for functions called before definition
-extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius);
-extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h);
+extern "C" void game_a_lgfx_draw_player_impl(int x, int y, uint16_t color, int radius);
+extern "C" bool game_a_lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h);
 
-class LGFX : public lgfx::LGFX_Device {
+class GameA_LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9341 _panel;
   lgfx::Bus_SPI _bus;
   lgfx::Light_PWM _light;
 
 public:
-  LGFX(void) {
+  GameA_LGFX(void) {
     constexpr spi_host_device_t TFT_SPI_HOST = SPI2_HOST;
     auto bcfg = _bus.config();
     bcfg.spi_host = TFT_SPI_HOST;
@@ -371,7 +371,7 @@ public:
   }
 };
 
-static LGFX lcd;
+static GameA_LGFX lcd;
 static LGFX_Sprite sprite(&lcd);
 static bool sprite_ready = false;
 
@@ -2752,7 +2752,7 @@ static bool png_slot_decode_file(PngSlot *slot, const char *path) {
   return true;
 }
 
-extern "C" void lgfx_init_impl(void) {
+extern "C" void game_a_lgfx_init_impl(void) {
   lcd.init();
   lcd.setRotation(1);
   lcd.setSwapBytes(true);
@@ -2764,11 +2764,11 @@ extern "C" void lgfx_init_impl(void) {
   interact_hint_reset_storage();
 }
 
-extern "C" void lgfx_fill_impl(uint16_t color) {
+extern "C" void game_a_lgfx_fill_impl(uint16_t color) {
   lcd.fillScreen(color);
 }
 
-extern "C" void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
+extern "C" void game_a_lgfx_draw_text_impl(int x, int y, const char *text, uint16_t color) {
   if (!text) {
     return;
   }
@@ -2778,38 +2778,38 @@ extern "C" void lgfx_draw_text_impl(int x, int y, const char *text, uint16_t col
   lcd.drawString(text, x, y);
 }
 
-extern "C" void lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
+extern "C" void game_a_lgfx_draw_rect_impl(int x, int y, int w, int h, uint16_t color) {
   if (w <= 0 || h <= 0) {
     return;
   }
   lcd.drawRect(x, y, w, h, color);
 }
 
-extern "C" void lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
+extern "C" void game_a_lgfx_draw_circle_impl(int x, int y, int r, uint16_t color) {
   if (r <= 0) {
     return;
   }
   lcd.fillCircle(x, y, r, color);
 }
 
-extern "C" void lgfx_clear_impl(void) {
+extern "C" void game_a_lgfx_clear_impl(void) {
   lcd.fillScreen(0);
 }
 
-extern "C" void lgfx_set_rotation_impl(int rotation) {
+extern "C" void game_a_lgfx_set_rotation_impl(int rotation) {
   lcd.setRotation(rotation);
 }
 
-extern "C" void lgfx_set_brightness_impl(int brightness) {
+extern "C" void game_a_lgfx_set_brightness_impl(int brightness) {
   lcd.setBrightness(brightness);
 }
 
-extern "C" void lgfx_set_swap_bytes_impl(bool swap) {
+extern "C" void game_a_lgfx_set_swap_bytes_impl(bool swap) {
   lcd.setSwapBytes(swap);
   sprite.setSwapBytes(swap);
 }
 
-extern "C" void lgfx_sprite_create_impl(int w, int h, bool use_psram) {
+extern "C" void game_a_lgfx_sprite_create_impl(int w, int h, bool use_psram) {
   sprite.deleteSprite();
   sprite.setColorDepth(16);
   sprite.setPsram(use_psram);
@@ -2818,21 +2818,21 @@ extern "C" void lgfx_sprite_create_impl(int w, int h, bool use_psram) {
   sprite_ready = sprite.width() > 0 && sprite.height() > 0;
 }
 
-extern "C" void lgfx_sprite_fill_impl(uint16_t color) {
+extern "C" void game_a_lgfx_sprite_fill_impl(uint16_t color) {
   if (!sprite_ready) {
     return;
   }
   sprite.fillScreen(color);
 }
 
-extern "C" void lgfx_sprite_push_impl(int x, int y) {
+extern "C" void game_a_lgfx_sprite_push_impl(int x, int y) {
   if (!sprite_ready) {
     return;
   }
   sprite.pushSprite(x, y);
 }
 
-extern "C" bool lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int view_w, int view_h, bool use_psram) {
+extern "C" bool game_a_lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int view_w, int view_h, bool use_psram) {
   if (tile_size <= 0 || map_w <= 0 || map_h <= 0 || view_w <= 0 || view_h <= 0) {
     return false;
   }
@@ -2869,7 +2869,7 @@ extern "C" bool lgfx_tile_setup_impl(int tile_size, int map_w, int map_h, int vi
   return true;
 }
 
-extern "C" bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_len, const uint8_t *tilemap_data, size_t tilemap_len) {
+extern "C" bool game_a_lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_len, const uint8_t *tilemap_data, size_t tilemap_len) {
   if (!tileset_data || !tilemap_data) {
     return tile_fail(TILE_LOAD_ERR_ARGS);
   }
@@ -2956,7 +2956,7 @@ extern "C" bool lgfx_tile_load_impl(const uint8_t *tileset_data, size_t tileset_
   return resident_activate_slot(0, true);
 }
 
-extern "C" bool lgfx_tile_set_impl(int tx, int ty, int tile_index) {
+extern "C" bool game_a_lgfx_tile_set_impl(int tx, int ty, int tile_index) {
   if (!tile_state.loaded) {
     return false;
   }
@@ -2974,15 +2974,15 @@ extern "C" bool lgfx_tile_set_impl(int tx, int ty, int tile_index) {
   return true;
 }
 
-extern "C" bool lgfx_tile_load_files_impl(const char *tileset_path, const char *tilemap_path) {
-  return lgfx_slot_load_files_impl(0, 0, 0, tileset_path, tilemap_path, tile_state.tile_size, tile_state.map_w, tile_state.map_h);
+extern "C" bool game_a_lgfx_tile_load_files_impl(const char *tileset_path, const char *tilemap_path) {
+  return game_a_lgfx_slot_load_files_impl(0, 0, 0, tileset_path, tilemap_path, tile_state.tile_size, tile_state.map_w, tile_state.map_h);
 }
 
-extern "C" int lgfx_tile_loader_mode_impl(void) {
+extern "C" int game_a_lgfx_tile_loader_mode_impl(void) {
   return 3;
 }
 
-extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+extern "C" bool game_a_lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
   if (!slot_id_valid(slot_id)) {
     return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
   }
@@ -3005,7 +3005,7 @@ extern "C" bool lgfx_slot_load_files_impl(int slot_id, uint32_t map_token, uint3
   return true;
 }
 
-extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
+extern "C" bool game_a_lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token, uint32_t tileset_token, const char *tileset_path, const char *tilemap_path, int tile_size, int map_w, int map_h) {
   if (!slot_id_valid(slot_id)) {
     return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
   }
@@ -3022,7 +3022,7 @@ extern "C" bool lgfx_slot_begin_load_files_impl(int slot_id, uint32_t map_token,
   return true;
 }
 
-extern "C" int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
+extern "C" int game_a_lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
   if (!slot_id_valid(slot_id)) {
     tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
     return -1;
@@ -3043,7 +3043,7 @@ extern "C" int lgfx_slot_pump_load_impl(int slot_id, size_t max_bytes) {
   return pumped;
 }
 
-extern "C" bool lgfx_slot_cancel_load_impl(int slot_id) {
+extern "C" bool game_a_lgfx_slot_cancel_load_impl(int slot_id) {
   if (!slot_id_valid(slot_id)) {
     return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
   }
@@ -3059,7 +3059,7 @@ extern "C" bool lgfx_slot_cancel_load_impl(int slot_id) {
   return true;
 }
 
-extern "C" bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
+extern "C" bool game_a_lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
   if (!slot_id_valid(slot_id)) {
     return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
   }
@@ -3076,7 +3076,7 @@ extern "C" bool lgfx_slot_select_impl(int slot_id, bool force_full_redraw) {
   return true;
 }
 
-extern "C" bool lgfx_slot_release_impl(int slot_id) {
+extern "C" bool game_a_lgfx_slot_release_impl(int slot_id) {
   if (!slot_id_valid(slot_id)) {
     return tile_fail(TILE_LOAD_ERR_SLOT_RANGE);
   }
@@ -3088,7 +3088,7 @@ extern "C" bool lgfx_slot_release_impl(int slot_id) {
   return true;
 }
 
-extern "C" void lgfx_slot_release_all_impl(void) {
+extern "C" void game_a_lgfx_slot_release_all_impl(void) {
   tile_free_buffers();
   for (int i = 0; i < RESIDENT_SLOT_COUNT; ++i) {
     resident_slot_release_resources(&resident_slots[i]);
@@ -3099,7 +3099,7 @@ extern "C" void lgfx_slot_release_all_impl(void) {
   tile_state.last_error = TILE_LOAD_OK;
 }
 
-extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
+extern "C" bool game_a_lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
   if (!slot_id_valid(slot_id)) {
     return false;
   }
@@ -3107,7 +3107,7 @@ extern "C" bool lgfx_slot_has_map_impl(int slot_id, uint32_t map_token) {
   return slot->state != SLOT_STATE_EMPTY && slot->map_token == map_token;
 }
 
-extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
+extern "C" bool game_a_lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t *map_token, uint32_t *tileset_token, int *load_stage, size_t *loaded_bytes, size_t *total_bytes, int *ref_count, int *waiter_count, bool *is_active) {
   if (!slot_id_valid(slot_id)) {
     return false;
   }
@@ -3146,23 +3146,23 @@ extern "C" bool lgfx_slot_info_impl(int slot_id, int *role, int *state, uint32_t
   return true;
 }
 
-extern "C" void lgfx_slot_set_role_impl(int slot_id, int role) {
+extern "C" void game_a_lgfx_slot_set_role_impl(int slot_id, int role) {
   if (!slot_id_valid(slot_id)) {
     return;
   }
   resident_slots[slot_id].role = role;
 }
 
-extern "C" void lgfx_display_wait_idle_impl(void) {
+extern "C" void game_a_lgfx_display_wait_idle_impl(void) {
   lcd.waitDMA();
   lcd.waitDisplay();
 }
 
-extern "C" int lgfx_tile_last_error_impl(void) {
+extern "C" int game_a_lgfx_tile_last_error_impl(void) {
   return tile_state.last_error;
 }
 
-extern "C" bool lgfx_player_sheet_load_impl(const uint8_t *sheet_data, size_t sheet_len, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+extern "C" bool game_a_lgfx_player_sheet_load_impl(const uint8_t *sheet_data, size_t sheet_len, int sheet_w, int sheet_h, int frame_w, int frame_h) {
   if (!sheet_data) {
     return false;
   }
@@ -3201,7 +3201,7 @@ extern "C" bool lgfx_player_sheet_load_impl(const uint8_t *sheet_data, size_t sh
   return true;
 }
 
-extern "C" bool lgfx_player_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+extern "C" bool game_a_lgfx_player_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
   if (!sheet_path) {
     return false;
   }
@@ -3265,7 +3265,7 @@ extern "C" bool lgfx_player_sheet_load_file_impl(const char *sheet_path, int she
   return true;
 }
 
-extern "C" void lgfx_player_frame_set_impl(int frame_index) {
+extern "C" void game_a_lgfx_player_frame_set_impl(int frame_index) {
   if (!player_sprite.enabled || player_sprite.frame_count <= 0) {
     return;
   }
@@ -3276,15 +3276,15 @@ extern "C" void lgfx_player_frame_set_impl(int frame_index) {
   player_sprite.current_frame = norm;
 }
 
-extern "C" void lgfx_player_flip_x_set_impl(bool flip_x) {
+extern "C" void game_a_lgfx_player_flip_x_set_impl(bool flip_x) {
   player_sprite.flip_x = flip_x;
 }
 
-extern "C" void lgfx_player_sheet_clear_impl(void) {
+extern "C" void game_a_lgfx_player_sheet_clear_impl(void) {
   player_sheet_release();
 }
 
-extern "C" bool lgfx_png_slot_load_file_impl(int slot_id, const char *path) {
+extern "C" bool game_a_lgfx_png_slot_load_file_impl(int slot_id, const char *path) {
   if (!png_slot_valid_id(slot_id) || !path || path[0] == '\0') {
     if (png_slot_valid_id(slot_id)) {
       png_slot_release_native(slot_id);
@@ -3303,7 +3303,7 @@ extern "C" bool lgfx_png_slot_load_file_impl(int slot_id, const char *path) {
   return true;
 }
 
-extern "C" bool lgfx_png_slot_draw_impl(int slot_id, int x, int y, int w, int h) {
+extern "C" bool game_a_lgfx_png_slot_draw_impl(int slot_id, int x, int y, int w, int h) {
   if (!png_slot_valid_id(slot_id)) {
     return false;
   }
@@ -3340,7 +3340,7 @@ extern "C" bool lgfx_png_slot_draw_impl(int slot_id, int x, int y, int w, int h)
   return true;
 }
 
-extern "C" void lgfx_png_slot_release_impl(int slot_id) {
+extern "C" void game_a_lgfx_png_slot_release_impl(int slot_id) {
   if (!png_slot_valid_id(slot_id)) {
     return;
   }
@@ -3350,13 +3350,13 @@ extern "C" void lgfx_png_slot_release_impl(int slot_id) {
   png_slot_release_native(slot_id);
 }
 
-extern "C" void lgfx_png_slot_release_all_impl(void) {
+extern "C" void game_a_lgfx_png_slot_release_all_impl(void) {
   for (int i = 0; i < MAX_PNG_SLOTS; ++i) {
-    lgfx_png_slot_release_impl(i);
+    game_a_lgfx_png_slot_release_impl(i);
   }
 }
 
-extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
+extern "C" bool game_a_lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int sheet_w, int sheet_h, int frame_w, int frame_h) {
   if (!sheet_path) {
     enemy_sheet_release();
     return false;
@@ -3422,7 +3422,7 @@ extern "C" bool lgfx_enemy_sheet_load_file_impl(const char *sheet_path, int shee
   return true;
 }
 
-extern "C" void lgfx_enemy_frame_set_impl(int frame_index) {
+extern "C" void game_a_lgfx_enemy_frame_set_impl(int frame_index) {
   if (!enemy_sprite.enabled || enemy_sprite.frame_count <= 0) {
     return;
   }
@@ -3433,15 +3433,15 @@ extern "C" void lgfx_enemy_frame_set_impl(int frame_index) {
   enemy_sprite.current_frame = norm;
 }
 
-extern "C" void lgfx_enemy_sheet_clear_impl(void) {
+extern "C" void game_a_lgfx_enemy_sheet_clear_impl(void) {
   enemy_sheet_release();
 }
 
-extern "C" void lgfx_enemy_overlay_clear_impl(void) {
+extern "C" void game_a_lgfx_enemy_overlay_clear_impl(void) {
   enemy_overlay_clear_state(false);
 }
 
-extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
+extern "C" bool game_a_lgfx_draw_png_file_impl(const char *path, int x, int y, int w, int h) {
   if (!path || w <= 0 || h <= 0) {
     return false;
   }
@@ -3482,7 +3482,7 @@ extern "C" bool lgfx_draw_png_file_impl(const char *path, int x, int y, int w, i
   return ok;
 }
 
-extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full) {
+extern "C" int game_a_lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full) {
   if (!tile_state.loaded || !sprite_ready) {
     return 0;
   }
@@ -3696,7 +3696,7 @@ extern "C" int lgfx_tile_render_impl(int scroll_x, int scroll_y, bool force_full
   return full_redraw ? 2 : 1;
 }
 
-extern "C" int lgfx_tile_render_player_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius, bool force_full) {
+extern "C" int game_a_lgfx_tile_render_player_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius, bool force_full) {
   if (radius <= 0) {
     radius = 1;
   }
@@ -3706,19 +3706,19 @@ extern "C" int lgfx_tile_render_player_impl(int scroll_x, int scroll_y, int play
   render_compose_player_color = color;
   render_compose_player_radius = radius;
 
-  int mode = lgfx_tile_render_impl(scroll_x, scroll_y, force_full);
+  int mode = game_a_lgfx_tile_render_impl(scroll_x, scroll_y, force_full);
   bool composed = render_compose_applied;
 
   render_compose_player = false;
   render_compose_applied = false;
 
   if (!composed) {
-    lgfx_draw_player_impl(player_x, player_y, color, radius);
+    game_a_lgfx_draw_player_impl(player_x, player_y, color, radius);
   }
   return mode;
 }
 
-extern "C" int lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius,
+extern "C" int game_a_lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, int player_x, int player_y, uint16_t color, int radius,
                                                   int enemy_x, int enemy_y, int enemy_frame, bool enemy_enabled, bool force_full) {
   if (radius <= 0) {
     radius = 1;
@@ -3734,7 +3734,7 @@ extern "C" int lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, in
   render_compose_enemy_frame = enemy_frame;
   render_compose_enemy_applied = false;
 
-  int mode = lgfx_tile_render_impl(scroll_x, scroll_y, force_full);
+  int mode = game_a_lgfx_tile_render_impl(scroll_x, scroll_y, force_full);
   bool composed_player = render_compose_applied;
 
   render_compose_player = false;
@@ -3743,12 +3743,12 @@ extern "C" int lgfx_tile_render_player_enemy_impl(int scroll_x, int scroll_y, in
   render_compose_enemy = false;
 
   if (!composed_player) {
-    lgfx_draw_player_impl(player_x, player_y, color, radius);
+    game_a_lgfx_draw_player_impl(player_x, player_y, color, radius);
   }
   return mode;
 }
 
-extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) {
+extern "C" void game_a_lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) {
   if (radius <= 0) {
     return;
   }
@@ -3810,7 +3810,7 @@ extern "C" void lgfx_draw_player_impl(int x, int y, uint16_t color, int radius) 
   player_overlay.scene_epoch = scene_epoch;
 }
 
-extern "C" void lgfx_enemy_draw_impl(int x, int y) {
+extern "C" void game_a_lgfx_enemy_draw_impl(int x, int y) {
   bool can_use_sprite = enemy_sprite.enabled && enemy_sprite.pixels && enemy_sprite.frame_count > 0;
   int frame_index = enemy_sprite.current_frame;
   bool had_overlay = enemy_overlay.valid && enemy_overlay.scene_epoch == scene_epoch;
@@ -3874,7 +3874,7 @@ extern "C" void lgfx_enemy_draw_impl(int x, int y) {
   enemy_overlay.scene_epoch = scene_epoch;
 }
 
-extern "C" void lgfx_interact_hint_begin_impl(void) {
+extern "C" void game_a_lgfx_interact_hint_begin_impl(void) {
   interact_hint_finish_write();
   interact_hint_pending_count = 0;
   for (int i = 0; i < MAX_INTERACT_HINTS; ++i) {
@@ -3889,7 +3889,7 @@ extern "C" void lgfx_interact_hint_begin_impl(void) {
   interact_hint_restore_previous_locked();
 }
 
-extern "C" void lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, int h, int phase_step) {
+extern "C" void game_a_lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, int h, int phase_step) {
   if (!tile_state.loaded || !sprite_ready || slot_id < 0 || slot_id >= MAX_INTERACT_HINTS || w <= 0 || h <= 0) {
     return;
   }
@@ -3936,7 +3936,7 @@ extern "C" void lgfx_interact_hint_rect_impl(int slot_id, int x, int y, int w, i
   interact_hint_store_pending(slot_id, INTERACT_HINT_SHAPE_RECT, store_x, store_y, store_w, store_h, x, y, w, h, phase_step);
 }
 
-extern "C" void lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int r, int phase_step) {
+extern "C" void game_a_lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int r, int phase_step) {
   if (!tile_state.loaded || !sprite_ready || slot_id < 0 || slot_id >= MAX_INTERACT_HINTS || r <= 0) {
     return;
   }
@@ -3975,7 +3975,7 @@ extern "C" void lgfx_interact_hint_circle_impl(int slot_id, int cx, int cy, int 
   interact_hint_store_pending(slot_id, INTERACT_HINT_SHAPE_CIRCLE, store_x, store_y, store_w, store_h, cx, cy, r, outer_r, phase_step);
 }
 
-extern "C" void lgfx_interact_hint_end_impl(void) {
+extern "C" void game_a_lgfx_interact_hint_end_impl(void) {
   interact_hint_finish_write();
   interact_hint_prev_count = interact_hint_pending_count;
   interact_hint_prev_scene_epoch = scene_epoch;
@@ -3987,7 +3987,7 @@ extern "C" void lgfx_interact_hint_end_impl(void) {
   }
 }
 
-extern "C" void lgfx_interact_hint_clear_impl(void) {
+extern "C" void game_a_lgfx_interact_hint_clear_impl(void) {
   interact_hint_finish_write();
   if (tile_state.loaded && sprite_ready && interact_hint_prev_count > 0) {
     lcd.startWrite();
@@ -3998,7 +3998,7 @@ extern "C" void lgfx_interact_hint_clear_impl(void) {
   interact_hint_reset_storage();
 }
 
-extern "C" void lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
+extern "C" void game_a_lgfx_get_stats_impl(uint32_t *full_frames, uint32_t *dirty_frames, uint32_t *last_us, uint32_t *last_tiles) {
   if (full_frames) {
     *full_frames = render_stats.full_frames;
   }

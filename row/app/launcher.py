@@ -8,6 +8,7 @@ from sd_host import ensure_sd_32gb, mount_sd, sd_capacity_bytes
 
 GAME_ROOT = "/sd/game"
 STALE_FLASH_FILES = (
+    "/lgfx.py",
     "/game_mvp.py",
     "/config.py",
     "/map_registry.py",

@@ -21,6 +21,7 @@ FLASH_FILES=(
 )
 
 GAME_FILES=(
+  "${APP_DIR}/lgfx.py:/sd/game/lgfx.py"
   "${APP_DIR}/game_mvp.py:/sd/game/game_mvp.py"
   "${APP_DIR}/config.py:/sd/game/config.py"
   "${APP_DIR}/map_registry.py:/sd/game/map_registry.py"
@@ -430,6 +431,7 @@ import os
 from sd_host import ensure_sd_32gb, mount_sd
 
 STALE_FLASH_FILES = (
+    "/lgfx.py",
     "/game_mvp.py",
     "/config.py",
     "/map_registry.py",
