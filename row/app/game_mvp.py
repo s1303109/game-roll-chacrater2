@@ -732,6 +732,8 @@ def _switch_map_direct_fallback(target_map_id, target_record, spawn_x=None, spaw
     global preload_zone_target_map_id, preload_zone_enter_ms
 
     try:
+        if target_map_id == MAP8_ID:
+            _release_transient_psram_assets("switch_direct_fallback_map8")
         _release_preload_cache("switch_direct_fallback")
         _resident_release_slot(resident_back_slot_id, "switch_direct_release_back")
         _resident_release_slot(resident_ahead_slot_id, "switch_direct_release_ahead")
@@ -4224,6 +4226,9 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None, save_after=True):
     prev_active_slot_id = resident_active_slot_id
     prev_ahead_slot_id = resident_ahead_slot_id
 
+    if target_map_id == MAP8_ID:
+        _release_transient_psram_assets("switch_map_prepare_map8_transient")
+
     def _tile_last_error_code():
         if hasattr(lgfx, "tile_last_error"):
             try:
@@ -4252,7 +4257,13 @@ def switch_map(target_map_id, spawn_x=None, spawn_y=None, save_after=True):
         phase["resolve_base_ms"] = time.ticks_diff(time.ticks_ms(), t0)
         target_slot_id = resident_ahead_slot_id
         if target_map_id == MAP8_ID:
-            _prepare_map_entry_cleanup(target_map_id, "switch_map_prepare_map8", release_back=True, force_gc=True)
+            _prepare_heavy_map_entry_cleanup(
+                target_map_id,
+                "switch_map_prepare_map8",
+                release_back=True,
+                force_gc=True,
+                release_transient=False,
+            )
         # Reduce heap fragmentation before slot loader allocates its tile cache.
         gc.collect()
         load_started = _resident_start_slot_load(target_slot_id, record, False)
@@ -4490,7 +4501,9 @@ def _init_runtime_state():
     global wood_up_dialog_paths, wood_up_dialog_path_index, wood_up_dialog_line_ms
     global wood_up_dialog_draw_w, wood_up_dialog_draw_h
     global explore_overlay_dirty, current_map_id, teleport_cooldown_frames, inv_choice_index, inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index
-    global inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty, INV_TAB_ITEM, INV_TAB_STAT, INV_FOCUS_LEFT, INV_FOCUS_RIGHT, inv_tab_index
+    global inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty, inv_selection_dirty, inv_drop_dirty
+    global inv_prev_choice_index, inv_prev_focus_side, inv_prev_drop_choice_index
+    global INV_TAB_ITEM, INV_TAB_STAT, INV_FOCUS_LEFT, INV_FOCUS_RIGHT, inv_tab_index
     global inv_tab_active, inv_tab_nav_prev_dir, inv_focus_side, inv_focus_nav_prev_dir, weapon_pickup_dialog_active, weapon_pickup_choice_index, weapon_pickup_nav_prev_dir, weapon_pickup_target
     global weapon_pickup_dialog_dirty, spawn_intro_cleared_once, spawn_intro_active, spawn_intro_overlay_path, spawn_intro_needs_redraw, inventory_portrait_path, title_cover_path, title_ui_start_path
     global title_ui_continue_path, button_last_edge_ms
@@ -4707,10 +4720,15 @@ def _init_runtime_state():
     inv_drop_choice_count = 2
     inv_drop_nav_prev_dir = 0
     inv_screen_dirty = True
+    inv_selection_dirty = False
+    inv_drop_dirty = False
     INV_TAB_ITEM = 0
     INV_TAB_STAT = 1
     INV_FOCUS_LEFT = 0
     INV_FOCUS_RIGHT = 1
+    inv_prev_choice_index = -1
+    inv_prev_focus_side = INV_FOCUS_LEFT
+    inv_prev_drop_choice_index = -1
     inv_tab_index = INV_TAB_ITEM
     inv_tab_active = INV_TAB_ITEM
     inv_tab_nav_prev_dir = 0
@@ -4907,6 +4925,61 @@ def _prepare_map_entry_cleanup(target_map_id, reason=None, release_back=False, f
     gc.collect()
     if force_gc:
         gc.collect()
+
+
+def _release_transient_psram_assets(reason=None):
+    global battle_dialog_png_info, death_screen_png_loaded, end_screen_png_loaded
+
+    _clear_interact_hints()
+    _clear_wood_up_dialog()
+    try:
+        _battle_clear_dialog_image()
+    except Exception as err:
+        print("heavy_map_dialog_cleanup_fail:", err)
+        battle_dialog_png_info = None
+    try:
+        battle_assets.cleanup()
+    except Exception as err:
+        print("heavy_map_battle_cleanup_fail:", err)
+    try:
+        _release_death_screen_slot()
+    except Exception as err:
+        print("heavy_map_death_slot_release_fail:", err)
+        death_screen_png_loaded = False
+    try:
+        _release_end_screen_slot()
+    except Exception as err:
+        print("heavy_map_end_slot_release_fail:", err)
+        end_screen_png_loaded = False
+    try:
+        _release_map_boss_sheet()
+    except Exception as err:
+        print("heavy_map_boss_sheet_release_fail:", err)
+    if hasattr(lgfx, "enemy_sheet_clear"):
+        try:
+            lgfx.enemy_sheet_clear()
+        except Exception as err:
+            print("heavy_map_enemy_sheet_clear_fail:", err)
+    if hasattr(lgfx, "enemy_overlay_clear"):
+        try:
+            lgfx.enemy_overlay_clear()
+        except Exception as err:
+            print("heavy_map_enemy_overlay_clear_fail:", err)
+    if hasattr(lgfx, "png_slot_release_all"):
+        try:
+            lgfx.png_slot_release_all()
+        except Exception as err:
+            print("heavy_map_png_release_all_fail:", err)
+    battle_dialog_png_info = None
+    death_screen_png_loaded = False
+    end_screen_png_loaded = False
+    gc.collect()
+
+
+def _prepare_heavy_map_entry_cleanup(target_map_id, reason=None, release_back=False, force_gc=False, release_transient=True):
+    if release_transient:
+        _release_transient_psram_assets(reason)
+    _prepare_map_entry_cleanup(target_map_id, reason, release_back, force_gc)
 
 
 def _build_preload_cache(source_map_id, portal):
@@ -5241,7 +5314,7 @@ def _portal_transition_update(loop_start):
         target_map_id,
     )
     if target_map_id == MAP8_ID:
-        _prepare_map_entry_cleanup(target_map_id, "portal_transition_switch_retry", release_back=True, force_gc=True)
+        _prepare_heavy_map_entry_cleanup(target_map_id, "portal_transition_switch_retry", release_back=True, force_gc=True)
     if portal_transition_switch_fail_count == 1:
         _release_preload_cache("portal_transition_switch_retry")
     elif portal_transition_switch_fail_count == 2:
@@ -6249,6 +6322,7 @@ def update_end_screen(loop_start, exit_pressed):
 def _open_explore_inventory():
     global mode, inv_choice_index, inv_nav_prev_dir
     global inv_drop_active, inv_drop_choice_index, inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty
+    global inv_selection_dirty, inv_drop_dirty, inv_prev_choice_index, inv_prev_focus_side, inv_prev_drop_choice_index
     global inv_tab_index, inv_tab_active, inv_tab_nav_prev_dir
     global inv_focus_side, inv_focus_nav_prev_dir
 
@@ -6266,11 +6340,17 @@ def _open_explore_inventory():
     inv_focus_side = INV_FOCUS_LEFT
     inv_focus_nav_prev_dir = 0
     inv_screen_dirty = True
+    inv_selection_dirty = False
+    inv_drop_dirty = False
+    inv_prev_choice_index = -1
+    inv_prev_focus_side = inv_focus_side
+    inv_prev_drop_choice_index = -1
 
 
 def _close_explore_inventory():
     global mode, explore_force_full_redraw
     global inv_nav_prev_dir, inv_drop_active, inv_drop_choice_index, inv_drop_choice_count, inv_drop_nav_prev_dir, inv_screen_dirty
+    global inv_selection_dirty, inv_drop_dirty, inv_prev_choice_index, inv_prev_focus_side, inv_prev_drop_choice_index
     global inv_tab_nav_prev_dir
     global inv_focus_side, inv_focus_nav_prev_dir
 
@@ -6285,7 +6365,82 @@ def _close_explore_inventory():
     inv_focus_side = INV_FOCUS_LEFT
     inv_focus_nav_prev_dir = 0
     inv_screen_dirty = True
+    inv_selection_dirty = False
+    inv_drop_dirty = False
+    inv_prev_choice_index = -1
+    inv_prev_focus_side = inv_focus_side
+    inv_prev_drop_choice_index = -1
     _reset_interact_hint_state()
+
+
+def _explore_inventory_layout():
+    panel_border = BATTLE_CMD_BORDER_THICK
+    frame_border = BATTLE_FRAME_BORDER_THICK
+    left_w = 112
+    pad = 8
+    box_x = 4
+    box_y = 4
+    box_w = ACTIVE_VIEW_W - 8
+    box_h = ACTIVE_VIEW_H - 8
+    if box_w < 40 or box_h < 40:
+        return None
+
+    left_x = box_x + pad
+    left_y = box_y + pad
+    right_h = box_h - (pad * 2)
+    status_bottom = left_y + 72 + 8 + 6
+    left_h = status_bottom - left_y
+    if left_h > right_h:
+        left_h = right_h
+    if left_h < 40:
+        left_h = 40
+    right_x = left_x + left_w + 8
+    right_y = left_y
+    right_w = box_x + box_w - pad - right_x
+
+    tab_x = left_x + 8
+    tab_y = left_y + left_h + 4
+    tab_w = left_w - 16
+    tab_row_h = 14
+    detail_y = tab_y + (2 * tab_row_h) + 6
+    detail_h = (left_y + right_h) - detail_y
+
+    title_h = 16
+    list_x = right_x + 4
+    list_y = right_y + title_h + 4
+    list_w = right_w - 8
+    list_h = right_h - title_h - 8
+    rows = INVENTORY_CAPACITY
+    row_h = list_h // rows
+    if row_h < 12:
+        row_h = 12
+        rows = list_h // row_h
+        if rows < 1:
+            rows = 1
+
+    menu_w = 84
+    menu_h = 66 if inv_drop_choice_count > 2 else 52
+    menu_x = right_x + (right_w - menu_w) // 2
+    menu_y = right_y + (right_h - menu_h) // 2
+
+    return {
+        "panel_border": panel_border,
+        "frame_border": frame_border,
+        "box": (box_x, box_y, box_w, box_h),
+        "left": (left_x, left_y, left_w, left_h),
+        "right": (right_x, right_y, right_w, right_h),
+        "tab": (tab_x, tab_y, tab_w, tab_row_h),
+        "detail": (left_x, detail_y, left_w, detail_h),
+        "title_h": title_h,
+        "list": (list_x, list_y, list_w, list_h, rows, row_h),
+        "menu": (menu_x, menu_y, menu_w, menu_h),
+    }
+
+
+def _inventory_selected_item():
+    if not inventory_is_empty() and inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
+        return inventory_items[inv_choice_index]
+    return None
 
 
 def _draw_inventory_item_detail_panel(x, y, w, h, item):
@@ -6321,33 +6476,108 @@ def _draw_inventory_item_detail_panel(x, y, w, h, item):
         )
 
 
-def _draw_explore_inventory_screen():
-    panel_border = BATTLE_CMD_BORDER_THICK
-    frame_border = BATTLE_FRAME_BORDER_THICK
-    left_w = 112
-    pad = 8
-    box_x = 4
-    box_y = 4
-    box_w = ACTIVE_VIEW_W - 8
-    box_h = ACTIVE_VIEW_H - 8
-    if box_w < 40 or box_h < 40:
+def _draw_inventory_detail_for_selection(layout, clear_first):
+    if inv_tab_active != INV_TAB_ITEM:
+        return
+    detail_x, detail_y, detail_w, detail_h = layout["detail"]
+    if detail_h < 44:
+        return
+    if clear_first:
+        _fill_rect_solid(detail_x, detail_y, detail_w, detail_h, 0x0000)
+    _draw_inventory_item_detail_panel(detail_x, detail_y, detail_w, detail_h, _inventory_selected_item())
+
+
+def _draw_inventory_item_row(layout, index, clear_first):
+    list_x, list_y, list_w, list_h, rows, row_h = layout["list"]
+    if index < 0 or index >= rows or row_h <= 0:
+        return
+    ry = list_y + index * row_h
+    if ry + row_h > list_y + list_h:
+        return
+    if clear_first:
+        _fill_rect_solid(list_x, ry, list_w, row_h, 0x0000)
+    if index >= len(inventory_items):
+        return
+    if index == inv_choice_index and ((inv_focus_side == INV_FOCUS_RIGHT) or inv_drop_active):
+        line_h = layout["panel_border"]
+        if line_h > row_h:
+            line_h = row_h
+        lgfx.draw_rect(list_x, ry + row_h - line_h, list_w, line_h, BATTLE_COLOR_RED)
+    row_item = inventory_items[index]
+    _draw_text_in_box(list_x + 2, ry, list_w - 4, row_h, row_item.get("name", "Item"), BATTLE_COLOR_WHITE)
+
+
+def _draw_inventory_item_rows(layout):
+    rows = layout["list"][4]
+    for i in range(rows):
+        if i >= len(inventory_items):
+            break
+        _draw_inventory_item_row(layout, i, False)
+
+
+def _inventory_drop_labels(selected_item):
+    if _is_equippable_item(selected_item):
+        return ("EQUIP", "DROP", "KEEP")
+    if _is_consumable_item(selected_item):
+        return ("USE", "DROP", "KEEP")
+    return ("KEEP", "DROP")
+
+
+def _draw_explore_inventory_drop_menu(layout):
+    global inv_prev_drop_choice_index
+    if inv_tab_active != INV_TAB_ITEM or not inv_drop_active:
+        inv_prev_drop_choice_index = -1
         return
 
+    menu_x, menu_y, menu_w, menu_h = layout["menu"]
+    _fill_rect_solid(menu_x, menu_y, menu_w, menu_h, 0x0000)
+    _draw_rect_thick(menu_x, menu_y, menu_w, menu_h, BATTLE_COLOR_WHITE, layout["panel_border"])
+    labels = _inventory_drop_labels(_inventory_selected_item())
+    row_h = 20
+    base_y = menu_y + 6
+    for i, label in enumerate(labels):
+        text_color = BATTLE_COLOR_RED if inv_drop_choice_index == i else BATTLE_COLOR_WHITE
+        _draw_text_in_box(menu_x + 4, base_y + (i * row_h), menu_w - 8, 16, label, text_color)
+    inv_prev_drop_choice_index = inv_drop_choice_index
+
+
+def _draw_explore_inventory_selection_update():
+    global inv_prev_choice_index, inv_prev_focus_side
+    layout = _explore_inventory_layout()
+    if not layout or inv_tab_active != INV_TAB_ITEM:
+        inv_prev_choice_index = inv_choice_index
+        inv_prev_focus_side = inv_focus_side
+        return
+
+    if inv_prev_choice_index != inv_choice_index:
+        _draw_inventory_item_row(layout, inv_prev_choice_index, True)
+    _draw_inventory_item_row(layout, inv_choice_index, True)
+    _draw_inventory_detail_for_selection(layout, True)
+    inv_prev_choice_index = inv_choice_index
+    inv_prev_focus_side = inv_focus_side
+
+
+def _draw_explore_inventory_drop_update():
+    layout = _explore_inventory_layout()
+    if not layout:
+        return
+    _draw_explore_inventory_drop_menu(layout)
+
+
+def _draw_explore_inventory_screen():
+    global inv_prev_choice_index, inv_prev_focus_side, inv_prev_drop_choice_index
+    layout = _explore_inventory_layout()
+    if not layout:
+        return
+    panel_border = BATTLE_CMD_BORDER_THICK
+    frame_border = layout["frame_border"]
+
+    box_x, box_y, box_w, box_h = layout["box"]
     lgfx.clear()
     _draw_rect_thick(box_x, box_y, box_w, box_h, BATTLE_COLOR_WHITE, frame_border)
 
-    left_x = box_x + pad
-    left_y = box_y + pad
-    right_h = box_h - (pad * 2)
-    status_bottom = left_y + 72 + 8 + 6  # HP text baseline + font height + small margin
-    left_h = status_bottom - left_y
-    if left_h > right_h:
-        left_h = right_h
-    if left_h < 40:
-        left_h = 40
-    right_x = left_x + left_w + 8
-    right_y = left_y
-    right_w = box_x + box_w - pad - right_x
+    left_x, left_y, left_w, left_h = layout["left"]
+    right_x, right_y, right_w, right_h = layout["right"]
 
     _draw_rect_thick(left_x, left_y, left_w, left_h, BATTLE_COLOR_WHITE, panel_border)
     _draw_rect_thick(right_x, right_y, right_w, right_h, BATTLE_COLOR_WHITE, panel_border)
@@ -6358,10 +6588,7 @@ def _draw_explore_inventory_screen():
         lgfx.draw_text(left_x + 8, left_y + 52, "LV %d" % PLAYER_LV, BATTLE_COLOR_WHITE)
         lgfx.draw_text(left_x + 8, left_y + 72, "HP %d/%d" % (player_hp, PLAYER_HP_MAX), BATTLE_COLOR_WHITE)
 
-    tab_x = left_x + 8
-    tab_y = left_y + left_h + 4
-    tab_w = left_w - 16
-    tab_row_h = 14
+    tab_x, tab_y, tab_w, tab_row_h = layout["tab"]
     tabs = ("ITEM", "STAT")
     for i, label in enumerate(tabs):
         ry = tab_y + i * tab_row_h
@@ -6374,46 +6601,18 @@ def _draw_explore_inventory_screen():
         _draw_text_in_box(tab_x + 2, ry, tab_w - 4, tab_row_h, label, text_color)
 
     if inv_tab_active == INV_TAB_ITEM:
-        detail_y = tab_y + (len(tabs) * tab_row_h) + 6
-        detail_h = (left_y + right_h) - detail_y
-        detail_item = None
-        if not inventory_is_empty() and inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
-            detail_item = inventory_items[inv_choice_index]
-        if detail_h >= 44:
-            _draw_inventory_item_detail_panel(left_x, detail_y, left_w, detail_h, detail_item)
+        _draw_inventory_detail_for_selection(layout, False)
 
-    title_h = 16
+    title_h = layout["title_h"]
     right_title = "ITEM" if inv_tab_active == INV_TAB_ITEM else "STAT"
     _draw_text_in_box(right_x + 2, right_y + 2, right_w - 4, title_h, right_title, BATTLE_CMD_COLOR)
-    list_x = right_x + 4
-    list_y = right_y + title_h + 4
-    list_w = right_w - 8
-    list_h = right_h - title_h - 8
+    list_x, list_y, list_w, list_h, rows, row_h = layout["list"]
 
     if inv_tab_active == INV_TAB_ITEM:
         if inventory_is_empty():
             _draw_text_in_box(list_x, list_y, list_w, list_h, "EMPTY", BATTLE_COLOR_WHITE)
         else:
-            rows = INVENTORY_CAPACITY
-            row_h = list_h // rows
-            if row_h < 12:
-                row_h = 12
-                rows = list_h // row_h
-                if rows < 1:
-                    rows = 1
-            for i in range(rows):
-                ry = list_y + i * row_h
-                if ry + row_h > list_y + list_h:
-                    break
-                if i >= len(inventory_items):
-                    break
-                row_item = inventory_items[i]
-                if i == inv_choice_index and ((inv_focus_side == INV_FOCUS_RIGHT) or inv_drop_active):
-                    line_h = panel_border
-                    if line_h > row_h:
-                        line_h = row_h
-                    lgfx.draw_rect(list_x, ry + row_h - line_h, list_w, line_h, BATTLE_COLOR_RED)
-                _draw_text_in_box(list_x + 2, ry, list_w - 4, row_h, row_item.get("name", "Item"), BATTLE_COLOR_WHITE)
+            _draw_inventory_item_rows(layout)
     else:
         top_h = 14
         row_h = 16
@@ -6430,29 +6629,10 @@ def _draw_explore_inventory_screen():
         _draw_text_in_box(list_x + 2, info_y + (row_h * 2), list_w - 4, top_h, "WEAPON: %s" % PLAYER_WEAPON, BATTLE_COLOR_WHITE)
         _draw_text_in_box(list_x + 2, info_y + (row_h * 3), list_w - 4, top_h, "ARMOR: %s" % PLAYER_ARMOR, BATTLE_COLOR_WHITE)
 
-    if inv_tab_active != INV_TAB_ITEM or not inv_drop_active:
-        return
-
-    menu_w = 84
-    menu_h = 66 if inv_drop_choice_count > 2 else 52
-    menu_x = right_x + (right_w - menu_w) // 2
-    menu_y = right_y + (right_h - menu_h) // 2
-    _fill_rect_solid(menu_x, menu_y, menu_w, menu_h, 0x0000)
-    _draw_rect_thick(menu_x, menu_y, menu_w, menu_h, BATTLE_COLOR_WHITE, panel_border)
-    selected_item = None
-    if inv_choice_index >= 0 and inv_choice_index < len(inventory_items):
-        selected_item = inventory_items[inv_choice_index]
-    if _is_equippable_item(selected_item):
-        labels = ("EQUIP", "DROP", "KEEP")
-    elif _is_consumable_item(selected_item):
-        labels = ("USE", "DROP", "KEEP")
-    else:
-        labels = ("KEEP", "DROP")
-    row_h = 20
-    base_y = menu_y + 6
-    for i, label in enumerate(labels):
-        text_color = BATTLE_COLOR_RED if inv_drop_choice_index == i else BATTLE_COLOR_WHITE
-        _draw_text_in_box(menu_x + 4, base_y + (i * row_h), menu_w - 8, 16, label, text_color)
+    _draw_explore_inventory_drop_menu(layout)
+    inv_prev_choice_index = inv_choice_index
+    inv_prev_focus_side = inv_focus_side
+    inv_prev_drop_choice_index = inv_drop_choice_index if inv_drop_active else -1
 
 
 def update_explore_inventory(loop_start, item_pressed, interact_pressed):
@@ -6460,7 +6640,7 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
     global inv_choice_index, inv_nav_prev_dir
     global inv_drop_active, inv_drop_choice_index, inv_drop_nav_prev_dir
     global inv_drop_choice_count
-    global inv_screen_dirty
+    global inv_screen_dirty, inv_selection_dirty, inv_drop_dirty
     global inv_tab_index, inv_tab_active, inv_tab_nav_prev_dir
     global inv_focus_side, inv_focus_nav_prev_dir
 
@@ -6478,7 +6658,7 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
                 inv_drop_choice_index = (inv_drop_choice_index + inv_drop_choice_count - 1) % inv_drop_choice_count
             else:
                 inv_drop_choice_index = (inv_drop_choice_index + 1) % inv_drop_choice_count
-            inv_screen_dirty = True
+            inv_drop_dirty = True
         inv_drop_nav_prev_dir = nav_dir
         if not interact_pressed:
             return
@@ -6504,6 +6684,8 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
         inv_drop_choice_count = 2
         inv_drop_nav_prev_dir = 0
         inv_screen_dirty = True
+        inv_drop_dirty = False
+        inv_selection_dirty = False
         if progress_changed:
             _write_save_data("inventory")
         return
@@ -6512,18 +6694,18 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
     if inv_tab_active == INV_TAB_STAT:
         if inv_focus_side != INV_FOCUS_LEFT:
             inv_focus_side = INV_FOCUS_LEFT
-            inv_screen_dirty = True
+            inv_selection_dirty = True
         inv_focus_nav_prev_dir = 0
     else:
         if focus_dir != 0 and focus_dir != inv_focus_nav_prev_dir:
             if focus_dir > 0:
                 if inv_focus_side != INV_FOCUS_RIGHT:
                     inv_focus_side = INV_FOCUS_RIGHT
-                    inv_screen_dirty = True
+                    inv_selection_dirty = True
             else:
                 if inv_focus_side != INV_FOCUS_LEFT:
                     inv_focus_side = INV_FOCUS_LEFT
-                    inv_screen_dirty = True
+                    inv_selection_dirty = True
         inv_focus_nav_prev_dir = focus_dir
 
     if inventory_is_empty():
@@ -6542,6 +6724,8 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
                 if inv_tab_active == INV_TAB_STAT:
                     inv_focus_side = INV_FOCUS_LEFT
                 inv_screen_dirty = True
+                inv_selection_dirty = False
+                inv_drop_dirty = False
         inv_tab_nav_prev_dir = nav_dir
         inv_nav_prev_dir = 0
     else:
@@ -6553,7 +6737,7 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
                     inv_choice_index = (inv_choice_index - 1 + count) % count
                 else:
                     inv_choice_index = (inv_choice_index + 1) % count
-                inv_screen_dirty = True
+                inv_selection_dirty = True
             inv_nav_prev_dir = nav_dir
         else:
             inv_nav_prev_dir = 0
@@ -6573,7 +6757,7 @@ def update_explore_inventory(loop_start, item_pressed, interact_pressed):
                 inv_drop_choice_count = 2
                 inv_drop_choice_index = 0
             inv_drop_nav_prev_dir = 0
-            inv_screen_dirty = True
+            inv_drop_dirty = True
         return
 
     if inv_focus_side == INV_FOCUS_LEFT:
@@ -12019,7 +12203,7 @@ def draw_all(loop_start):
     global battle_status_dirty, battle_attack_dirty
     global act_selection_dirty, act_prev_selected_index
     global item_selection_dirty
-    global inv_screen_dirty
+    global inv_screen_dirty, inv_selection_dirty, inv_drop_dirty
     global weapon_pickup_dialog_active, weapon_pickup_dialog_dirty
     global interact_hint_prev_signature
     global map_boss_scene_composed, map_boss_scene_frame, map_boss_scene_sx, map_boss_scene_sy
@@ -12132,6 +12316,15 @@ def draw_all(loop_start):
         if inv_screen_dirty:
             _draw_explore_inventory_screen()
             inv_screen_dirty = False
+            inv_selection_dirty = False
+            inv_drop_dirty = False
+        else:
+            if inv_selection_dirty:
+                _draw_explore_inventory_selection_update()
+                inv_selection_dirty = False
+            if inv_drop_dirty:
+                _draw_explore_inventory_drop_update()
+                inv_drop_dirty = False
         return
 
     if mode == MODE_BATTLE_MENU:
