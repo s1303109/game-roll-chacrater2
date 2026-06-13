@@ -989,6 +989,19 @@ def _map_boss_for_enemy_id(enemy_id):
     return None
 
 
+def _reset_map_boss_sheet_fail_state():
+    global map_boss_sheet_failed_map_id, map_boss_sheet_fail_retry_until_ms
+    map_boss_sheet_failed_map_id = None
+    map_boss_sheet_fail_retry_until_ms = 0
+
+
+def _note_map_boss_sheet_fail(boss_map_id, reason):
+    global map_boss_sheet_failed_map_id, map_boss_sheet_fail_retry_until_ms
+    map_boss_sheet_failed_map_id = boss_map_id
+    map_boss_sheet_fail_retry_until_ms = time.ticks_add(time.ticks_ms(), MAP_BOSS_SHEET_FAIL_RETRY_MS)
+    print(reason)
+
+
 def _ensure_map_boss_sheet_loaded(boss=None):
     global map_boss_sheet_loaded_map_id, map6_boss_sheet_loaded
     if boss is None:
@@ -1007,24 +1020,43 @@ def _ensure_map_boss_sheet_loaded(boss=None):
     boss_map_id = boss.get("map_id")
     if map_boss_sheet_loaded_map_id == boss_map_id:
         return True
+    if (
+        map_boss_sheet_failed_map_id == boss_map_id
+        and map_boss_sheet_fail_retry_until_ms
+        and time.ticks_diff(time.ticks_ms(), map_boss_sheet_fail_retry_until_ms) < 0
+    ):
+        return False
 
     lgfx.enemy_sheet_clear()
     map_boss_sheet_loaded_map_id = None
     map6_boss_sheet_loaded = False
     path = boss.get("sheet_path")
-    if not path or not _path_exists(path):
-        print("map_boss_sheet_missing:", path)
+    sheet_w = int(boss.get("sheet_w", MAP_BOSS_SHEET_W))
+    sheet_h = int(boss.get("sheet_h", MAP_BOSS_SHEET_H))
+    frame_w = int(boss.get("frame_w", MAP_BOSS_FRAME_W))
+    frame_h = int(boss.get("frame_h", MAP_BOSS_FRAME_H))
+    expected_len = sheet_w * sheet_h * 2
+    actual_len = _file_size(path) if path else -1
+    if actual_len < 0:
+        _note_map_boss_sheet_fail(boss_map_id, "map_boss_sheet_missing: %s" % path)
+        return False
+    if actual_len != expected_len:
+        _note_map_boss_sheet_fail(
+            boss_map_id,
+            "map_boss_sheet_size_invalid: %s expected=%d got=%d" % (path, expected_len, actual_len),
+        )
         return False
     ok = bool(
         lgfx.enemy_sheet_load_file(
             path,
-            int(boss.get("sheet_w", MAP_BOSS_SHEET_W)),
-            int(boss.get("sheet_h", MAP_BOSS_SHEET_H)),
-            int(boss.get("frame_w", MAP_BOSS_FRAME_W)),
-            int(boss.get("frame_h", MAP_BOSS_FRAME_H)),
+            sheet_w,
+            sheet_h,
+            frame_w,
+            frame_h,
         )
     )
     if ok:
+        _reset_map_boss_sheet_fail_state()
         lgfx.enemy_frame_set(0)
         if hasattr(lgfx, "enemy_overlay_clear"):
             lgfx.enemy_overlay_clear()
@@ -1032,7 +1064,7 @@ def _ensure_map_boss_sheet_loaded(boss=None):
         map6_boss_sheet_loaded = boss_map_id == MAP6_ID
         print("map_boss_sheet_loaded:", path)
         return True
-    print("map_boss_sheet_load_fail:", path)
+    _note_map_boss_sheet_fail(boss_map_id, "map_boss_sheet_load_fail: %s" % path)
     map6_boss_sheet_loaded = False
     return False
 
@@ -1236,6 +1268,7 @@ MAP_NEW_BOSS_FRAME_H = 96
 MAP_BOSS_TRIGGER_RADIUS_PX = 30
 MAP_BOSS_ANIM_FRAME_MS = MAP6_BOSS_ANIM_FRAME_MS
 MAP_BOSS_ANIM_SEQUENCE = MAP6_BOSS_ANIM_SEQUENCE
+MAP_BOSS_SHEET_FAIL_RETRY_MS = 5000
 MAP_BOSS_DEFINITIONS = {
     MAP6_ID: {
         "map_id": MAP6_ID,
@@ -2572,6 +2605,8 @@ scripted_battle_side_dialog = False
 scripted_battle_return_to_act = False
 scripted_battle_pending_exit = False
 map_boss_sheet_loaded_map_id = None
+map_boss_sheet_failed_map_id = None
+map_boss_sheet_fail_retry_until_ms = 0
 map_boss_defeated_by_map = {
     MAP6_ID: False,
     MAP9_ID: False,
@@ -3685,6 +3720,7 @@ def _boot_phase_meta_spawn():
 
 def _boot_phase_tile_and_player():
     global player_sheet_enabled, player_sheet_err, map6_boss_sheet_loaded, map_boss_sheet_loaded_map_id
+    global map_boss_sheet_failed_map_id, map_boss_sheet_fail_retry_until_ms
     if hasattr(lgfx, "player_sheet_clear"):
         # Release previous C-side sheet buffers before sprite allocation fallback.
         lgfx.player_sheet_clear()
@@ -3706,6 +3742,8 @@ def _boot_phase_tile_and_player():
         print("player_mode: red_dot", player_sheet_err)
 
     map_boss_sheet_loaded_map_id = None
+    map_boss_sheet_failed_map_id = None
+    map_boss_sheet_fail_retry_until_ms = 0
     map6_boss_sheet_loaded = False
 
     print("view:", ACTIVE_VIEW_W, ACTIVE_VIEW_H)
@@ -4513,7 +4551,8 @@ def _init_runtime_state():
     global portal_transition_shrink_ms, portal_transition_black_ms, portal_transition_portal_ref, portal_transition_last_switch_try_ms
     global portal_transition_switch_fail_count
     global portal_transition_rearm_required, portal_transition_rearm_map_id, portal_transition_rearm_portal_ref
-    global map_boss_sheet_loaded_map_id, map_boss_battle_enemy_id, map_boss_anim_seq_index, map_boss_anim_last_ms
+    global map_boss_sheet_loaded_map_id, map_boss_sheet_failed_map_id, map_boss_sheet_fail_retry_until_ms
+    global map_boss_battle_enemy_id, map_boss_anim_seq_index, map_boss_anim_last_ms
     global map_boss_last_draw_frame, map_boss_last_draw_sx, map_boss_last_draw_sy
     global map_boss_scene_composed, map_boss_scene_frame, map_boss_scene_sx, map_boss_scene_sy
     global map6_boss_defeated, map6_boss_battle_active, map6_boss_anim_seq_index, map6_boss_anim_last_ms
@@ -4760,6 +4799,8 @@ def _init_runtime_state():
     portal_transition_rearm_map_id = 0
     portal_transition_rearm_portal_ref = None
     map_boss_sheet_loaded_map_id = None
+    map_boss_sheet_failed_map_id = None
+    map_boss_sheet_fail_retry_until_ms = 0
     for boss_map_id in map_boss_defeated_by_map:
         map_boss_defeated_by_map[boss_map_id] = False
     map_boss_battle_enemy_id = None
